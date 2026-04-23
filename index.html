@@ -199,7 +199,10 @@ let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
 function renderLog() {
   const el = document.getElementById('recentLog');
   if (!entries.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No entries yet</p>'; return; }
-  el.innerHTML = entries.slice(-5).reverse().map(e => `
+  const unsynced = entries.filter(e => e.synced === false);
+  const synced = entries.filter(e => e.synced !== false).slice(-5);
+  const toShow = [...unsynced, ...synced].sort((a, b) => (b.logged || '').localeCompare(a.logged || ''));
+  el.innerHTML = toShow.map(e => `
     <div class="log-item">
       <div class="log-meta">
         <div class="log-case">${e.case || '—'}${e.client ? ' · ' + e.client : ''}</div>
