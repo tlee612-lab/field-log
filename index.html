@@ -167,7 +167,10 @@
       </div>
     </details>
   </div>
-  <div class="section-label" style="margin-top:24px">Recent Entries (Local)</div>
+  <div class="section-label" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
+    <span>Recent Entries (Local)</span>
+    <button id="clearSyncedBtn" onclick="clearSynced()" style="background:none;border:none;color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:0;display:none">Clear Synced</button>
+  </div>
   <button class="sync-btn" id="syncBtn" onclick="syncPending()">↑ Sync Pending to Drive</button>
   <div id="recentLog"></div>
 </main>
@@ -200,8 +203,10 @@ function renderLog() {
   const el = document.getElementById('recentLog');
   if (!entries.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No entries yet</p>'; return; }
   const unsynced = entries.filter(e => e.synced === false);
-  const synced = entries.filter(e => e.synced !== false).slice(-5);
-  const toShow = [...unsynced, ...synced].sort((a, b) => (b.logged || '').localeCompare(a.logged || ''));
+  const synced = entries.filter(e => e.synced !== false);
+  const btn = document.getElementById('clearSyncedBtn');
+  if (btn) btn.style.display = synced.length ? '' : 'none';
+  const toShow = [...unsynced, ...synced.slice(-5)].sort((a, b) => (b.logged || '').localeCompare(a.logged || ''));
   el.innerHTML = toShow.map(e => `
     <div class="log-item">
       <div class="log-meta">
@@ -386,6 +391,14 @@ async function syncAll() {
   } catch(err) {
     showToast('Sync failed — check connection', true);
   }
+}
+
+function clearSynced() {
+  entries = entries.filter(e => e.synced === false);
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog();
+  updateSyncBtn();
+  showToast('Synced entries cleared');
 }
 
 function clearAllEntries() {
