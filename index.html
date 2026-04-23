@@ -98,6 +98,7 @@
       <option>Investigator Service - Tactical Field Operations &amp; Scene Documentation</option>
       <option>Investigator Service - Witness Development &amp; Interviews</option>
       <option>Investigator Service - Investigative Reporting &amp; Documentation</option>
+      <option>Investigator Service - Court Appearance &amp; Testimony</option>
       <option>Investigator Service - Travel Time</option>
     </select>
   </div>
@@ -161,6 +162,7 @@
         </div>
         <button class="ai-btn" style="margin-top:8px;max-width:120px" onclick="saveConfig()">Save</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="testWebhook()">Test</button>
+        <button class="ai-btn secondary" style="margin-top:8px;max-width:160px;color:var(--warn);border-color:var(--warn)" onclick="clearAllEntries()">Clear All Local</button>
       </div>
     </details>
   </div>
@@ -264,7 +266,7 @@ async function aiParse() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        system: `You are a field assistant for a licensed private investigator working criminal defense cases in Oregon. Extract structured fields from raw investigator notes. Respond ONLY with a JSON object, no markdown, no preamble.\n\nFields:\n- case: Oregon court case number e.g. 25CR12345 (or "")\n- client: client last name (or "")\n- type: one of exactly: "Investigator Service - Case Intake & File Audit", "Investigator Service - Strategic Planning", "Investigator Service - Case Consultation", "Investigator Service - Discovery Analysis & Evidence Review", "Investigator Service - Intelligence Gathering & OSINT", "Investigator Service - Tactical Field Operations & Scene Documentation", "Investigator Service - Witness Development & Interviews", "Investigator Service - Investigative Reporting & Documentation", "Investigator Service - Travel Time"\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h (or "")\n- duration: integer minutes as string (or "")\n- mileage: miles as string (or "")\n- travelFrom: origin city (or "")\n- travelTo: destination city (or "")\n- notes: clean 1-3 sentence professional summary`,
+        system: `You are a field assistant for a licensed private investigator working criminal defense cases in Oregon. Extract structured fields from raw investigator notes. Respond ONLY with a JSON object, no markdown, no preamble.\n\nFields:\n- case: Oregon court case number e.g. 25CR12345 (or "")\n- client: client last name (or "")\n- type: one of exactly: "Investigator Service - Case Intake & File Audit", "Investigator Service - Strategic Planning", "Investigator Service - Case Consultation", "Investigator Service - Discovery Analysis & Evidence Review", "Investigator Service - Intelligence Gathering & OSINT", "Investigator Service - Tactical Field Operations & Scene Documentation", "Investigator Service - Witness Development & Interviews", "Investigator Service - Investigative Reporting & Documentation", "Investigator Service - Court Appearance & Testimony", "Investigator Service - Travel Time"\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h (or "")\n- duration: integer minutes as string (or "")\n- mileage: miles as string (or "")\n- travelFrom: origin city (or "")\n- travelTo: destination city (or "")\n- notes: clean 1-3 sentence professional summary`,
         messages: [{ role: 'user', content: raw }]
       })
     });
@@ -361,6 +363,15 @@ async function postToWebhook(entries) {
   const data = await res.json();
   if (data.status === 'error') throw new Error(data.message);
   return data;
+}
+
+function clearAllEntries() {
+  if (!confirm('Delete all local entries? This cannot be undone.')) return;
+  entries = [];
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog();
+  updateSyncBtn();
+  showToast('All local entries cleared');
 }
 
 function showToast(msg, isError=false) {
