@@ -228,6 +228,28 @@ function refreshDataLists() {
 }
 refreshDataLists();
 
+async function fetchRemoteCases() {
+  if (!cfg.webhookUrl) return;
+  try {
+    const res = await fetch(cfg.webhookUrl + '?action=getCases');
+    const data = await res.json();
+    if (data.status === 'ok' && Array.isArray(data.cases)) {
+      let changed = false;
+      data.cases.forEach(p => {
+        if (!knownCases.find(k => k.case.toLowerCase() === p.case.toLowerCase())) {
+          knownCases.push(p);
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem('tli_cases', JSON.stringify(knownCases));
+        refreshDataLists();
+      }
+    }
+  } catch(e) { /* silent fail — offline or cors */ }
+}
+fetchRemoteCases();
+
 function onCaseInput(val) {
   const match = knownCases.find(p => p.case.toLowerCase() === val.toLowerCase());
   if (match) document.getElementById('clientLast').value = match.client;
