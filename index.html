@@ -177,6 +177,7 @@
         <button class="ai-btn" style="margin-top:8px;max-width:120px" onclick="saveConfig()">Save</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="testWebhook()">Test</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="syncAll()">Sync All</button>
+        <button class="ai-btn secondary" style="margin-top:8px;max-width:160px" onclick="fetchRemoteCases(true)">Refresh Cases</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:160px;color:var(--warn);border-color:var(--warn);background:transparent" onclick="clearAllEntries()">Clear All Local</button>
       </div>
     </details>
@@ -228,25 +229,30 @@ function refreshDataLists() {
 }
 refreshDataLists();
 
-async function fetchRemoteCases() {
-  if (!cfg.webhookUrl) return;
+async function fetchRemoteCases(verbose = false) {
+  if (!cfg.webhookUrl) { if (verbose) showToast('No webhook URL configured', true); return; }
   try {
     const res = await fetch(cfg.webhookUrl + '?action=getCases');
     const data = await res.json();
     if (data.status === 'ok' && Array.isArray(data.cases)) {
-      let changed = false;
+      let added = 0;
       data.cases.forEach(p => {
         if (!knownCases.find(k => k.case.toLowerCase() === p.case.toLowerCase())) {
           knownCases.push(p);
-          changed = true;
+          added++;
         }
       });
-      if (changed) {
+      if (added) {
         localStorage.setItem('tli_cases', JSON.stringify(knownCases));
         refreshDataLists();
       }
+      if (verbose) showToast('✓ ' + data.cases.length + ' cases loaded from Drive');
+    } else {
+      if (verbose) showToast('No cases returned from Drive', true);
     }
-  } catch(e) { /* silent fail — offline or cors */ }
+  } catch(e) {
+    if (verbose) showToast('Failed: ' + e.message, true);
+  }
 }
 fetchRemoteCases();
 
