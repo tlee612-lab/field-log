@@ -427,15 +427,11 @@ async function submitEntry() {
   btn.innerHTML = '<span class="spinner"></span>Logging...';
   btn.disabled = true;
   toLog.forEach(e => entries.push(e));
-  localStorage.setItem('tli_entries', JSON.stringify(entries));
-  renderLog();
   if (cfg.webhookUrl) {
     try {
       btn.innerHTML = '<span class="spinner"></span>Syncing to Drive...';
       await postToWebhook(toLog);
       toLog.forEach(e => { e.synced = true; });
-      localStorage.setItem('tli_entries', JSON.stringify(entries));
-      renderLog();
       showToast(isTravel ? '✓ 2 entries logged to Drive' : '✓ Logged to Google Drive');
     } catch(err) {
       showToast('Saved locally — Drive sync failed', true);
@@ -443,6 +439,8 @@ async function submitEntry() {
   } else {
     showToast(isTravel ? '✓ 2 entries logged locally' : '✓ Logged locally — configure webhook to sync');
   }
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog();
   updateSyncBtn();
   ['actNotes','clientLast','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('investigatorField').value = cfg.investigatorName || '';
