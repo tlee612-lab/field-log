@@ -241,7 +241,7 @@ function saveConfig() {
 async function testWebhook() {
   if (!cfg.webhookUrl) { showToast('Paste webhook URL first', true); return; }
   try {
-    await fetch(cfg.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '[]', mode: 'no-cors' });
+    await fetch(cfg.webhookUrl, { method: 'GET', mode: 'no-cors' });
     showToast('✓ Webhook reachable — check Sheets to confirm');
   } catch(err) {
     showToast('Connection failed', true);
@@ -435,12 +435,8 @@ async function submitEntry() {
 }
 
 async function postToWebhook(entries) {
-  await fetch(cfg.webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(entries),
-    mode: 'no-cors'
-  });
+  const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entries));
+  await fetch(url, { method: 'GET', mode: 'no-cors' });
 }
 
 async function syncAll() {
