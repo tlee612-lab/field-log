@@ -29,9 +29,8 @@
   select option { background: var(--surface2); }
   textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
   .time-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
-  .picker-wrap { position: relative; display: flex; align-items: center; }
-  .picker-wrap input { flex: 1; padding-right: 36px; }
-  .picker-icon { position: absolute; right: 10px; font-size: 16px; cursor: pointer; pointer-events: all; }
+  .picker-wrap { position: relative; display: flex; align-items: center; gap: 6px; }
+  .picker-icon { background: var(--surface2); border: 1px solid var(--accent2); border-radius: 20px; color: var(--accent2); font-style: normal; font-size: 14px; padding: 8px 10px; cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
   .now-btn { background: var(--surface2); border: 1px solid var(--accent); border-radius: 20px; color: var(--accent); font-family: var(--ui); font-size: 12px; letter-spacing: 1px; padding: 11px 16px; cursor: pointer; white-space: nowrap; }
   .now-btn:active { background: var(--border); }
   .ai-bar { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
