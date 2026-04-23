@@ -71,7 +71,10 @@
 </head>
 <body>
 <header>
-  <div class="logo">TLI <span>Field Log</span></div>
+  <div>
+    <div class="logo">TLI <span>Field Log</span></div>
+    <div id="headerName" style="font-family:var(--ui);font-size:11px;letter-spacing:1px;color:var(--muted);margin-top:2px"></div>
+  </div>
   <div class="status-dot" id="statusDot"></div>
 </header>
 <main>
@@ -157,6 +160,10 @@
           Paste your Google Apps Script deployment URL below.
         </p>
         <div class="config-row">
+          <label>Investigator</label>
+          <input type="text" id="investigatorName" placeholder="e.g. J. Smith" autocomplete="off" autocapitalize="words">
+        </div>
+        <div class="config-row">
           <label>Webhook URL</label>
           <input type="text" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
         </div>
@@ -177,12 +184,20 @@
 </main>
 <div class="toast" id="toast"></div>
 <script>
-let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":""}');
+let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","investigatorName":""}');
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
+document.getElementById('investigatorName').value = cfg.investigatorName || '';
+function updateHeaderName() {
+  const el = document.getElementById('headerName');
+  el.textContent = cfg.investigatorName ? cfg.investigatorName.toUpperCase() : '';
+}
+updateHeaderName();
 
 function saveConfig() {
   cfg.webhookUrl = document.getElementById('webhookUrl').value.trim();
+  cfg.investigatorName = document.getElementById('investigatorName').value.trim();
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
+  updateHeaderName();
   showToast('Config saved');
 }
 
@@ -200,6 +215,20 @@ async function testWebhook() {
 
 let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
 
+function fmtDateTime(date, time) {
+  if (!date) return '';
+  const [y, m, d] = date.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let out = `${months[+m-1]} ${+d}, ${y}`;
+  if (time) {
+    const [h, min] = time.split(':');
+    const period = +h >= 12 ? 'PM' : 'AM';
+    const h12 = +h % 12 || 12;
+    out += ` · ${h12}:${min} ${period}`;
+  }
+  return out;
+}
+
 function renderLog() {
   const el = document.getElementById('recentLog');
   if (!entries.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No entries yet</p>'; return; }
@@ -212,7 +241,7 @@ function renderLog() {
     <div class="log-item">
       <div class="log-meta">
         <div class="log-case">${e.case || '—'}${e.client ? ' · ' + e.client : ''}</div>
-        <div class="log-time">${e.date} ${e.time}</div>
+        <div class="log-time">${fmtDateTime(e.date, e.time)}</div>
       </div>
       <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}</div>
       <div class="log-notes">${(e.notes||'').slice(0,120)}${(e.notes||'').length>120?'…':''}</div>
@@ -321,6 +350,7 @@ async function submitEntry() {
     duration: document.getElementById('actDuration').value,
     mileage: '', travelFrom: '', travelTo: '',
     notes: document.getElementById('actNotes').value.trim(),
+    investigator: cfg.investigatorName || '',
     logged: new Date().toISOString(),
     synced: false
   };
