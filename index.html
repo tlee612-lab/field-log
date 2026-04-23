@@ -29,6 +29,9 @@
   select option { background: var(--surface2); }
   textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
   .time-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  .picker-wrap { position: relative; display: flex; align-items: center; }
+  .picker-wrap input { flex: 1; padding-right: 36px; }
+  .picker-icon { position: absolute; right: 10px; font-size: 16px; cursor: pointer; pointer-events: all; }
   .now-btn { background: var(--surface2); border: 1px solid var(--accent); border-radius: 20px; color: var(--accent); font-family: var(--ui); font-size: 12px; letter-spacing: 1px; padding: 11px 16px; cursor: pointer; white-space: nowrap; }
   .now-btn:active { background: var(--border); }
   .ai-bar { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
@@ -115,11 +118,17 @@
   <div class="time-row" style="margin-bottom:8px">
     <div class="field-group">
       <label>Date</label>
-      <input type="date" id="actDate">
+      <div class="picker-wrap">
+        <input type="date" id="actDate">
+        <span class="picker-icon" onclick="document.getElementById('actDate').showPicker()">📅</span>
+      </div>
     </div>
     <div class="field-group">
       <label>Time</label>
-      <input type="time" id="actTime">
+      <div class="picker-wrap">
+        <input type="time" id="actTime">
+        <span class="picker-icon" onclick="document.getElementById('actTime').showPicker()">🕐</span>
+      </div>
     </div>
     <button class="now-btn" onclick="setNow()">NOW</button>
   </div>
