@@ -349,6 +349,7 @@ async function submitEntry() {
       await postToWebhook(toLog);
       toLog.forEach(e => { e.synced = true; });
       localStorage.setItem('tli_entries', JSON.stringify(entries));
+      renderLog();
       showToast(isTravel ? '✓ 2 entries logged to Drive' : '✓ Logged to Google Drive');
     } catch(err) {
       showToast('Saved locally — Drive sync failed', true);
