@@ -361,9 +361,13 @@ async function postToWebhook(entries) {
   const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entries));
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error('Webhook returned ' + res.status);
-  const data = await res.json();
-  if (data.status === 'error') throw new Error(data.message);
-  return data;
+  try {
+    const data = await res.json();
+    if (data.status === 'error') throw new Error(data.message || 'Webhook error');
+  } catch(e) {
+    if (e.message && e.message !== 'Webhook error') return;
+    throw e;
+  }
 }
 
 async function syncAll() {
