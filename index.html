@@ -191,7 +191,9 @@
 </main>
 <div class="toast" id="toast"></div>
 <script>
+const DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxUcyYasL_3vMIpcwTgfBJNzWpK7jE81Puyiw7nxL6BhfX3fy8ZPCqY9rDAZZ6OC2Ud/exec';
 let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","investigatorName":""}');
+if (!cfg.webhookUrl) cfg.webhookUrl = DEFAULT_WEBHOOK;
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
 document.getElementById('investigatorName').value = cfg.investigatorName || '';
 document.getElementById('investigatorField').value = cfg.investigatorName || '';
