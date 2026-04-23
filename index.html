@@ -437,8 +437,12 @@ async function submitEntry() {
 }
 
 async function postToWebhook(entries) {
-  const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entries));
-  const res = await fetch(url, { method: 'GET' });
+  const res = await fetch(cfg.webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(entries),
+    redirect: 'follow'
+  });
   if (!res.ok) throw new Error('Webhook returned ' + res.status);
   try {
     const data = await res.json();
