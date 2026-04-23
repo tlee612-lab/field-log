@@ -80,10 +80,11 @@
 <main>
   <datalist id="caseList"></datalist>
   <datalist id="clientList"></datalist>
+  <datalist id="investigatorList"></datalist>
   <div class="section-label">Quick Entry</div>
   <div class="field-group" style="margin-bottom:8px">
     <label>Investigator</label>
-    <input type="text" id="investigatorField" placeholder="Investigator name" autocomplete="off" autocapitalize="words">
+    <input type="text" id="investigatorField" placeholder="Investigator name" autocomplete="off" autocapitalize="words" list="investigatorList">
   </div>
   <div class="quick-row" style="margin-bottom:8px">
     <div class="field-group">
@@ -220,6 +221,8 @@ let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]');
 function refreshDataLists() {
   document.getElementById('caseList').innerHTML = knownCases.map(p => `<option value="${p.case}">${p.case} · ${p.client}</option>`).join('');
   document.getElementById('clientList').innerHTML = [...new Map(knownCases.map(p => [p.client, p])).values()].map(p => `<option value="${p.client}">`).join('');
+  const investigators = [...new Set(entries.map(e => e.investigator).filter(Boolean))];
+  document.getElementById('investigatorList').innerHTML = investigators.map(n => `<option value="${n}">`).join('');
 }
 refreshDataLists();
 
@@ -240,10 +243,18 @@ async function fetchRemoteCases(verbose = false) {
         localStorage.setItem('tli_cases', JSON.stringify(knownCases));
         refreshDataLists();
       }
-      if (data.lastInvestigator && !localStorage.getItem('tli_last_investigator')) {
-        localStorage.setItem('tli_last_investigator', data.lastInvestigator);
-        document.getElementById('investigatorField').value = data.lastInvestigator;
-        updateHeaderName();
+      if (data.lastInvestigator) {
+        if (!localStorage.getItem('tli_last_investigator')) {
+          localStorage.setItem('tli_last_investigator', data.lastInvestigator);
+          updateHeaderName();
+        }
+        if (!document.getElementById('investigatorField').value) {
+          document.getElementById('investigatorField').value = data.lastInvestigator;
+        }
+        const list = document.getElementById('investigatorList');
+        if (!list.innerHTML.includes(data.lastInvestigator)) {
+          list.innerHTML += `<option value="${data.lastInvestigator}">`;
+        }
       }
       if (verbose) showToast('✓ ' + data.cases.length + ' cases loaded from Drive');
     } else {
