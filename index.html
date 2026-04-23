@@ -241,10 +241,8 @@ function saveConfig() {
 async function testWebhook() {
   if (!cfg.webhookUrl) { showToast('Paste webhook URL first', true); return; }
   try {
-    const res = await fetch(cfg.webhookUrl, { method: 'GET' });
-    const data = await res.json();
-    if (data.status === 'ok') showToast('✓ Webhook connected');
-    else showToast('Webhook error: ' + data.message, true);
+    await fetch(cfg.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '[]', mode: 'no-cors' });
+    showToast('✓ Webhook reachable — check Sheets to confirm');
   } catch(err) {
     showToast('Connection failed', true);
   }
@@ -437,20 +435,12 @@ async function submitEntry() {
 }
 
 async function postToWebhook(entries) {
-  const res = await fetch(cfg.webhookUrl, {
+  await fetch(cfg.webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(entries),
-    redirect: 'follow'
+    mode: 'no-cors'
   });
-  if (!res.ok) throw new Error('Webhook returned ' + res.status);
-  try {
-    const data = await res.json();
-    if (data.status === 'error') throw new Error(data.message || 'Webhook error');
-  } catch(e) {
-    if (e.message && e.message !== 'Webhook error') return;
-    throw e;
-  }
 }
 
 async function syncAll() {
