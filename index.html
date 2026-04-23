@@ -160,15 +160,9 @@
   <button class="submit-btn" id="submitBtn" onclick="submitEntry()">LOG ACTIVITY →</button>
   <div style="margin-top:24px">
     <details id="configDetails">
-      <summary>▸ Google Drive Config</summary>
+      <summary>▸ Settings</summary>
       <div class="config-section">
-        <p style="font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.5">
-          Paste your Google Apps Script deployment URL below.
-        </p>
-        <div class="config-row">
-          <label>Investigator</label>
-          <input type="text" id="investigatorName" placeholder="e.g. J. Smith" autocomplete="off" autocapitalize="words">
-        </div>
+        <div class="section-label" style="margin-top:0;margin-bottom:8px">Google Drive Settings</div>
         <div class="config-row">
           <label>Webhook URL</label>
           <input type="text" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
@@ -193,11 +187,10 @@
 <div class="toast" id="toast"></div>
 <script>
 const DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxUcyYasL_3vMIpcwTgfBJNzWpK7jE81Puyiw7nxL6BhfX3fy8ZPCqY9rDAZZ6OC2Ud/exec';
-let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","investigatorName":""}');
+let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":""}');
 if (!cfg.webhookUrl) cfg.webhookUrl = DEFAULT_WEBHOOK;
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
-document.getElementById('investigatorName').value = cfg.investigatorName || '';
-document.getElementById('investigatorField').value = cfg.investigatorName || '';
+document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
 setUrlLock(!!cfg.webhookUrl);
 
 function setUrlLock(locked) {
@@ -217,7 +210,8 @@ function toggleUrlLock() {
 
 function updateHeaderName() {
   const el = document.getElementById('headerName');
-  el.textContent = cfg.investigatorName ? cfg.investigatorName.toUpperCase() : '';
+  const name = localStorage.getItem('tli_last_investigator') || '';
+  el.textContent = name ? name.toUpperCase() : '';
 }
 updateHeaderName();
 
@@ -245,6 +239,11 @@ async function fetchRemoteCases(verbose = false) {
       if (added) {
         localStorage.setItem('tli_cases', JSON.stringify(knownCases));
         refreshDataLists();
+      }
+      if (data.lastInvestigator && !localStorage.getItem('tli_last_investigator')) {
+        localStorage.setItem('tli_last_investigator', data.lastInvestigator);
+        document.getElementById('investigatorField').value = data.lastInvestigator;
+        updateHeaderName();
       }
       if (verbose) showToast('✓ ' + data.cases.length + ' cases loaded from Drive');
     } else {
@@ -278,10 +277,7 @@ function saveKnownCase(caseNum, client) {
 
 function saveConfig() {
   cfg.webhookUrl = document.getElementById('webhookUrl').value.trim();
-  cfg.investigatorName = document.getElementById('investigatorName').value.trim();
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
-  document.getElementById('investigatorField').value = cfg.investigatorName;
-  updateHeaderName();
   if (cfg.webhookUrl) setUrlLock(true);
   showToast('Config saved');
 }
@@ -433,7 +429,7 @@ async function submitEntry() {
     duration: document.getElementById('actDuration').value,
     mileage: '', travelFrom: '', travelTo: '',
     notes: document.getElementById('actNotes').value.trim(),
-    investigator: document.getElementById('investigatorField').value.trim() || cfg.investigatorName || '',
+    investigator: document.getElementById('investigatorField').value.trim(),
     logged: new Date().toISOString(),
     synced: false
   };
@@ -441,6 +437,7 @@ async function submitEntry() {
     showToast('Case #, client last name, type, and notes required', true); return;
   }
   saveKnownCase(base.case, base.client);
+  if (base.investigator) localStorage.setItem('tli_last_investigator', base.investigator);
   const toLog = [base];
   if (isTravel) {
     toLog.push({
@@ -471,7 +468,8 @@ async function submitEntry() {
   renderLog();
   updateSyncBtn();
   ['actNotes','clientLast','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('investigatorField').value = cfg.investigatorName || '';
+  const lastInv = localStorage.getItem('tli_last_investigator') || '';
+  document.getElementById('investigatorField').value = lastInv;
   document.getElementById('aiPreview').classList.remove('visible');
   document.getElementById('actType').value = '';
   onTypeChange('');
