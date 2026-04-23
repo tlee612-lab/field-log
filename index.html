@@ -54,6 +54,9 @@
   .log-time { font-family: var(--mono); font-size: 11px; color: var(--muted); }
   .log-type { font-family: var(--ui); font-size: 11px; letter-spacing: 1px; color: var(--accent2); text-transform: uppercase; margin-bottom: 4px; }
   .log-notes { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .log-unsynced { font-size: 10px; color: var(--warn); font-family: var(--ui); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+  .sync-btn { width: 100%; background: transparent; border: 1px solid var(--warn); border-radius: 8px; color: var(--warn); font-family: var(--ui); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 12px; cursor: pointer; margin-top: 10px; display: none; transition: background 0.2s; }
+  .sync-btn:active { background: rgba(255,107,53,0.15); }
   .config-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-top: 8px; }
   .config-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .config-row:last-child { margin-bottom: 0; }
@@ -162,6 +165,7 @@
     </details>
   </div>
   <div class="section-label" style="margin-top:24px">Recent Entries (Local)</div>
+  <button class="sync-btn" id="syncBtn" onclick="syncPending()">↑ Sync Pending to Drive</button>
   <div id="recentLog"></div>
 </main>
 <div class="toast" id="toast"></div>
@@ -200,10 +204,44 @@ function renderLog() {
       </div>
       <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}</div>
       <div class="log-notes">${(e.notes||'').slice(0,120)}${(e.notes||'').length>120?'…':''}</div>
+      ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : ''}
     </div>
   `).join('');
 }
+
+function updateSyncBtn() {
+  const btn = document.getElementById('syncBtn');
+  const pending = entries.filter(e => e.synced === false);
+  if (cfg.webhookUrl && pending.length) {
+    btn.style.display = '';
+    btn.textContent = '↑ Sync ' + pending.length + ' Pending to Drive';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+async function syncPending() {
+  const pending = entries.filter(e => e.synced === false);
+  if (!pending.length) return;
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Syncing...';
+  try {
+    await postToWebhook(pending);
+    pending.forEach(e => e.synced = true);
+    localStorage.setItem('tli_entries', JSON.stringify(entries));
+    renderLog();
+    updateSyncBtn();
+    showToast('✓ ' + pending.length + ' ' + (pending.length === 1 ? 'entry' : 'entries') + ' synced to Drive');
+  } catch(err) {
+    showToast('Sync failed — check connection', true);
+    btn.disabled = false;
+    updateSyncBtn();
+  }
+}
+
 renderLog();
+updateSyncBtn();
 
 function setNow() {
   const now = new Date();
@@ -271,7 +309,8 @@ async function submitEntry() {
     duration: document.getElementById('actDuration').value,
     mileage: '', travelFrom: '', travelTo: '',
     notes: document.getElementById('actNotes').value.trim(),
-    logged: new Date().toISOString()
+    logged: new Date().toISOString(),
+    synced: false
   };
   if (!base.case || !base.client || !base.type || !base.notes) {
     showToast('Case #, client last name, type, and notes required', true); return;
@@ -296,6 +335,8 @@ async function submitEntry() {
     try {
       btn.innerHTML = '<span class="spinner"></span>Syncing to Drive...';
       await postToWebhook(toLog);
+      toLog.forEach(e => { e.synced = true; });
+      localStorage.setItem('tli_entries', JSON.stringify(entries));
       showToast(isTravel ? '✓ 2 entries logged to Drive' : '✓ Logged to Google Drive');
     } catch(err) {
       showToast('Saved locally — Drive sync failed', true);
@@ -303,6 +344,7 @@ async function submitEntry() {
   } else {
     showToast(isTravel ? '✓ 2 entries logged locally' : '✓ Logged locally — configure webhook to sync');
   }
+  updateSyncBtn();
   ['actNotes','clientLast','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('aiPreview').classList.remove('visible');
   document.getElementById('actType').value = '';
