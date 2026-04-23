@@ -162,6 +162,7 @@
         </div>
         <button class="ai-btn" style="margin-top:8px;max-width:120px" onclick="saveConfig()">Save</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="testWebhook()">Test</button>
+        <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="syncAll()">Sync All</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:160px;color:var(--warn);border-color:var(--warn)" onclick="clearAllEntries()">Clear All Local</button>
       </div>
     </details>
@@ -363,6 +364,21 @@ async function postToWebhook(entries) {
   const data = await res.json();
   if (data.status === 'error') throw new Error(data.message);
   return data;
+}
+
+async function syncAll() {
+  if (!cfg.webhookUrl) { showToast('Paste webhook URL first', true); return; }
+  if (!entries.length) { showToast('No local entries to sync', true); return; }
+  try {
+    await postToWebhook(entries);
+    entries.forEach(e => e.synced = true);
+    localStorage.setItem('tli_entries', JSON.stringify(entries));
+    renderLog();
+    updateSyncBtn();
+    showToast('✓ All ' + entries.length + ' entries synced to Drive');
+  } catch(err) {
+    showToast('Sync failed — check connection', true);
+  }
 }
 
 function clearAllEntries() {
