@@ -29,15 +29,15 @@
   select option { background: var(--surface2); }
   textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
   .time-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
-  .now-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent); font-family: var(--ui); font-size: 12px; letter-spacing: 1px; padding: 11px 12px; cursor: pointer; white-space: nowrap; }
+  .now-btn { background: var(--surface2); border: 1px solid var(--accent); border-radius: 20px; color: var(--accent); font-family: var(--ui); font-size: 12px; letter-spacing: 1px; padding: 11px 16px; cursor: pointer; white-space: nowrap; }
   .now-btn:active { background: var(--border); }
   .ai-bar { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
   .ai-bar textarea { border: none; background: transparent; padding: 0; font-size: 15px; min-height: 60px; margin-bottom: 8px; }
   .ai-bar textarea:focus { border: none; }
   .ai-actions { display: flex; gap: 8px; }
-  .ai-btn { flex: 1; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; font-family: var(--ui); font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; padding: 10px; cursor: pointer; transition: opacity 0.2s; }
+  .ai-btn { flex: 1; background: var(--accent); color: var(--bg); border: none; border-radius: 20px; font-family: var(--ui); font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; padding: 10px; cursor: pointer; transition: opacity 0.2s; }
   .ai-btn:active { opacity: 0.75; }
-  .ai-btn.secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); flex: 0 0 auto; padding: 10px 14px; }
+  .ai-btn.secondary { background: var(--surface); border: 1px solid var(--accent2); color: var(--accent2); flex: 0 0 auto; padding: 10px 16px; }
   .submit-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; font-family: var(--ui); font-weight: 700; font-size: 18px; letter-spacing: 3px; text-transform: uppercase; padding: 16px; cursor: pointer; margin-top: 20px; transition: opacity 0.2s, transform 0.1s; }
   .submit-btn:active { transform: scale(0.98); opacity: 0.85; }
   .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -62,9 +62,9 @@
   .config-row:last-child { margin-bottom: 0; }
   .config-row input { flex: 1; }
   .config-row label { font-family: var(--ui); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); white-space: nowrap; min-width: 80px; }
-  details summary { cursor: pointer; font-family: var(--ui); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 8px 0; list-style: none; display: flex; align-items: center; gap: 6px; }
+  details summary { cursor: pointer; font-family: var(--ui); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); background: var(--surface2); border: 1px solid var(--accent2); border-radius: 20px; padding: 8px 16px; list-style: none; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
   details summary::-webkit-details-marker { display: none; }
-  details[open] summary { color: var(--accent); }
+  details[open] summary { color: var(--accent); border-color: var(--accent); }
   .travel-section { overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease; pointer-events: none; }
   .travel-section.visible { max-height: 200px; opacity: 1; pointer-events: all; }
 </style>
@@ -176,13 +176,13 @@
         <button class="ai-btn" style="margin-top:8px;max-width:120px" onclick="saveConfig()">Save</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="testWebhook()">Test</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="syncAll()">Sync All</button>
-        <button class="ai-btn secondary" style="margin-top:8px;max-width:160px;color:var(--warn);border-color:var(--warn)" onclick="clearAllEntries()">Clear All Local</button>
+        <button class="ai-btn secondary" style="margin-top:8px;max-width:160px;color:var(--warn);border-color:var(--warn);background:transparent" onclick="clearAllEntries()">Clear All Local</button>
       </div>
     </details>
   </div>
   <div class="section-label" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
     <span>Recent Entries (Local)</span>
-    <button id="clearSyncedBtn" onclick="clearSynced()" style="background:none;border:none;color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:0;display:none">Clear Synced</button>
+    <button id="clearSyncedBtn" onclick="clearSynced()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:5px 12px;border-radius:20px;display:none">Clear Synced</button>
   </div>
   <p style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">This device only. Google Sheets is the complete record.</p>
   <button class="sync-btn" id="syncBtn" onclick="syncPending()">↑ Sync Pending to Drive</button>
