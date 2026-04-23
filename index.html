@@ -172,6 +172,7 @@
         <div class="config-row">
           <label>Webhook URL</label>
           <input type="text" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
+          <button id="urlLockBtn" onclick="toggleUrlLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
         </div>
         <button class="ai-btn" style="margin-top:8px;max-width:120px" onclick="saveConfig()">Save</button>
         <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="testWebhook()">Test</button>
@@ -194,6 +195,22 @@ let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","inves
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
 document.getElementById('investigatorName').value = cfg.investigatorName || '';
 document.getElementById('investigatorField').value = cfg.investigatorName || '';
+setUrlLock(!!cfg.webhookUrl);
+
+function setUrlLock(locked) {
+  const input = document.getElementById('webhookUrl');
+  const btn = document.getElementById('urlLockBtn');
+  input.readOnly = locked;
+  input.style.opacity = locked ? '0.5' : '1';
+  btn.textContent = locked ? '🔒 Locked' : '🔓 Unlock';
+  btn.style.borderColor = locked ? 'var(--border)' : 'var(--warn)';
+  btn.style.color = locked ? 'var(--muted)' : 'var(--warn)';
+}
+
+function toggleUrlLock() {
+  const input = document.getElementById('webhookUrl');
+  setUrlLock(!input.readOnly);
+}
 
 function updateHeaderName() {
   const el = document.getElementById('headerName');
@@ -235,6 +252,7 @@ function saveConfig() {
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
   document.getElementById('investigatorField').value = cfg.investigatorName;
   updateHeaderName();
+  if (cfg.webhookUrl) setUrlLock(true);
   showToast('Config saved');
 }
 
