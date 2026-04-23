@@ -78,15 +78,21 @@
   <div class="status-dot" id="statusDot"></div>
 </header>
 <main>
+  <datalist id="caseList"></datalist>
+  <datalist id="clientList"></datalist>
   <div class="section-label">Quick Entry</div>
+  <div class="field-group" style="margin-bottom:8px">
+    <label>Investigator</label>
+    <input type="text" id="investigatorField" placeholder="Investigator name" autocomplete="off" autocapitalize="words">
+  </div>
   <div class="quick-row" style="margin-bottom:8px">
     <div class="field-group">
       <label>Case #</label>
-      <input type="text" id="caseNum" placeholder="e.g. 25CR12345" autocomplete="off" autocapitalize="characters">
+      <input type="text" id="caseNum" placeholder="e.g. 25CR12345" autocomplete="off" autocapitalize="characters" list="caseList" oninput="onCaseInput(this.value)">
     </div>
     <div class="field-group">
       <label>Client Last Name</label>
-      <input type="text" id="clientLast" placeholder="e.g. Smith" autocomplete="off" autocapitalize="words">
+      <input type="text" id="clientLast" placeholder="e.g. Smith" autocomplete="off" autocapitalize="words" list="clientList" oninput="onClientInput(this.value)">
     </div>
   </div>
   <div class="field-group" style="margin-bottom:8px">
@@ -187,16 +193,47 @@
 let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","investigatorName":""}');
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
 document.getElementById('investigatorName').value = cfg.investigatorName || '';
+document.getElementById('investigatorField').value = cfg.investigatorName || '';
+
 function updateHeaderName() {
   const el = document.getElementById('headerName');
   el.textContent = cfg.investigatorName ? cfg.investigatorName.toUpperCase() : '';
 }
 updateHeaderName();
 
+let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]');
+
+function refreshDataLists() {
+  document.getElementById('caseList').innerHTML = knownCases.map(p => `<option value="${p.case}">${p.case} · ${p.client}</option>`).join('');
+  document.getElementById('clientList').innerHTML = [...new Map(knownCases.map(p => [p.client, p])).values()].map(p => `<option value="${p.client}">`).join('');
+}
+refreshDataLists();
+
+function onCaseInput(val) {
+  const match = knownCases.find(p => p.case.toLowerCase() === val.toLowerCase());
+  if (match) document.getElementById('clientLast').value = match.client;
+}
+
+function onClientInput(val) {
+  const match = knownCases.find(p => p.client.toLowerCase() === val.toLowerCase());
+  if (match) document.getElementById('caseNum').value = match.case;
+}
+
+function saveKnownCase(caseNum, client) {
+  if (!caseNum || !client) return;
+  const exists = knownCases.find(p => p.case.toLowerCase() === caseNum.toLowerCase());
+  if (!exists) {
+    knownCases.push({ case: caseNum, client });
+    localStorage.setItem('tli_cases', JSON.stringify(knownCases));
+    refreshDataLists();
+  }
+}
+
 function saveConfig() {
   cfg.webhookUrl = document.getElementById('webhookUrl').value.trim();
   cfg.investigatorName = document.getElementById('investigatorName').value.trim();
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
+  document.getElementById('investigatorField').value = cfg.investigatorName;
   updateHeaderName();
   showToast('Config saved');
 }
@@ -350,13 +387,14 @@ async function submitEntry() {
     duration: document.getElementById('actDuration').value,
     mileage: '', travelFrom: '', travelTo: '',
     notes: document.getElementById('actNotes').value.trim(),
-    investigator: cfg.investigatorName || '',
+    investigator: document.getElementById('investigatorField').value.trim() || cfg.investigatorName || '',
     logged: new Date().toISOString(),
     synced: false
   };
   if (!base.case || !base.client || !base.type || !base.notes) {
     showToast('Case #, client last name, type, and notes required', true); return;
   }
+  saveKnownCase(base.case, base.client);
   const toLog = [base];
   if (isTravel) {
     toLog.push({
@@ -388,7 +426,8 @@ async function submitEntry() {
     showToast(isTravel ? '✓ 2 entries logged locally' : '✓ Logged locally — configure webhook to sync');
   }
   updateSyncBtn();
-  ['actNotes','clientLast','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
+  ['actNotes','clientLast','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('investigatorField').value = cfg.investigatorName || '';
   document.getElementById('aiPreview').classList.remove('visible');
   document.getElementById('actType').value = '';
   onTypeChange('');
