@@ -527,13 +527,23 @@ function renderLog() {
     <div class="log-item">
       <div class="log-meta">
         <div class="log-case">${e.case || '—'}${e.client ? ' · ' + e.client + (e.clientFirst ? ', ' + e.clientFirst : '') : ''}</div>
-        <div class="log-time">${fmtDateTime(e.date, e.time)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="log-time">${fmtDateTime(e.date, e.time)}</div>
+          <button onclick="deleteEntry('${e.id}')" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 2px;line-height:1" title="Delete entry">✕</button>
+        </div>
       </div>
-      <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.quantity ? ' · ' + e.quantity + ' units' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}</div>
+      <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.quantity ? ' · ' + e.quantity + ' units' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}${e.travelFrom ? ' · ' + e.travelFrom + (e.travelTo ? ' → ' + e.travelTo : '') : ''}</div>
       <div class="log-notes">${(e.notes||'').slice(0,120)}${(e.notes||'').length>120?'…':''}</div>
       ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : ''}
     </div>
   `).join('');
+}
+
+function deleteEntry(id) {
+  entries = entries.filter(e => String(e.id) !== String(id));
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog();
+  updateSyncBtn();
 }
 
 function updateSyncBtn() {
