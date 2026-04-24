@@ -192,7 +192,23 @@
   </div>
   <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>AI Assist — Dictate / Summarize</span>
-    <span id="activeAiPill" style="background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:2px 10px;border-radius:10px;font-size:9px;letter-spacing:1px;text-transform:uppercase"></span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <span id="activeAiPill" style="background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:2px 10px;border-radius:10px;font-size:9px;letter-spacing:1px;text-transform:uppercase"></span>
+      <button onclick="document.getElementById('aiHelp').classList.toggle('visible')" style="background:var(--surface);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:2px 10px;border-radius:10px">? Help</button>
+    </div>
+  </div>
+  <div id="aiHelp" class="ai-preview" style="margin-bottom:8px;line-height:1.6;font-size:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong>AI Assist — Quick Reference</strong>
+      <button onclick="document.getElementById('aiHelp').classList.remove('visible')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <strong>Always include in your notes:</strong><br>
+    Case number · Client last name · Your name · City names · Departure &amp; arrival times for every leg · Miles per leg · What you did &amp; how long<br><br>
+    <strong>Example:</strong><br>
+    <em>Case 26CR00145, client Hendricks. Investigator Tom Lee. Left Salem at 8:00am, drove 22 miles to Eugene, arrived 8:35am. Conducted witness interview until 10:15am. Drove 22 miles back to Salem, arrived 10:50am.</em><br><br>
+    <strong>Creates 5 entries:</strong> Travel Time + Mileage (Salem→Eugene) · Witness Interview · Travel Time + Mileage (Eugene→Salem)<br><br>
+    <strong>After parsing:</strong> Review entries in log · ✏ to edit · ✕ to delete · ↑ Sync when ready<br><br>
+    <strong>Log manually instead for:</strong> Single-location activities · Out of Pocket expenses · Court appearances
   </div>
   <div class="ai-bar">
     <textarea id="aiInput" placeholder="Type or paste raw notes..."></textarea>
