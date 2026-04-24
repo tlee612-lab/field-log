@@ -682,6 +682,9 @@ async function aiParse() {
     renderLog();
     updateSyncBtn();
     document.getElementById('aiInput').value = '';
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.4';
     const preview = document.getElementById('aiPreview');
     preview.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>✓ ${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log</strong><button onclick="document.getElementById('aiPreview').classList.remove('visible')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button></div><pre style="margin:0;font-size:11px;overflow-x:auto;white-space:pre-wrap">${JSON.stringify(parsedArr, null, 2)}</pre>`;
     preview.classList.add('visible');
@@ -791,7 +794,8 @@ async function submitEntry() {
 }
 
 async function postToWebhook(entriesToPost) {
-  const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entriesToPost));
+  const reqId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const url = cfg.webhookUrl + '?reqId=' + reqId + '&data=' + encodeURIComponent(JSON.stringify(entriesToPost));
   await fetch(url, { method: 'GET', mode: 'no-cors' });
 }
 
