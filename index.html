@@ -269,7 +269,6 @@
         <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center">
           <button class="ai-btn" style="max-width:140px" onclick="saveConfig()">Save Changes</button>
           <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end">
-            <button class="ai-btn secondary" style="max-width:110px; font-size:10px" onclick="syncAll()">Sync All</button>
             <button class="ai-btn secondary" style="max-width:140px; font-size:10px" onclick="fetchRemoteCases(true)">Refresh Cases</button>
             <button class="ai-btn secondary" style="max-width:140px; color:var(--warn); border-color:var(--warn); background:transparent; font-size:10px" onclick="clearAllEntries()">Clear Local Logs</button>
           </div>
@@ -279,10 +278,12 @@
   </div>
   <div class="section-label" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
     <span>Recent Entries (Local)</span>
-    <button id="clearSyncedBtn" onclick="clearSynced()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:5px 12px;border-radius:20px;display:none">Clear Synced</button>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button id="syncBtn" onclick="syncPending()" style="display:none;background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:5px 12px;border-radius:20px">↑ Sync All</button>
+      <button id="clearSyncedBtn" onclick="clearSynced()" style="display:none;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:5px 12px;border-radius:20px">Clear Synced</button>
+    </div>
   </div>
   <p style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">This device only. Google Sheets is the complete record.</p>
-  <button class="sync-btn" id="syncBtn" onclick="syncPending()">↑ Sync Pending to Drive</button>
   <div id="recentLog"></div>
 </main>
 <div class="toast" id="toast"></div>
@@ -520,9 +521,9 @@ function renderLog() {
   if (!entries.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No entries yet</p>'; return; }
   const unsynced = entries.filter(e => e.synced === false);
   const synced = entries.filter(e => e.synced !== false);
-  const btn = document.getElementById('clearSyncedBtn');
-  if (btn) btn.style.display = synced.length ? '' : 'none';
-  const toShow = [...unsynced, ...synced.slice(-5)].sort((a, b) => (b.logged || '').localeCompare(a.logged || ''));
+  const clearBtn = document.getElementById('clearSyncedBtn');
+  if (clearBtn) clearBtn.style.display = synced.length ? '' : 'none';
+  const toShow = [...entries].sort((a, b) => (b.logged || '').localeCompare(a.logged || ''));
   el.innerHTML = toShow.map(e => `
     <div class="log-item">
       <div class="log-meta">
@@ -534,7 +535,10 @@ function renderLog() {
       </div>
       <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.quantity ? ' · ' + e.quantity + ' units' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}${e.travelFrom ? ' · ' + e.travelFrom + (e.travelTo ? ' → ' + e.travelTo : '') : ''}</div>
       <div class="log-notes">${(e.notes||'').slice(0,120)}${(e.notes||'').length>120?'…':''}</div>
-      ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : '<div></div>'}
+        ${e.synced === false ? `<button onclick="syncEntry('${e.id}')" style="background:var(--accent);border:none;color:#fff;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
+      </div>
     </div>
   `).join('');
 }
@@ -549,8 +553,21 @@ function deleteEntry(id) {
 function updateSyncBtn() {
   const btn = document.getElementById('syncBtn');
   const pending = entries.filter(e => e.synced === false);
-  if (cfg.webhookUrl && pending.length) { btn.style.display = ''; btn.textContent = '↑ Sync ' + pending.length + ' Pending to Drive'; }
+  if (cfg.webhookUrl && pending.length) { btn.style.display = ''; btn.textContent = '↑ Sync All (' + pending.length + ')'; }
   else btn.style.display = 'none';
+}
+
+async function syncEntry(id) {
+  const entry = entries.find(e => String(e.id) === String(id));
+  if (!entry) return;
+  try {
+    await postToWebhook([entry]);
+    entry.synced = true;
+    localStorage.setItem('tli_entries', JSON.stringify(entries));
+    renderLog();
+    updateSyncBtn();
+    showToast('✓ Entry synced');
+  } catch(err) { showToast('Sync failed — check connection', true); }
 }
 
 async function syncPending() {
