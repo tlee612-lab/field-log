@@ -553,8 +553,11 @@ function renderLog() {
       <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.quantity ? ' · ' + e.quantity + ' units' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}${e.travelFrom ? ' · ' + e.travelFrom + (e.travelTo ? ' → ' + e.travelTo : '') : ''}</div>
       <div class="log-notes">${(e.notes||'').slice(0,120)}${(e.notes||'').length>120?'…':''}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-        ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : '<div></div>'}
-        ${e.synced === false ? `<button onclick="syncEntry('${e.id}')" style="background:var(--surface);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : ''}
+          ${e._missing ? `<button onclick="editEntry('${e.id}')" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:3px 10px;border-radius:20px">✏ Fix: ${e._missing.join(', ')}</button>` : ''}
+        </div>
+        ${e.synced === false && !e._missing ? `<button onclick="syncEntry('${e.id}')" style="background:var(--surface);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
       </div>
     </div>
   `).join('');
@@ -694,6 +697,25 @@ async function aiParse() {
       logged: new Date().toISOString(),
       synced: false
     }));
+    // Validate each entry and tag missing fields
+    const travelTypes = ['Investigator Service - Travel Time', 'Out of Pocket - Mileage'];
+    newEntries.forEach(entry => {
+      const missing = [];
+      if (!entry.case) missing.push('case #');
+      if (!entry.client) missing.push('client name');
+      if (!entry.investigator) missing.push('investigator');
+      if (!entry.type) missing.push('activity type');
+      if (!entry.date) missing.push('date');
+      if (travelTypes.includes(entry.type)) {
+        if (!entry.travelFrom) missing.push('from city');
+        if (!entry.travelTo) missing.push('to city');
+        if (entry.type === 'Investigator Service - Travel Time' && !entry.duration) missing.push('duration');
+        if (entry.type === 'Out of Pocket - Mileage' && !entry.mileage) missing.push('mileage');
+      } else if (!entry.duration && !entry.quantity) {
+        missing.push('duration');
+      }
+      if (missing.length) entry._missing = missing;
+    });
     entries.unshift(...newEntries);
     localStorage.setItem('tli_entries', JSON.stringify(entries));
     renderLog();
@@ -702,6 +724,8 @@ async function aiParse() {
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true;
     submitBtn.style.opacity = '0.4';
+    const incomplete = newEntries.filter(e => e._missing).length;
+    if (incomplete) showToast(`${newEntries.length} entries added — ${incomplete} incomplete, review before syncing`, true);
     const preview = document.getElementById('aiPreview');
     preview.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>✓ ${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log</strong><button onclick="document.getElementById('aiPreview').classList.remove('visible')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button></div><pre style="margin:0;font-size:11px;overflow-x:auto;white-space:pre-wrap">${JSON.stringify(parsedArr, null, 2)}</pre>`;
     preview.classList.add('visible');
@@ -782,7 +806,8 @@ async function submitEntry() {
         travelTo: needsTravel ? document.getElementById('travelTo').value.trim() : '',
         notes: document.getElementById('actNotes').value.trim(),
         investigator: document.getElementById('investigatorField').value.trim(),
-        synced: false
+        synced: false,
+        _missing: undefined
       };
       localStorage.setItem('tli_entries', JSON.stringify(entries));
       editingId = null;
