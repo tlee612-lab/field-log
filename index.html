@@ -43,6 +43,18 @@
   .submit-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; font-family: var(--ui); font-weight: 700; font-size: 18px; letter-spacing: 3px; text-transform: uppercase; padding: 16px; cursor: pointer; margin-top: 20px; transition: opacity 0.2s, transform 0.1s; }
   .submit-btn:active { transform: scale(0.98); opacity: 0.85; }
   .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .mic-active { animation: mic-pulse 1.5s infinite; background: rgba(255, 107, 53, 0.1) !important; }
+  @keyframes mic-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 107, 53, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0); } }
+  .ai-sub-tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+  .ai-sub-tab { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 8px 16px; font-family: var(--ui); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); cursor: pointer; transition: 0.2s; }
+  .ai-sub-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .ai-sub-pane { display: none; }
+  .ai-sub-pane.active { display: block; }
+  .config-tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .config-tab { background: none; border: none; padding: 8px 0; font-family: var(--ui); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: 0.2s; }
+  .config-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .config-pane { display: none; }
+  .config-pane.active { display: block; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--accent); color: var(--bg); font-family: var(--ui); font-weight: 700; font-size: 14px; letter-spacing: 1px; padding: 12px 24px; border-radius: 8px; transition: transform 0.3s ease; z-index: 999; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
   .toast.error { background: var(--warn); }
@@ -98,6 +110,12 @@
       <input type="text" id="clientLast" placeholder="e.g. Smith" autocomplete="off" autocapitalize="words" list="clientList" oninput="onClientInput(this.value)">
     </div>
   </div>
+  <div class="quick-row" style="margin-bottom:8px">
+    <div class="field-group">
+      <label>Client First Name</label>
+      <input type="text" id="clientFirst" placeholder="e.g. John" autocomplete="off" autocapitalize="words">
+    </div>
+  </div>
   <div class="field-group" style="margin-bottom:8px">
     <label>Activity Type</label>
     <select id="actType" onchange="onTypeChange(this.value)">
@@ -112,27 +130,42 @@
       <option>Investigator Service - Investigative Reporting &amp; Documentation</option>
       <option>Investigator Service - Court Appearance &amp; Testimony</option>
       <option>Investigator Service - Travel Time</option>
+      <option>Out of Pocket - Mileage</option>
+      <option>Out of Pocket - Parking &amp; Tolls</option>
+      <option>Out of Pocket - CD/DVD/Discs</option>
+      <option>Out of Pocket - USB/Flash Drive</option>
+      <option>Out of Pocket - Circuit Court Copies</option>
+      <option>Out of Pocket - Discovery Fees</option>
+      <option>Out of Pocket - Process Service (Third-Party)</option>
+      <option>Out of Pocket - Photocopies (B&amp;W)</option>
+      <option>Out of Pocket - Photocopies (Color)</option>
+      <option>Out of Pocket - Photos (3x5 or 4x6)</option>
+      <option>Out of Pocket - Photos (Full Page)</option>
+      <option>Out of Pocket - Postage &amp; Shipping</option>
+      <option>Out of Pocket - Records (Public/Gov)</option>
+      <option>Out of Pocket - Records (Medical/DMV)</option>
+      <option>Out of Pocket - Scanning</option>
     </select>
   </div>
   <div class="time-row" style="margin-bottom:8px">
     <div class="field-group">
       <label>Date</label>
       <div class="picker-wrap">
-        <input type="date" id="actDate">
         <span class="picker-icon" onclick="document.getElementById('actDate').showPicker()">📅</span>
+        <input type="date" id="actDate">
       </div>
     </div>
     <div class="field-group">
       <label>Time</label>
       <div class="picker-wrap">
-        <input type="time" id="actTime">
         <span class="picker-icon" onclick="document.getElementById('actTime').showPicker()">🕐</span>
+        <input type="time" id="actTime">
       </div>
     </div>
     <button class="now-btn" onclick="setNow()">NOW</button>
   </div>
   <div class="field-group" style="margin-bottom:8px; max-width:180px">
-    <label>Duration (mins)</label>
+    <label id="durationLabel">Duration (mins)</label>
     <input type="number" id="actDuration" placeholder="e.g. 90" step="1" min="0">
   </div>
   <div class="travel-section" id="travelSection">
@@ -142,7 +175,7 @@
         <input type="number" id="actMileage" placeholder="e.g. 42" step="0.1" min="0">
       </div>
     </div>
-    <div class="quick-row" style="margin-bottom:8px">
+    <div id="cityRow" class="quick-row" style="margin-bottom:8px;display:none">
       <div class="field-group">
         <label>From (City)</label>
         <input type="text" id="travelFrom" placeholder="e.g. Medford" autocomplete="off" autocapitalize="words">
@@ -157,12 +190,16 @@
     <label>Notes</label>
     <textarea id="actNotes" placeholder="Location, observations, contacts, findings..."></textarea>
   </div>
-  <div class="section-label">AI Assist — Dictate / Summarize</div>
+  <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
+    <span>AI Assist — Dictate / Summarize</span>
+    <span id="activeAiPill" style="background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:2px 10px;border-radius:10px;font-size:9px;letter-spacing:1px;text-transform:uppercase"></span>
+  </div>
   <div class="ai-bar">
-    <textarea id="aiInput" placeholder="Type or paste raw notes, voice-to-text, or a rough summary. Claude will clean it up and extract fields automatically..."></textarea>
+    <textarea id="aiInput" placeholder="Type or paste raw notes..."></textarea>
     <div id="aiPreview" class="ai-preview"></div>
     <div class="ai-actions">
       <button class="ai-btn" id="aiParseBtn" onclick="aiParse()">⚡ Parse &amp; Fill</button>
+      <button class="ai-btn secondary" id="micBtn" onclick="toggleMic()">🎙 Mic</button>
       <button class="ai-btn secondary" onclick="document.getElementById('aiInput').value=''">Clear</button>
     </div>
   </div>
@@ -171,17 +208,72 @@
     <details id="configDetails">
       <summary>▸ Settings</summary>
       <div class="config-section">
-        <div class="section-label" style="margin-top:0;margin-bottom:8px">Google Drive Settings</div>
-        <div class="config-row">
-          <label>Webhook URL</label>
-          <input type="text" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
-          <button id="urlLockBtn" onclick="toggleUrlLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+        <div class="config-tabs">
+          <button class="config-tab active" onclick="setCfgTab('sync', this)">Cloud Sync</button>
+          <button class="config-tab" onclick="setCfgTab('ai', this)">AI Assist</button>
         </div>
-        <button class="ai-btn" style="margin-top:8px;max-width:120px" onclick="saveConfig()">Save</button>
-        <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="testWebhook()">Test</button>
-        <button class="ai-btn secondary" style="margin-top:8px;max-width:120px" onclick="syncAll()">Sync All</button>
-        <button class="ai-btn secondary" style="margin-top:8px;max-width:160px" onclick="fetchRemoteCases(true)">Refresh Cases</button>
-        <button class="ai-btn secondary" style="margin-top:8px;max-width:160px;color:var(--warn);border-color:var(--warn);background:transparent" onclick="clearAllEntries()">Clear All Local</button>
+        <div id="cfg-sync" class="config-pane active">
+          <div class="config-row">
+            <label>Webhook</label>
+            <input type="text" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
+            <button id="urlLockBtn" onclick="toggleUrlLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+          </div>
+          <div style="margin-top:12px">
+            <button class="ai-btn secondary" style="max-width:100px" onclick="testWebhook()">Test</button>
+          </div>
+        </div>
+        <div id="cfg-ai" class="config-pane">
+          <div class="ai-sub-tabs">
+            <button id="ai-sub-tab-anthropic" class="ai-sub-tab" onclick="setAiProviderTab('anthropic', this); saveConfig()">Claude</button>
+            <button id="ai-sub-tab-gemini" class="ai-sub-tab" onclick="setAiProviderTab('gemini', this); saveConfig()">Gemini</button>
+            <button id="ai-sub-tab-openai" class="ai-sub-tab" onclick="setAiProviderTab('openai', this); saveConfig()">ChatGPT</button>
+          </div>
+          <div class="config-row">
+            <label>Provider</label>
+            <select id="aiProvider" onchange="setAiProviderTab(this.value, document.getElementById('ai-sub-tab-' + this.value));" style="flex:1">
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="gemini">Google (Gemini)</option>
+              <option value="openai">OpenAI (ChatGPT)</option>
+            </select>
+          </div>
+          <div id="ai-sub-panes">
+            <div id="ai-sub-pane-anthropic" class="ai-sub-pane">
+              <div class="config-row" id="anthropicKeyRow">
+                <label>API Key</label>
+                <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="off" class="ai-key-input">
+                <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('anthropicKey')">👁</button>
+                <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+              </div>
+            </div>
+            <div id="ai-sub-pane-gemini" class="ai-sub-pane">
+              <div class="config-row" id="geminiKeyRow">
+                <label>API Key</label>
+                <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="off" class="ai-key-input">
+                <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('geminiKey')">👁</button>
+                <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+              </div>
+            </div>
+            <div id="ai-sub-pane-openai" class="ai-sub-pane">
+              <div class="config-row" id="openaiKeyRow">
+                <label>API Key</label>
+                <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="off" class="ai-key-input">
+                <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('openaiKey')">👁</button>
+                <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <button class="ai-btn secondary" style="max-width:160px" onclick="testAiConnection(this)">Test Connection</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center">
+          <button class="ai-btn" style="max-width:140px" onclick="saveConfig()">Save Changes</button>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end">
+            <button class="ai-btn secondary" style="max-width:110px; font-size:10px" onclick="syncAll()">Sync All</button>
+            <button class="ai-btn secondary" style="max-width:140px; font-size:10px" onclick="fetchRemoteCases(true)">Refresh Cases</button>
+            <button class="ai-btn secondary" style="max-width:140px; color:var(--warn); border-color:var(--warn); background:transparent; font-size:10px" onclick="clearAllEntries()">Clear Local Logs</button>
+          </div>
+        </div>
       </div>
     </details>
   </div>
@@ -196,9 +288,43 @@
 <div class="toast" id="toast"></div>
 <script>
 const DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxUcyYasL_3vMIpcwTgfBJNzWpK7jE81Puyiw7nxL6BhfX3fy8ZPCqY9rDAZZ6OC2Ud/exec';
-let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":""}');
+let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic"}');
+if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
 if (!cfg.webhookUrl) cfg.webhookUrl = DEFAULT_WEBHOOK;
+let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
+let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]');
+let recognition;
+
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
+if (document.getElementById('anthropicKey')) document.getElementById('anthropicKey').value = cfg.anthropicKey || '';
+if (document.getElementById('geminiKey')) document.getElementById('geminiKey').value = cfg.geminiKey || '';
+if (document.getElementById('openaiKey')) document.getElementById('openaiKey').value = cfg.openaiKey || '';
+if (document.getElementById('aiProvider')) document.getElementById('aiProvider').value = cfg.aiProvider || 'anthropic';
+
+function setAiProviderTab(providerId, btnElement) {
+  document.querySelectorAll('.ai-sub-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ai-sub-pane').forEach(p => p.classList.remove('active'));
+  if (btnElement) btnElement.classList.add('active');
+  const targetPane = document.getElementById('ai-sub-pane-' + providerId);
+  if (targetPane) targetPane.classList.add('active');
+  if (document.getElementById('aiProvider').value !== providerId) document.getElementById('aiProvider').value = providerId;
+  const names = { anthropic: 'Claude', gemini: 'Gemini', openai: 'ChatGPT' };
+  const name = names[providerId] || 'AI assistant';
+  const pill = document.getElementById('activeAiPill');
+  const input = document.getElementById('aiInput');
+  if (pill) pill.textContent = name;
+  if (input) input.placeholder = `Type or paste raw notes, voice-to-text, or a rough summary. ${name} will clean it up and extract fields automatically...`;
+  saveConfig();
+}
+
+function setCfgTab(tabId, btn) {
+  document.querySelectorAll('.config-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.config-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('cfg-' + tabId).classList.add('active');
+  btn.classList.add('active');
+}
+setAiProviderTab(cfg.aiProvider, document.getElementById('ai-sub-tab-' + cfg.aiProvider));
+
 document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
 setUrlLock(!!cfg.webhookUrl);
 
@@ -210,6 +336,29 @@ function setUrlLock(locked) {
   btn.textContent = locked ? '🔒 Locked' : '🔓 Unlock';
   btn.style.borderColor = locked ? 'var(--border)' : 'var(--warn)';
   btn.style.color = locked ? 'var(--muted)' : 'var(--warn)';
+}
+
+function setAiKeyLock(locked) {
+  document.querySelectorAll('.ai-key-input').forEach(input => {
+    input.readOnly = locked;
+    input.style.opacity = locked ? '0.5' : '1';
+  });
+  document.querySelectorAll('.ai-key-lock-btn').forEach(btn => {
+    btn.textContent = locked ? '🔒 Locked' : '🔓 Unlock';
+    btn.style.borderColor = locked ? 'var(--border)' : 'var(--warn)';
+    btn.style.color = locked ? 'var(--muted)' : 'var(--warn)';
+  });
+}
+
+function toggleAiKeyLock() {
+  const firstInput = document.querySelector('.ai-key-input');
+  setAiKeyLock(!firstInput.readOnly);
+}
+setAiKeyLock(true);
+
+function togglePassword(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
 }
 
 function toggleUrlLock() {
@@ -224,11 +373,15 @@ function updateHeaderName() {
 }
 updateHeaderName();
 
-let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]');
-
 function refreshDataLists() {
-  document.getElementById('caseList').innerHTML = knownCases.map(p => `<option value="${p.case}">${p.case} · ${p.client}</option>`).join('');
-  document.getElementById('clientList').innerHTML = [...new Map(knownCases.map(p => [p.client, p])).values()].map(p => `<option value="${p.client}">`).join('');
+  document.getElementById('caseList').innerHTML = knownCases.map(p => {
+    const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
+    return `<option value="${p.case}">${p.case} · ${fullName}</option>`;
+  }).join('');
+  document.getElementById('clientList').innerHTML = knownCases.map(p => {
+    const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
+    return `<option value="${p.client}" data-case="${p.case}">${fullName} · ${p.case}</option>`;
+  }).join('');
   const investigators = [...new Set(entries.map(e => e.investigator).filter(Boolean))];
   document.getElementById('investigatorList').innerHTML = investigators.map(n => `<option value="${n}">`).join('');
 }
@@ -238,57 +391,54 @@ async function fetchRemoteCases(verbose = false) {
   if (!cfg.webhookUrl) { if (verbose) showToast('No webhook URL configured', true); return; }
   try {
     const res = await fetch(cfg.webhookUrl + '?action=getCases');
+    if (!res.ok) return;
     const data = await res.json();
+    console.log('Cases fetched:', data);
     if (data.status === 'ok' && Array.isArray(data.cases)) {
       let added = 0;
       data.cases.forEach(p => {
         if (!knownCases.find(k => k.case.toLowerCase() === p.case.toLowerCase())) {
-          knownCases.push(p);
-          added++;
+          knownCases.push(p); added++;
         }
       });
-      if (added) {
-        localStorage.setItem('tli_cases', JSON.stringify(knownCases));
-        refreshDataLists();
-      }
-      if (data.lastInvestigator) {
-        if (!localStorage.getItem('tli_last_investigator')) {
-          localStorage.setItem('tli_last_investigator', data.lastInvestigator);
-          updateHeaderName();
-        }
-        if (!document.getElementById('investigatorField').value) {
-          document.getElementById('investigatorField').value = data.lastInvestigator;
-        }
-        const list = document.getElementById('investigatorList');
-        if (!list.innerHTML.includes(data.lastInvestigator)) {
-          list.innerHTML += `<option value="${data.lastInvestigator}">`;
-        }
+      if (added) { localStorage.setItem('tli_cases', JSON.stringify(knownCases)); refreshDataLists(); }
+      if (data.lastInvestigator && !localStorage.getItem('tli_last_investigator')) {
+        localStorage.setItem('tli_last_investigator', data.lastInvestigator);
+        updateHeaderName();
+        if (!document.getElementById('investigatorField').value) document.getElementById('investigatorField').value = data.lastInvestigator;
       }
       if (verbose) showToast('✓ ' + data.cases.length + ' cases loaded from Drive');
-    } else {
-      if (verbose) showToast('No cases returned from Drive', true);
-    }
-  } catch(e) {
-    if (verbose) showToast('Failed: ' + e.message, true);
-  }
+    } else { if (verbose) showToast('No cases returned from Drive', true); }
+  } catch(e) { if (verbose) showToast('Failed: ' + e.message, true); }
 }
 fetchRemoteCases();
 
 function onCaseInput(val) {
   const match = knownCases.find(p => p.case.toLowerCase() === val.toLowerCase());
-  if (match) document.getElementById('clientLast').value = match.client;
+  if (match) {
+    document.getElementById('clientLast').value = match.client;
+    if (match.clientFirst) document.getElementById('clientFirst').value = match.clientFirst;
+  }
 }
 
 function onClientInput(val) {
-  const match = knownCases.find(p => p.client.toLowerCase() === val.toLowerCase());
-  if (match) document.getElementById('caseNum').value = match.case;
+  const matches = knownCases.filter(p => p.client.toLowerCase() === val.toLowerCase());
+  if (matches.length === 1) {
+    document.getElementById('caseNum').value = matches[0].case;
+    if (matches[0].clientFirst) document.getElementById('clientFirst').value = matches[0].clientFirst;
+  } else if (matches.length > 1) {
+    document.getElementById('caseList').innerHTML = matches.map(p => {
+      const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
+      return `<option value="${p.case}">${p.case} · ${fullName}</option>`;
+    }).join('');
+  }
 }
 
-function saveKnownCase(caseNum, client) {
+function saveKnownCase(caseNum, client, clientFirst) {
   if (!caseNum || !client) return;
   const exists = knownCases.find(p => p.case.toLowerCase() === caseNum.toLowerCase());
   if (!exists) {
-    knownCases.push({ case: caseNum, client });
+    knownCases.push({ case: caseNum, client, clientFirst: clientFirst || '' });
     localStorage.setItem('tli_cases', JSON.stringify(knownCases));
     refreshDataLists();
   }
@@ -296,8 +446,13 @@ function saveKnownCase(caseNum, client) {
 
 function saveConfig() {
   cfg.webhookUrl = document.getElementById('webhookUrl').value.trim();
+  cfg.anthropicKey = document.getElementById('anthropicKey').value.trim();
+  cfg.geminiKey = document.getElementById('geminiKey').value.trim();
+  cfg.openaiKey = document.getElementById('openaiKey').value.trim();
+  cfg.aiProvider = document.getElementById('aiProvider').value;
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
   if (cfg.webhookUrl) setUrlLock(true);
+  setAiKeyLock(true);
   showToast('Config saved');
 }
 
@@ -306,24 +461,52 @@ async function testWebhook() {
   try {
     await fetch(cfg.webhookUrl, { method: 'GET', mode: 'no-cors' });
     showToast('✓ Webhook reachable — check Sheets to confirm');
-  } catch(err) {
-    showToast('Connection failed', true);
-  }
+    setUrlLock(true);
+  } catch(err) { showToast('Connection failed', true); }
 }
 
-let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
+async function testAiConnection(btn) {
+  const provider = document.getElementById('aiProvider').value;
+  const key = document.getElementById(provider + 'Key').value.trim();
+  if (!key) { showToast('API key required', true); return; }
+  const originalLabel = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span>Testing...';
+  btn.disabled = true;
+  try {
+    let res;
+    if (provider === 'gemini') {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] })
+      });
+    } else if (provider === 'openai') {
+      res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 })
+      });
+    } else {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] })
+      });
+    }
+    if (!res.ok) {
+      let errMsg = `${provider.toUpperCase()} Error ${res.status}`;
+      try { const ed = await res.json(); errMsg = ed.error?.message || errMsg; } catch(e) {}
+      throw new Error(errMsg);
+    }
+    showToast(`✓ ${provider.charAt(0).toUpperCase() + provider.slice(1)} connected!`);
+  } catch (err) { showToast(err.message, true); }
+  finally { btn.innerHTML = originalLabel; btn.disabled = false; setAiKeyLock(true); }
+}
 
 function fmtDateTime(date, time) {
   if (!date) return '';
   const [y, m, d] = date.split('-');
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   let out = `${months[+m-1]} ${+d}, ${y}`;
-  if (time) {
-    const [h, min] = time.split(':');
-    const period = +h >= 12 ? 'PM' : 'AM';
-    const h12 = +h % 12 || 12;
-    out += ` · ${h12}:${min} ${period}`;
-  }
+  if (time) { const [h, min] = time.split(':'); const period = +h >= 12 ? 'PM' : 'AM'; const h12 = +h % 12 || 12; out += ` · ${h12}:${min} ${period}`; }
   return out;
 }
 
@@ -338,10 +521,10 @@ function renderLog() {
   el.innerHTML = toShow.map(e => `
     <div class="log-item">
       <div class="log-meta">
-        <div class="log-case">${e.case || '—'}${e.client ? ' · ' + e.client : ''}</div>
+        <div class="log-case">${e.case || '—'}${e.client ? ' · ' + e.client + (e.clientFirst ? ', ' + e.clientFirst : '') : ''}</div>
         <div class="log-time">${fmtDateTime(e.date, e.time)}</div>
       </div>
-      <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}</div>
+      <div class="log-type">${e.type || 'Activity'}${e.duration ? ' · ' + e.duration + ' mins' : ''}${e.quantity ? ' · ' + e.quantity + ' units' : ''}${e.mileage ? ' · ' + e.mileage + ' mi' : ''}</div>
       <div class="log-notes">${(e.notes||'').slice(0,120)}${(e.notes||'').length>120?'…':''}</div>
       ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : ''}
     </div>
@@ -351,12 +534,8 @@ function renderLog() {
 function updateSyncBtn() {
   const btn = document.getElementById('syncBtn');
   const pending = entries.filter(e => e.synced === false);
-  if (cfg.webhookUrl && pending.length) {
-    btn.style.display = '';
-    btn.textContent = '↑ Sync ' + pending.length + ' Pending to Drive';
-  } else {
-    btn.style.display = 'none';
-  }
+  if (cfg.webhookUrl && pending.length) { btn.style.display = ''; btn.textContent = '↑ Sync ' + pending.length + ' Pending to Drive'; }
+  else btn.style.display = 'none';
 }
 
 async function syncPending() {
@@ -369,14 +548,9 @@ async function syncPending() {
     await postToWebhook(pending);
     pending.forEach(e => e.synced = true);
     localStorage.setItem('tli_entries', JSON.stringify(entries));
-    renderLog();
-    updateSyncBtn();
-    showToast('✓ ' + pending.length + ' ' + (pending.length === 1 ? 'entry' : 'entries') + ' synced to Drive');
-  } catch(err) {
-    showToast('Sync failed — check connection', true);
-    btn.disabled = false;
-    updateSyncBtn();
-  }
+    renderLog(); updateSyncBtn();
+    showToast('✓ ' + pending.length + ' entries synced');
+  } catch(err) { showToast('Sync failed — check connection', true); btn.disabled = false; updateSyncBtn(); }
 }
 
 renderLog();
@@ -389,6 +563,22 @@ function setNow() {
 }
 setNow();
 
+function toggleMic() {
+  const btn = document.getElementById('micBtn');
+  const input = document.getElementById('aiInput');
+  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Speech) { showToast('Voice-to-text not supported in this browser', true); return; }
+  if (!recognition) {
+    recognition = new Speech();
+    recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
+    recognition.onresult = (event) => { let t = ''; for (let i = 0; i < event.results.length; i++) t += event.results[i][0].transcript; input.value = t; };
+    recognition.onerror = (event) => { showToast('Speech error: ' + event.error, true); };
+    recognition.onend = () => { btn.innerHTML = '🎙 Mic'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; btn.classList.remove('mic-active'); };
+  }
+  if (btn.textContent.includes('Stop')) { recognition.stop(); }
+  else { try { recognition.start(); btn.innerHTML = '🛑 Stop'; btn.style.borderColor = 'var(--warn)'; btn.style.color = 'var(--warn)'; btn.classList.add('mic-active'); } catch (err) { showToast('Mic error: ' + err.message, true); } }
+}
+
 async function aiParse() {
   const raw = document.getElementById('aiInput').value.trim();
   if (!raw) { showToast('Enter some notes first', true); return; }
@@ -396,26 +586,48 @@ async function aiParse() {
   btn.innerHTML = '<span class="spinner"></span>Parsing...';
   btn.disabled = true;
   document.getElementById('aiPreview').classList.remove('visible');
+  const validTypes = Array.from(document.getElementById('actType').options).map(opt => opt.value).filter(val => val).map(val => `"${val}"`).join(", ");
+  const systemPrompt = `You are a field assistant for a licensed private investigator working criminal defense cases in Oregon. Extract structured fields from raw investigator notes. Respond ONLY with a JSON object, no markdown, no preamble.\n\nFields:\n- case: Oregon court case number e.g. 25CR12345 (or "")\n- client: client last name (or "")\n- clientFirst: client first name (or "")\n- type: one of exactly: ${validTypes}\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h (or "")\n- duration: integer minutes as string (or "")\n- quantity: integer count for out-of-pocket items (or "")\n- mileage: miles as string (or "")\n- travelFrom: origin city (or "")\n- travelTo: destination city (or "")\n- notes: clean 1-3 sentence professional summary`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: `You are a field assistant for a licensed private investigator working criminal defense cases in Oregon. Extract structured fields from raw investigator notes. Respond ONLY with a JSON object, no markdown, no preamble.\n\nFields:\n- case: Oregon court case number e.g. 25CR12345 (or "")\n- client: client last name (or "")\n- type: one of exactly: "Investigator Service - Case Intake & File Audit", "Investigator Service - Strategic Planning", "Investigator Service - Case Consultation", "Investigator Service - Discovery Analysis & Evidence Review", "Investigator Service - Intelligence Gathering & OSINT", "Investigator Service - Tactical Field Operations & Scene Documentation", "Investigator Service - Witness Development & Interviews", "Investigator Service - Investigative Reporting & Documentation", "Investigator Service - Court Appearance & Testimony", "Investigator Service - Travel Time"\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h (or "")\n- duration: integer minutes as string (or "")\n- mileage: miles as string (or "")\n- travelFrom: origin city (or "")\n- travelTo: destination city (or "")\n- notes: clean 1-3 sentence professional summary`,
-        messages: [{ role: 'user', content: raw }]
-      })
-    });
-    const data = await res.json();
-    const text = data.content?.map(c => c.text||'').join('');
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    const activeKey = cfg.aiProvider === 'gemini' ? cfg.geminiKey : (cfg.aiProvider === 'openai' ? cfg.openaiKey : cfg.anthropicKey);
+    if (!activeKey) throw new Error(`Missing ${cfg.aiProvider.toUpperCase()} API Key in Settings`);
+    let parsed;
+    if (cfg.aiProvider === 'gemini') {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts: [{ text: raw }] }], generationConfig: { response_mime_type: "application/json", maxOutputTokens: 1000, temperature: 0.1 } })
+      });
+      if (!res.ok) { let e = `Gemini Error: ${res.status}`; try { const d = await res.json(); e = d.error?.message || e; } catch(x) {} throw new Error(e); }
+      const data = await res.json();
+      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error('Gemini returned empty response.');
+      parsed = JSON.parse(data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
+    } else if (cfg.aiProvider === 'openai') {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` },
+        body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: raw }], response_format: { type: "json_object" } })
+      });
+      if (!res.ok) { let e = `OpenAI Error: ${res.status}`; try { const d = await res.json(); e = d.error?.message || e; } catch(x) {} throw new Error(e); }
+      const data = await res.json();
+      parsed = JSON.parse(data.choices[0].message.content);
+    } else {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': activeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: systemPrompt, messages: [{ role: 'user', content: raw }] })
+      });
+      if (!res.ok) { let e = `Anthropic Error: ${res.status}`; try { const d = await res.json(); e = d.error?.message || e; } catch(x) {} throw new Error(e); }
+      const data = await res.json();
+      const text = data.content?.map(c => c.text||'').join('');
+      parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    }
     if (parsed.case) document.getElementById('caseNum').value = parsed.case;
     if (parsed.client) document.getElementById('clientLast').value = parsed.client;
+    if (parsed.clientFirst) document.getElementById('clientFirst').value = parsed.clientFirst;
     if (parsed.type) { document.getElementById('actType').value = parsed.type; onTypeChange(parsed.type); }
     if (parsed.date) document.getElementById('actDate').value = parsed.date;
     if (parsed.time) document.getElementById('actTime').value = parsed.time;
-    if (parsed.duration) document.getElementById('actDuration').value = parsed.duration;
+    const amountVal = parsed.quantity || parsed.duration || '';
+    if (amountVal) document.getElementById('actDuration').value = amountVal;
     if (parsed.mileage) document.getElementById('actMileage').value = parsed.mileage;
     if (parsed.travelFrom) document.getElementById('travelFrom').value = parsed.travelFrom;
     if (parsed.travelTo) document.getElementById('travelTo').value = parsed.travelTo;
@@ -425,7 +637,8 @@ async function aiParse() {
     preview.classList.add('visible');
     showToast('Fields filled — review and submit');
   } catch(err) {
-    showToast('Parse failed: ' + err.message, true);
+    console.error('AI Parse Error:', err);
+    showToast(err.message.includes('Unexpected token') ? 'AI returned invalid data. Try again.' : err.message, true);
   }
   btn.innerHTML = '⚡ Parse & Fill';
   btn.disabled = false;
@@ -433,41 +646,67 @@ async function aiParse() {
 
 function onTypeChange(val) {
   const sec = document.getElementById('travelSection');
-  if (val === 'Investigator Service - Travel Time') sec.classList.add('visible');
+  const cityRow = document.getElementById('cityRow');
+  const needsTravel = ['Investigator Service - Travel Time', 'Out of Pocket - Mileage'].includes(val);
+  if (needsTravel) sec.classList.add('visible');
   else sec.classList.remove('visible');
+  if (cityRow) cityRow.style.display = (val === 'Out of Pocket - Mileage') ? 'grid' : 'none';
+  const durLabel = document.getElementById('durationLabel');
+  const isOOPQuantity = val.startsWith('Out of Pocket') && val !== 'Out of Pocket - Mileage';
+  durLabel.textContent = isOOPQuantity ? 'Quantity / Units' : 'Duration (mins)';
 }
 
 async function submitEntry() {
-  const isTravel = document.getElementById('actType').value === 'Investigator Service - Travel Time';
+  const typeVal = document.getElementById('actType').value;
+  const needsTravel = ['Investigator Service - Travel Time', 'Out of Pocket - Mileage'].includes(typeVal);
+  const isTravel = typeVal === 'Investigator Service - Travel Time';
+  const isOOP = typeVal.startsWith('Out of Pocket') && typeVal !== 'Out of Pocket - Mileage';
   const base = {
     case: document.getElementById('caseNum').value.trim(),
     client: document.getElementById('clientLast').value.trim(),
-    type: document.getElementById('actType').value,
+    clientFirst: document.getElementById('clientFirst').value.trim(),
+    type: typeVal,
     date: document.getElementById('actDate').value,
     time: document.getElementById('actTime').value,
-    duration: document.getElementById('actDuration').value,
-    mileage: '', travelFrom: '', travelTo: '',
+    duration: isOOP ? '' : document.getElementById('actDuration').value,
+    quantity: isOOP ? document.getElementById('actDuration').value : '',
+    mileage: needsTravel ? document.getElementById('actMileage').value : '',
+    travelFrom: needsTravel ? document.getElementById('travelFrom').value.trim() : '',
+    travelTo: needsTravel ? document.getElementById('travelTo').value.trim() : '',
     notes: document.getElementById('actNotes').value.trim(),
     investigator: document.getElementById('investigatorField').value.trim(),
     logged: new Date().toISOString(),
     synced: false
   };
+  const btn = document.getElementById('submitBtn');
+
   if (!base.case || !base.client || !base.type || !base.notes) {
     showToast('Case #, client last name, type, and notes required', true); return;
   }
-  saveKnownCase(base.case, base.client);
+
+  // Block if case number exists but name doesn't match
+  const existingCase = knownCases.find(p => p.case.toLowerCase() === base.case.toLowerCase());
+  if (existingCase) {
+    const lastMismatch = existingCase.client.toLowerCase() !== base.client.toLowerCase();
+    const firstMismatch = existingCase.clientFirst && base.clientFirst && existingCase.clientFirst.toLowerCase() !== base.clientFirst.toLowerCase();
+    if (lastMismatch || firstMismatch) {
+      const existingName = existingCase.clientFirst ? existingCase.client + ', ' + existingCase.clientFirst : existingCase.client;
+      showToast('⚠ ' + base.case + ' belongs to ' + existingName + ' — entry blocked', true);
+      return;
+    }
+  }
+
+  saveKnownCase(base.case, base.client, base.clientFirst);
   if (base.investigator) localStorage.setItem('tli_last_investigator', base.investigator);
   const toLog = [base];
   if (isTravel) {
-    toLog.push({
-      ...base, type: 'Mileage', duration: '',
+    toLog.push({ ...base, type: 'Mileage', duration: '',
       mileage: document.getElementById('actMileage').value,
       travelFrom: document.getElementById('travelFrom').value.trim(),
       travelTo: document.getElementById('travelTo').value.trim(),
       notes: `Travel: ${document.getElementById('travelFrom').value.trim()} → ${document.getElementById('travelTo').value.trim()}`
     });
   }
-  const btn = document.getElementById('submitBtn');
   btn.innerHTML = '<span class="spinner"></span>Logging...';
   btn.disabled = true;
   toLog.forEach(e => entries.push(e));
@@ -478,17 +717,20 @@ async function submitEntry() {
       toLog.forEach(e => { e.synced = true; });
       showToast(isTravel ? '✓ 2 entries logged to Drive' : '✓ Logged to Google Drive');
     } catch(err) {
-      showToast('Saved locally — Drive sync failed', true);
+      if (err.message.includes('mismatch') || err.message.includes('belongs to')) {
+        showToast(err.message, true);
+        toLog.forEach(() => entries.pop());
+        localStorage.setItem('tli_entries', JSON.stringify(entries));
+        renderLog(); updateSyncBtn();
+      } else {
+        showToast('Saved locally — Drive sync failed', true);
+      }
     }
-  } else {
-    showToast(isTravel ? '✓ 2 entries logged locally' : '✓ Logged locally — configure webhook to sync');
-  }
+  } else { showToast('✓ Logged locally — configure webhook to sync'); }
   localStorage.setItem('tli_entries', JSON.stringify(entries));
-  renderLog();
-  updateSyncBtn();
-  ['actNotes','clientLast','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
-  const lastInv = localStorage.getItem('tli_last_investigator') || '';
-  document.getElementById('investigatorField').value = lastInv;
+  renderLog(); updateSyncBtn();
+  ['actNotes','clientLast','clientFirst','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
   document.getElementById('aiPreview').classList.remove('visible');
   document.getElementById('actType').value = '';
   onTypeChange('');
@@ -497,8 +739,8 @@ async function submitEntry() {
   btn.disabled = false;
 }
 
-async function postToWebhook(entries) {
-  const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entries));
+async function postToWebhook(entriesToPost) {
+  const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entriesToPost));
   await fetch(url, { method: 'GET', mode: 'no-cors' });
 }
 
@@ -509,19 +751,15 @@ async function syncAll() {
     await postToWebhook(entries);
     entries.forEach(e => e.synced = true);
     localStorage.setItem('tli_entries', JSON.stringify(entries));
-    renderLog();
-    updateSyncBtn();
-    showToast('✓ All ' + entries.length + ' entries synced to Drive');
-  } catch(err) {
-    showToast('Sync failed — check connection', true);
-  }
+    renderLog(); updateSyncBtn();
+    showToast('✓ All ' + entries.length + ' entries synced');
+  } catch(err) { showToast('Sync failed — check connection', true); }
 }
 
 function clearSynced() {
   entries = entries.filter(e => e.synced === false);
   localStorage.setItem('tli_entries', JSON.stringify(entries));
-  renderLog();
-  updateSyncBtn();
+  renderLog(); updateSyncBtn();
   showToast('Synced entries cleared');
 }
 
@@ -529,8 +767,7 @@ function clearAllEntries() {
   if (!confirm('Delete all local entries? This cannot be undone.')) return;
   entries = [];
   localStorage.setItem('tli_entries', JSON.stringify(entries));
-  renderLog();
-  updateSyncBtn();
+  renderLog(); updateSyncBtn();
   showToast('All local entries cleared');
 }
 
