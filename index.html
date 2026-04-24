@@ -1018,8 +1018,12 @@ async function submitEntry() {
 
 async function postToWebhook(entriesToPost) {
   const reqId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-  const url = cfg.webhookUrl + '?reqId=' + reqId + '&data=' + encodeURIComponent(JSON.stringify(entriesToPost));
-  await fetch(url, { method: 'GET', mode: 'no-cors' });
+  // POST with text/plain body — no URL length limit, works with no-cors
+  await fetch(cfg.webhookUrl, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify({ reqId, data: entriesToPost })
+  });
 }
 
 async function syncAll() {
