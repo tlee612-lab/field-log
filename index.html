@@ -662,6 +662,15 @@ function setNow() {
 }
 setNow();
 
+function cleanSpeechTranscript(text) {
+  // Android STT artifact: repeated short tokens like "CR CR CR CR" → "CR"
+  text = text.replace(/\b([a-zA-Z]{1,3})\b(\s+\1\b){2,}/gi, '$1');
+  // Normalize spoken case numbers: "25 cr 12335" / "25 CR 12335" → "25CR12335"
+  text = text.replace(/\b(\d{2})\s+([a-zA-Z]{2})\s+(\d{4,6})\b/g,
+    (_, yr, letters, num) => yr + letters.toUpperCase() + num);
+  return text;
+}
+
 function toggleMic() {
   const btn = document.getElementById('micBtn');
   const input = document.getElementById('aiInput');
@@ -673,7 +682,16 @@ function toggleMic() {
     let micBaseText = '';
     let micActive = false;
     recognition.onstart = () => { micBaseText = input.value ? input.value.trimEnd() + ' ' : ''; };
-    recognition.onresult = (event) => { let t = ''; for (let i = 0; i < event.results.length; i++) t += event.results[i][0].transcript; input.value = micBaseText + t; micBaseText = input.value.trimEnd() + ' '; };
+    recognition.onresult = (event) => {
+      // Only process new/updated results using resultIndex — avoids duplication on interim events
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) { micBaseText += t + ' '; }
+        else { interim += t; }
+      }
+      input.value = cleanSpeechTranscript(micBaseText + interim);
+    };
     recognition.onerror = (event) => { if (event.error !== 'no-speech') showToast('Speech error: ' + event.error, true); };
     recognition.onend = () => { if (micActive) { try { recognition.start(); } catch(e) { btn.innerHTML = '▶ Tap to Continue'; btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)'; btn.classList.add('mic-active'); } } else { btn.innerHTML = '🎙 Mic'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; btn.classList.remove('mic-active'); } };
     recognition._setActive = (val) => { micActive = val; };
