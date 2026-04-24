@@ -530,6 +530,7 @@ function renderLog() {
         <div class="log-case">${e.case || '—'}${e.client ? ' · ' + e.client + (e.clientFirst ? ', ' + e.clientFirst : '') : ''}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <div class="log-time">${fmtDateTime(e.date, e.time)}</div>
+          <button onclick="editEntry('${e.id}')" style="background:none;border:none;color:var(--accent2);font-size:13px;cursor:pointer;padding:0 2px;line-height:1" title="Edit entry">✏</button>
           <button onclick="deleteEntry('${e.id}')" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 2px;line-height:1" title="Delete entry">✕</button>
         </div>
       </div>
@@ -703,6 +704,33 @@ function enableSubmitBtn() {
   btn.style.opacity = '';
 }
 
+let editingId = null;
+
+function editEntry(id) {
+  const entry = entries.find(e => String(e.id) === String(id));
+  if (!entry) return;
+  editingId = String(id);
+  document.getElementById('caseNum').value = entry.case || '';
+  document.getElementById('clientLast').value = entry.client || '';
+  document.getElementById('clientFirst').value = entry.clientFirst || '';
+  document.getElementById('actType').value = entry.type || '';
+  onTypeChange(entry.type || '');
+  document.getElementById('actDate').value = entry.date || '';
+  document.getElementById('actTime').value = entry.time || '';
+  document.getElementById('actDuration').value = entry.duration || entry.quantity || '';
+  document.getElementById('actMileage').value = entry.mileage || '';
+  document.getElementById('travelFrom').value = entry.travelFrom || '';
+  document.getElementById('travelTo').value = entry.travelTo || '';
+  document.getElementById('actNotes').value = entry.notes || '';
+  document.getElementById('investigatorField').value = entry.investigator || '';
+  const btn = document.getElementById('submitBtn');
+  btn.textContent = 'UPDATE ENTRY →';
+  btn.disabled = false;
+  btn.style.opacity = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast('Editing entry — make changes and tap Update');
+}
+
 function onTypeChange(val) {
   const sec = document.getElementById('travelSection');
   const cityRow = document.getElementById('cityRow');
@@ -720,6 +748,35 @@ async function submitEntry() {
   const needsTravel = ['Investigator Service - Travel Time', 'Out of Pocket - Mileage'].includes(typeVal);
   const isTravel = typeVal === 'Investigator Service - Travel Time';
   const isOOP = typeVal.startsWith('Out of Pocket') && typeVal !== 'Out of Pocket - Mileage';
+  // Update mode: replace existing entry instead of creating new
+  if (editingId) {
+    const idx = entries.findIndex(e => String(e.id) === editingId);
+    if (idx !== -1) {
+      entries[idx] = { ...entries[idx],
+        case: document.getElementById('caseNum').value.trim(),
+        client: document.getElementById('clientLast').value.trim(),
+        clientFirst: document.getElementById('clientFirst').value.trim(),
+        type: typeVal,
+        date: document.getElementById('actDate').value,
+        time: document.getElementById('actTime').value,
+        duration: isOOP ? '' : document.getElementById('actDuration').value,
+        quantity: isOOP ? document.getElementById('actDuration').value : '',
+        mileage: needsTravel ? document.getElementById('actMileage').value : '',
+        travelFrom: needsTravel ? document.getElementById('travelFrom').value.trim() : '',
+        travelTo: needsTravel ? document.getElementById('travelTo').value.trim() : '',
+        notes: document.getElementById('actNotes').value.trim(),
+        investigator: document.getElementById('investigatorField').value.trim(),
+        synced: false
+      };
+      localStorage.setItem('tli_entries', JSON.stringify(entries));
+      editingId = null;
+      document.getElementById('submitBtn').textContent = 'LOG ACTIVITY →';
+      renderLog(); updateSyncBtn();
+      clearForm();
+      showToast('Entry updated — review and sync');
+      return;
+    }
+  }
   const base = {
     id: Date.now() + Math.random(),
     case: document.getElementById('caseNum').value.trim(),
@@ -795,6 +852,8 @@ async function submitEntry() {
   document.getElementById('actType').value = '';
   onTypeChange('');
   enableSubmitBtn();
+  editingId = null;
+  document.getElementById('submitBtn').textContent = 'LOG ACTIVITY →';
   setNow();
   btn.innerHTML = 'LOG ACTIVITY →';
   btn.disabled = false;
