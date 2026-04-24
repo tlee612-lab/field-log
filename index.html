@@ -81,6 +81,11 @@
   details[open] summary { color: var(--accent); border-color: var(--accent); }
   .travel-section { overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease; pointer-events: none; }
   .travel-section.visible { max-height: 200px; opacity: 1; pointer-events: all; }
+  @media (max-width: 600px) {
+    .ai-actions { flex-wrap: wrap; }
+    #micBtn { order: -1; flex: 1 0 100%; font-size: 18px; padding: 16px; letter-spacing: 2px; border-radius: 8px; }
+    #aiParseBtn { flex: 1; }
+  }
 </style>
 </head>
 <body>
@@ -95,27 +100,32 @@
   <datalist id="caseList"></datalist>
   <datalist id="clientList"></datalist>
   <datalist id="investigatorList"></datalist>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button id="modeAI" onclick="setMode('ai')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">🎙 AI Mode</button>
+    <button id="modeManual" onclick="setMode('manual')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✏ Manual</button>
+  </div>
   <div class="section-label">Quick Entry</div>
   <div class="field-group" style="margin-bottom:8px">
     <label>Investigator</label>
-    <input type="text" id="investigatorField" placeholder="Investigator name" autocomplete="off" autocapitalize="words" list="investigatorList">
+    <input type="text" id="investigatorField" placeholder="Investigator name" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" list="investigatorList">
   </div>
   <div class="quick-row" style="margin-bottom:8px">
     <div class="field-group">
       <label>Case #</label>
-      <input type="text" id="caseNum" placeholder="e.g. 25CR12345" autocomplete="off" autocapitalize="characters" list="caseList" oninput="onCaseInput(this.value)">
+      <input type="text" id="caseNum" placeholder="e.g. 25CR12345" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" list="caseList" oninput="onCaseInput(this.value)">
     </div>
     <div class="field-group">
       <label>Client Last Name</label>
-      <input type="text" id="clientLast" placeholder="e.g. Smith" autocomplete="off" autocapitalize="words" list="clientList" oninput="onClientInput(this.value)">
+      <input type="text" id="clientLast" placeholder="e.g. Smith" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" list="clientList" oninput="onClientInput(this.value)">
     </div>
   </div>
   <div class="quick-row" style="margin-bottom:8px">
     <div class="field-group">
       <label>Client First Name</label>
-      <input type="text" id="clientFirst" placeholder="e.g. John" autocomplete="off" autocapitalize="words">
+      <input type="text" id="clientFirst" placeholder="e.g. John" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false">
     </div>
   </div>
+  <div id="manualSection">
   <div class="field-group" style="margin-bottom:8px">
     <label>Activity Type</label>
     <select id="actType" onchange="onTypeChange(this.value)">
@@ -178,11 +188,11 @@
     <div id="cityRow" class="quick-row" style="margin-bottom:8px;display:none">
       <div class="field-group">
         <label>From (City)</label>
-        <input type="text" id="travelFrom" placeholder="e.g. Medford" autocomplete="off" autocapitalize="words">
+        <input type="text" id="travelFrom" placeholder="e.g. Medford" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false">
       </div>
       <div class="field-group">
         <label>To (City)</label>
-        <input type="text" id="travelTo" placeholder="e.g. Jacksonville" autocomplete="off" autocapitalize="words">
+        <input type="text" id="travelTo" placeholder="e.g. Jacksonville" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false">
       </div>
     </div>
   </div>
@@ -190,6 +200,9 @@
     <label>Notes</label>
     <textarea id="actNotes" placeholder="Location, observations, contacts, findings..." oninput="enableSubmitBtn()"></textarea>
   </div>
+  <button class="submit-btn" id="submitBtn" onclick="submitEntry()">LOG ACTIVITY →</button>
+  </div><!-- end manualSection -->
+  <div id="aiSection">
   <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>AI Assist — Dictate / Summarize</span>
     <div style="display:flex;gap:6px;align-items:center">
@@ -210,16 +223,24 @@
     <strong>After parsing:</strong> Review entries in log · ✏ to edit · ✕ to delete · ↑ Sync when ready<br><br>
     <strong>Log manually instead for:</strong> Single-location activities · Out of Pocket expenses · Court appearances
   </div>
+  <div id="parseWarning" style="display:none;background:var(--surface);border:1px solid var(--warn);border-radius:8px;padding:12px;margin-bottom:8px;">
+    <div style="font-family:var(--ui);font-size:11px;letter-spacing:1px;color:var(--warn);margin-bottom:6px;">⚠ MISSING INFO — ENTRIES MAY BE INCOMPLETE</div>
+    <div id="parseWarningList" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="aiParse(true)" class="ai-btn" style="background:var(--warn);color:var(--bg);border:none;">Proceed Anyway</button>
+      <button onclick="document.getElementById('parseWarning').style.display='none'" class="ai-btn secondary" style="border-color:var(--muted);color:var(--muted);flex:0 0 auto;padding:10px 16px;">Fix First</button>
+    </div>
+  </div>
   <div class="ai-bar">
     <textarea id="aiInput" placeholder="Type or paste raw notes..."></textarea>
     <div id="aiPreview" class="ai-preview"></div>
     <div class="ai-actions">
-      <button class="ai-btn" id="aiParseBtn" onclick="aiParse()">⚡ Parse &amp; Fill</button>
+      <button class="ai-btn" id="aiParseBtn" onclick="aiParse()">⚡ Process Notes</button>
       <button class="ai-btn secondary" id="micBtn" onclick="toggleMic()">🎙 Mic</button>
       <button class="ai-btn secondary" onclick="document.getElementById('aiInput').value=''">Clear</button>
     </div>
   </div>
-  <button class="submit-btn" id="submitBtn" onclick="submitEntry()">LOG ACTIVITY →</button>
+  </div><!-- end aiSection -->
   <div style="margin-top:24px">
     <details id="configDetails">
       <summary>▸ Settings</summary>
@@ -288,6 +309,12 @@
             <button class="ai-btn secondary" style="max-width:140px; font-size:10px" onclick="fetchRemoteCases(true)">Refresh Cases</button>
             <button class="ai-btn secondary" style="max-width:140px; color:var(--warn); border-color:var(--warn); background:transparent; font-size:10px" onclick="clearAllEntries()">Clear Local Logs</button>
           </div>
+          <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:12px; display:flex; align-items:center; gap:10px;">
+            <label style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="devMode" onchange="saveConfig()" style="width:auto;accent-color:var(--accent2)">
+              Dev Mode — show JSON preview after parse
+            </label>
+          </div>
         </div>
       </div>
     </details>
@@ -305,7 +332,7 @@
 <div class="toast" id="toast"></div>
 <script>
 const DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxUcyYasL_3vMIpcwTgfBJNzWpK7jE81Puyiw7nxL6BhfX3fy8ZPCqY9rDAZZ6OC2Ud/exec';
-let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic"}');
+let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
 if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
 if (!cfg.webhookUrl) cfg.webhookUrl = DEFAULT_WEBHOOK;
 let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
@@ -317,6 +344,7 @@ if (document.getElementById('anthropicKey')) document.getElementById('anthropicK
 if (document.getElementById('geminiKey')) document.getElementById('geminiKey').value = cfg.geminiKey || '';
 if (document.getElementById('openaiKey')) document.getElementById('openaiKey').value = cfg.openaiKey || '';
 if (document.getElementById('aiProvider')) document.getElementById('aiProvider').value = cfg.aiProvider || 'anthropic';
+if (document.getElementById('devMode')) document.getElementById('devMode').checked = cfg.devMode || false;
 
 function setAiProviderTab(providerId, btnElement) {
   document.querySelectorAll('.ai-sub-tab').forEach(b => b.classList.remove('active'));
@@ -381,6 +409,22 @@ function toggleUrlLock() {
   const input = document.getElementById('webhookUrl');
   setUrlLock(!input.readOnly);
 }
+
+function setMode(mode) {
+  localStorage.setItem('tli_mode', mode);
+  const isAI = mode === 'ai';
+  document.getElementById('aiSection').style.display = isAI ? '' : 'none';
+  document.getElementById('manualSection').style.display = isAI ? 'none' : '';
+  const aiBtn = document.getElementById('modeAI');
+  const manualBtn = document.getElementById('modeManual');
+  aiBtn.style.background = isAI ? 'var(--accent)' : 'var(--surface2)';
+  aiBtn.style.borderColor = isAI ? 'var(--accent)' : 'var(--border)';
+  aiBtn.style.color = isAI ? 'var(--bg)' : 'var(--muted)';
+  manualBtn.style.background = isAI ? 'var(--surface2)' : 'var(--accent2)';
+  manualBtn.style.borderColor = isAI ? 'var(--border)' : 'var(--accent2)';
+  manualBtn.style.color = isAI ? 'var(--muted)' : 'var(--bg)';
+}
+setMode(localStorage.getItem('tli_mode') || 'ai');
 
 function updateHeaderName() {
   const el = document.getElementById('headerName');
@@ -466,6 +510,7 @@ function saveConfig() {
   cfg.geminiKey = document.getElementById('geminiKey').value.trim();
   cfg.openaiKey = document.getElementById('openaiKey').value.trim();
   cfg.aiProvider = document.getElementById('aiProvider').value;
+  cfg.devMode = document.getElementById('devMode').checked;
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
   if (cfg.webhookUrl) setUrlLock(true);
   setAiKeyLock(true);
@@ -623,23 +668,68 @@ function toggleMic() {
   if (!recognition) {
     recognition = new Speech();
     recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
-    recognition.onresult = (event) => { let t = ''; for (let i = 0; i < event.results.length; i++) t += event.results[i][0].transcript; input.value = t; };
-    recognition.onerror = (event) => { showToast('Speech error: ' + event.error, true); };
-    recognition.onend = () => { btn.innerHTML = '🎙 Mic'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; btn.classList.remove('mic-active'); };
+    let micBaseText = '';
+    let micActive = false;
+    recognition.onstart = () => { micBaseText = input.value ? input.value.trimEnd() + ' ' : ''; };
+    recognition.onresult = (event) => { let t = ''; for (let i = 0; i < event.results.length; i++) t += event.results[i][0].transcript; input.value = micBaseText + t; micBaseText = input.value.trimEnd() + ' '; };
+    recognition.onerror = (event) => { if (event.error !== 'no-speech') showToast('Speech error: ' + event.error, true); };
+    recognition.onend = () => { if (micActive) { try { recognition.start(); } catch(e) { btn.innerHTML = '▶ Tap to Continue'; btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)'; btn.classList.add('mic-active'); } } else { btn.innerHTML = '🎙 Mic'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; btn.classList.remove('mic-active'); } };
+    recognition._setActive = (val) => { micActive = val; };
   }
-  if (btn.textContent.includes('Stop')) { recognition.stop(); }
-  else { try { recognition.start(); btn.innerHTML = '🛑 Stop'; btn.style.borderColor = 'var(--warn)'; btn.style.color = 'var(--warn)'; btn.classList.add('mic-active'); } catch (err) { showToast('Mic error: ' + err.message, true); } }
+  if (btn.textContent.includes('Stop')) { recognition._setActive(false); recognition.stop(); }
+  else { try { recognition._setActive(true); recognition.start(); btn.innerHTML = '🛑 Stop'; btn.style.borderColor = 'var(--warn)'; btn.style.color = 'var(--warn)'; btn.classList.add('mic-active'); } catch (err) { showToast('Mic error: ' + err.message, true); } }
 }
 
-async function aiParse() {
+function preParseCheck(text) {
+  const warnings = [];
+  const lower = text.toLowerCase();
+  const investigatorField = document.getElementById('investigatorField').value.trim();
+  if (!/\b\d{2}[a-z]{2}\d{4,6}\b/i.test(text) && !document.getElementById('caseNum').value.trim()) {
+    warnings.push('No case number detected — include it in your notes (e.g. 25CR12345) or fill the Case # field');
+  }
+  const mentionsInvestigator = /\b(investigator|this is|my name is|i am)\b/i.test(text);
+  if (!mentionsInvestigator && !investigatorField) {
+    warnings.push('No investigator name — add your name to the notes or fill the Investigator field above');
+  }
+  const hasTravel = /\b(travel|drove|drive|driving|\d+\s*miles?|mileage)\b/i.test(lower);
+  if (hasTravel) {
+    const hasCities = /\b(?!(travel(l?ed|ing)?|drove?|drive|driven|went|go(ing|es)?|return(ed|ing)?|heading|headed|left|depart(ed|ing)?|back|came|come|commut(ed|ing)?|miles?|the|a|an|home|office|there|here|residen\w*|subject)\b)\w{3,}(\s+\w{2,})?\s+to\s+\w{3,}/i.test(text) || /\bfrom\s+[a-z]{3,}/i.test(text);
+    if (!hasCities) warnings.push('Travel detected but no city names — add departure and destination cities (e.g. Eagle Point to Medford)');
+    const hasDuration = /\b(travel\s*time\s*\d+|\d+\s*min(ute)?s?\s*(drive|travel|each way|one way)|\d{1,2}:\d{2}\s*(am|pm).{0,60}(arrived?|left|depart)|left\s+\w.{0,40}\d{1,2}:\d{2}|(arrived?|got\s+there)\s+at\s+\d{1,2}:\d{2})\b/i.test(text);
+    if (!hasDuration) warnings.push('Travel detected but no duration or clock times — add travel time or departure/arrival times to bill Travel Time');
+  }
+  return warnings;
+}
+
+async function aiParse(skipWarning = false) {
   const raw = document.getElementById('aiInput').value.trim();
   if (!raw) { showToast('Enter some notes first', true); return; }
+  if (!skipWarning) {
+    const warnings = preParseCheck(raw);
+    if (warnings.length) {
+      const warningDiv = document.getElementById('parseWarning');
+      document.getElementById('parseWarningList').innerHTML = warnings.map(w => `• ${w}`).join('<br>');
+      warningDiv.style.display = '';
+      warningDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+  }
+  document.getElementById('parseWarning').style.display = 'none';
   const btn = document.getElementById('aiParseBtn');
   btn.innerHTML = '<span class="spinner"></span>Parsing...';
   btn.disabled = true;
   document.getElementById('aiPreview').classList.remove('visible');
   const validTypes = Array.from(document.getElementById('actType').options).map(opt => opt.value).filter(val => val).map(val => `"${val}"`).join(", ");
-  const systemPrompt = `You are a billing assistant for a licensed private investigator. Parse raw field notes into separate billable line items. Always return a JSON ARRAY (even if only one item). Never wrap in markdown.\n\nBILLING RULES:\n1. Each driving leg = TWO entries: (a) "Investigator Service - Travel Time" with duration + travelFrom + travelTo, and (b) "Out of Pocket - Mileage" with mileage + travelFrom + travelTo. Same from/to on both.\n2. Do NOT combine legs. Each direction is its own pair.\n3. Each activity at a location = ONE entry with the matching type and duration.\n4. travelFrom and travelTo are REQUIRED on every Travel Time and Mileage entry.\n5. You MUST use ONLY the exact type strings listed. Do not invent types.\n\nValid types: ${validTypes}\n\nExample input: "Left Portland office at 6:30am, drove 18 miles to subject residence in Beaverton, arrived 7:00am. Surveillance until 9:45am. Drove 18 miles back to Portland, arrived 10:20am."\nCorrect output (5 entries):\n[\n  {"type":"Investigator Service - Travel Time","time":"06:30","duration":"30","mileage":"","travelFrom":"Portland","travelTo":"Beaverton","notes":"Travel from Portland to Beaverton."},\n  {"type":"Out of Pocket - Mileage","time":"06:30","duration":"","mileage":"18","travelFrom":"Portland","travelTo":"Beaverton","notes":"Mileage Portland to Beaverton."},\n  {"type":"Investigator Service - Surveillance","time":"07:00","duration":"165","notes":"Stationary surveillance at subject residence in Beaverton."},\n  {"type":"Investigator Service - Travel Time","time":"09:45","duration":"35","mileage":"","travelFrom":"Beaverton","travelTo":"Portland","notes":"Return travel Beaverton to Portland."},\n  {"type":"Out of Pocket - Mileage","time":"09:45","duration":"","mileage":"18","travelFrom":"Beaverton","travelTo":"Portland","notes":"Mileage Beaverton to Portland."}\n]\n\nEach object fields:\n- case: Oregon court case number e.g. 26CR00089 (or "")\n- client: client last name (or "")\n- clientFirst: client first name (or "")\n- investigator: investigator full name if mentioned (or "")\n- type: MUST be one of the valid types above — no exceptions\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h start time for this specific entry (or "")\n- duration: integer minutes — Travel Time and activity entries (or "")\n- quantity: integer count — Out of Pocket non-mileage entries only (or "")\n- mileage: miles as string — Out of Pocket Mileage entries only (or "")\n- travelFrom: CITY NAME only — Travel Time and Mileage entries (or "")\n- travelTo: CITY NAME only — Travel Time and Mileage entries (or "")\n- notes: clean 1-2 sentence professional summary for this specific entry\n\nKeep case, client, clientFirst, investigator identical across all entries from the same narrative.`;
+  // PROMPT CHANGELOG
+  // 2026-04-24 — Fixed example type: "Investigator Service - Surveillance" → "Investigator Service - Tactical Field Operations & Scene Documentation"
+  // 2026-04-24 — Added Rule 6: calculate duration in minutes from clock times when given
+  // 2026-04-24 — Clarified duration field description to reinforce clock-time calculation
+  // 2026-04-24 — Promoted "keep case/client/investigator identical" to Rule #1
+  // 2026-04-24 — Added Rule 8: Travel Time + Mileage pairing only when both time and distance are billed
+  // 2026-04-24 — Added Rule 9: quantity vs duration vs mileage logic with parking edge case
+  // 2026-04-24 — Added Out of Pocket example (parking + DVDs) to reinforce Rule 8
+  // 2026-04-24 — Updated travel example to show quantity:"" and mileage:"" explicitly on all entries
+  const systemPrompt = `You are a billing assistant for a licensed private investigator. Parse raw field notes into separate billable line items. Always return a JSON ARRAY (even if only one item). Never wrap in markdown.\n\nBILLING RULES:\n1. CONSISTENCY: case, client, clientFirst, and investigator must be identical across every entry from the same narrative. Extract them once and copy them to all entries.\n2. Each driving leg = TWO entries: (a) "Investigator Service - Travel Time" with duration + travelFrom + travelTo, and (b) "Out of Pocket - Mileage" with mileage + travelFrom + travelTo. Same from/to on both.\n3. Do NOT combine legs. Each direction is its own pair.\n4. Each activity at a location = ONE entry with the matching type and duration.\n5. travelFrom and travelTo are REQUIRED on every Travel Time and Mileage entry.\n6. You MUST use ONLY the exact type strings listed. Do not invent types.\n7. DURATION CALCULATION: When start and end times are both given, calculate duration as the difference in minutes. Never leave duration blank if times are present. Example: 7:00am to 9:45am = 165 mins. 10:15am to 12:00pm = 105 mins.\n8. TRAVEL TIME + MILEAGE PAIRING: Only pair "Investigator Service - Travel Time" with "Out of Pocket - Mileage" when BOTH billable time and distance are present. If the notes indicate mileage reimbursement only (no billable travel time), create ONLY the Out of Pocket - Mileage entry. If travel time is billed but no mileage is mentioned, create ONLY the Travel Time entry.\n9. QUANTITY vs DURATION vs MILEAGE — only one of these three fields is populated per entry, never more than one:\n   - Investigator Service (any type including Travel Time): use duration (minutes). quantity and mileage = "".\n   - Out of Pocket - Mileage: use mileage (miles as number string). duration and quantity = "".\n   - Out of Pocket - all other expense types: use quantity (unit count, minimum "1"). duration and mileage = "". NEVER put time or minutes in quantity — even if the notes mention hours (e.g. parking for 2 hours = quantity "1", not duration "120").\n\nValid types: ${validTypes}\n\nExample input: "Left Portland office at 6:30am, drove 18 miles to subject residence in Beaverton, arrived 7:00am. Surveillance until 9:45am. Drove 18 miles back to Portland, arrived 10:20am."\nCorrect output (5 entries):\n[\n  {"type":"Investigator Service - Travel Time","time":"06:30","duration":"30","quantity":"","mileage":"","travelFrom":"Portland","travelTo":"Beaverton","notes":"Travel from Portland to Beaverton."},\n  {"type":"Out of Pocket - Mileage","time":"06:30","duration":"","quantity":"","mileage":"18","travelFrom":"Portland","travelTo":"Beaverton","notes":"Mileage Portland to Beaverton."},\n  {"type":"Investigator Service - Tactical Field Operations & Scene Documentation","time":"07:00","duration":"165","quantity":"","mileage":"","notes":"Stationary surveillance at subject residence in Beaverton."},\n  {"type":"Investigator Service - Travel Time","time":"09:45","duration":"35","quantity":"","mileage":"","travelFrom":"Beaverton","travelTo":"Portland","notes":"Return travel Beaverton to Portland."},\n  {"type":"Out of Pocket - Mileage","time":"09:45","duration":"","quantity":"","mileage":"18","travelFrom":"Beaverton","travelTo":"Portland","notes":"Mileage Beaverton to Portland."}\n]\n\nExample input: "Paid $8 for parking downtown. Bought 2 DVDs for case evidence."\nCorrect output (2 entries):\n[\n  {"type":"Out of Pocket - Parking & Tolls","time":"","duration":"","quantity":"1","mileage":"","travelFrom":"","travelTo":"","notes":"Parking fee downtown."},\n  {"type":"Out of Pocket - CD/DVD/Discs","time":"","duration":"","quantity":"2","mileage":"","travelFrom":"","travelTo":"","notes":"2 DVDs purchased for case evidence."}\n]\n\nEach object fields:\n- case: Oregon court case number e.g. 26CR00089 (or "")\n- client: client last name (or "")\n- clientFirst: client first name (or "")\n- investigator: investigator full name if mentioned (or "")\n- type: MUST be one of the valid types above — no exceptions\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h start time for this specific entry (or "")\n- duration: integer minutes — calculate from clock times when given. Travel Time and activity entries (or "")\n- quantity: integer count — Out of Pocket non-mileage entries only (or "")\n- mileage: miles as string — Out of Pocket Mileage entries only (or "")\n- travelFrom: CITY NAME only — Travel Time and Mileage entries (or "")\n- travelTo: CITY NAME only — Travel Time and Mileage entries (or "")\n- notes: clean 1-2 sentence professional summary for this specific entry. Capture names and key facts exactly as given. If no name or detail is provided, use a generic professional label (e.g. "Witness interview conducted." or "Field operations conducted at location."). Do not embellish or invent details not present in the input.\n\nKeep case, client, clientFirst, investigator identical across all entries from the same narrative.`;
   try {
     const activeKey = cfg.aiProvider === 'gemini' ? cfg.geminiKey : (cfg.aiProvider === 'openai' ? cfg.openaiKey : cfg.anthropicKey);
     if (!activeKey) throw new Error(`Missing ${cfg.aiProvider.toUpperCase()} API Key in Settings`);
@@ -727,9 +817,13 @@ async function aiParse() {
     const incomplete = newEntries.filter(e => e._missing).length;
     if (incomplete) showToast(`${newEntries.length} entries added — ${incomplete} incomplete, review before syncing`, true);
     const preview = document.getElementById('aiPreview');
-    preview.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>✓ ${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log</strong><button onclick="document.getElementById('aiPreview').classList.remove('visible')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button></div><pre style="margin:0;font-size:11px;overflow-x:auto;white-space:pre-wrap">${JSON.stringify(parsedArr, null, 2)}</pre>`;
-    preview.classList.add('visible');
+    if (cfg.devMode) {
+      preview.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>✓ ${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log</strong><button onclick="document.getElementById('aiPreview').classList.remove('visible')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button></div><pre style="margin:0;font-size:11px;overflow-x:auto;white-space:pre-wrap">${JSON.stringify(parsedArr, null, 2)}</pre>`;
+      preview.classList.add('visible');
+    }
     showToast(`${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log — review before syncing`);
+    setTimeout(() => document.getElementById('recentLog').scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    if (navigator.vibrate) navigator.vibrate(50);
   } catch(err) {
     console.error('AI Parse Error:', err);
     showToast(err.message.includes('Unexpected token') ? 'AI returned invalid data. Try again.' : err.message, true);
