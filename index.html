@@ -459,10 +459,16 @@ function saveConfig() {
 async function testWebhook() {
   if (!cfg.webhookUrl) { showToast('Paste webhook URL first', true); return; }
   try {
-    await fetch(cfg.webhookUrl, { method: 'GET', mode: 'no-cors' });
-    showToast('✓ Webhook reachable — check Sheets to confirm');
-    setUrlLock(true);
-  } catch(err) { showToast('Connection failed', true); }
+    const res = await fetch(cfg.webhookUrl + '?action=ping');
+    const data = await res.json();
+    showToast(data.status === 'ok' ? '✓ Webhook connected' : 'Webhook error', data.status !== 'ok');
+  } catch(err) {
+    try {
+      await fetch(cfg.webhookUrl, { method: 'GET', mode: 'no-cors' });
+      showToast('✓ Webhook reachable — check Sheets to confirm');
+    } catch(e) { showToast('Connection failed', true); }
+  }
+  setUrlLock(true);
 }
 
 async function testAiConnection(btn) {
@@ -741,7 +747,17 @@ async function submitEntry() {
 
 async function postToWebhook(entriesToPost) {
   const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entriesToPost));
-  await fetch(url, { method: 'GET', mode: 'no-cors' });
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'error') throw new Error(data.message);
+      return data;
+    }
+  } catch(e) {
+    if (e.message && e.message !== 'Failed to fetch') throw e;
+    await fetch(url, { method: 'GET', mode: 'no-cors' });
+  }
 }
 
 async function syncAll() {
