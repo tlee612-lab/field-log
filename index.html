@@ -81,6 +81,8 @@
   details[open] summary { color: var(--accent); border-color: var(--accent); }
   .travel-section { overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease; pointer-events: none; }
   .travel-section.visible { max-height: 200px; opacity: 1; pointer-events: all; }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
   @media (max-width: 600px) {
     .ai-actions { flex-wrap: wrap; }
     #micBtn { order: -1; flex: 1 0 100%; font-size: 18px; padding: 16px; letter-spacing: 2px; border-radius: 8px; }
