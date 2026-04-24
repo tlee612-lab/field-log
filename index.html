@@ -792,24 +792,7 @@ async function submitEntry() {
 
 async function postToWebhook(entriesToPost) {
   const url = cfg.webhookUrl + '?data=' + encodeURIComponent(JSON.stringify(entriesToPost));
-  let serverReached = false;
-  try {
-    const res = await fetch(url, { method: 'GET' });
-    serverReached = true;
-    if (res.ok) {
-      try {
-        const data = await res.json();
-        if (data.status === 'error') throw new Error(data.message);
-      } catch(jsonErr) {
-        if (jsonErr.message && jsonErr.message !== 'Failed to fetch') throw jsonErr;
-      }
-    }
-    return;
-  } catch(e) {
-    if (serverReached) throw e;
-    // True network failure — try no-cors as fire-and-forget
-    await fetch(url, { method: 'GET', mode: 'no-cors' });
-  }
+  await fetch(url, { method: 'GET', mode: 'no-cors' });
 }
 
 async function syncAll() {
