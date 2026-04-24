@@ -68,7 +68,7 @@
   .log-time { font-family: var(--mono); font-size: 11px; color: var(--muted); }
   .log-type { font-family: var(--ui); font-size: 11px; letter-spacing: 1px; color: var(--accent2); text-transform: uppercase; margin-bottom: 4px; }
   .log-notes { font-size: 13px; color: var(--muted); line-height: 1.4; }
-  .log-unsynced { font-size: 10px; color: var(--warn); font-family: var(--ui); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+  .log-unsynced { font-size: 10px; color: var(--warn); font-family: var(--ui); letter-spacing: 1px; text-transform: uppercase; border: 1px solid var(--warn); border-radius: 20px; padding: 3px 10px; display: inline-block; }
   .sync-btn { width: 100%; background: transparent; border: 1px solid var(--warn); border-radius: 8px; color: var(--warn); font-family: var(--ui); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 12px; cursor: pointer; margin-top: 10px; display: none; transition: background 0.2s; }
   .sync-btn:active { background: rgba(255,107,53,0.15); }
   .config-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-top: 8px; }
@@ -279,8 +279,8 @@
   <div class="section-label" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
     <span>Recent Entries (Local)</span>
     <div style="display:flex;gap:6px;align-items:center">
-      <button id="syncBtn" onclick="syncPending()" style="display:none;background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:5px 12px;border-radius:20px">↑ Sync All</button>
-      <button id="clearSyncedBtn" onclick="clearSynced()" style="display:none;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:5px 12px;border-radius:20px">Clear Synced</button>
+      <button id="syncBtn" onclick="syncPending()" class="ai-btn secondary" style="display:none;font-size:10px;padding:5px 12px">↑ Sync All</button>
+      <button id="clearSyncedBtn" onclick="clearSynced()" class="ai-btn secondary" style="display:none;font-size:10px;padding:5px 12px">Clear Synced</button>
     </div>
   </div>
   <p style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">This device only. Google Sheets is the complete record.</p>
@@ -537,7 +537,7 @@ function renderLog() {
       <div class="log-notes">${(e.notes||'').slice(0,120)}${(e.notes||'').length>120?'…':''}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
         ${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : '<div></div>'}
-        ${e.synced === false ? `<button onclick="syncEntry('${e.id}')" style="background:var(--accent);border:none;color:#fff;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
+        ${e.synced === false ? `<button onclick="syncEntry('${e.id}')" style="background:var(--surface);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
       </div>
     </div>
   `).join('');
