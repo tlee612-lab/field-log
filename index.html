@@ -650,7 +650,7 @@ function onTypeChange(val) {
   const needsTravel = ['Investigator Service - Travel Time', 'Out of Pocket - Mileage'].includes(val);
   if (needsTravel) sec.classList.add('visible');
   else sec.classList.remove('visible');
-  if (cityRow) cityRow.style.display = (val === 'Out of Pocket - Mileage') ? 'grid' : 'none';
+  if (cityRow) cityRow.style.display = needsTravel ? 'grid' : 'none';
   const durLabel = document.getElementById('durationLabel');
   const isOOPQuantity = val.startsWith('Out of Pocket') && val !== 'Out of Pocket - Mileage';
   durLabel.textContent = isOOPQuantity ? 'Quantity / Units' : 'Duration (mins)';
