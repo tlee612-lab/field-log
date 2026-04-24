@@ -188,7 +188,7 @@
   </div>
   <div class="field-group" style="margin-bottom:8px">
     <label>Notes</label>
-    <textarea id="actNotes" placeholder="Location, observations, contacts, findings..."></textarea>
+    <textarea id="actNotes" placeholder="Location, observations, contacts, findings..." oninput="enableSubmitBtn()"></textarea>
   </div>
   <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>AI Assist — Dictate / Summarize</span>
@@ -697,6 +697,12 @@ async function aiParse() {
   btn.disabled = false;
 }
 
+function enableSubmitBtn() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = false;
+  btn.style.opacity = '';
+}
+
 function onTypeChange(val) {
   const sec = document.getElementById('travelSection');
   const cityRow = document.getElementById('cityRow');
@@ -788,6 +794,7 @@ async function submitEntry() {
   document.getElementById('aiPreview').classList.remove('visible');
   document.getElementById('actType').value = '';
   onTypeChange('');
+  enableSubmitBtn();
   setNow();
   btn.innerHTML = 'LOG ACTIVITY →';
   btn.disabled = false;
