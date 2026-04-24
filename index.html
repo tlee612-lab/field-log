@@ -695,6 +695,7 @@ async function submitEntry() {
   const isTravel = typeVal === 'Investigator Service - Travel Time';
   const isOOP = typeVal.startsWith('Out of Pocket') && typeVal !== 'Out of Pocket - Mileage';
   const base = {
+    id: Date.now() + Math.random(),
     case: document.getElementById('caseNum').value.trim(),
     client: document.getElementById('clientLast').value.trim(),
     clientFirst: document.getElementById('clientFirst').value.trim(),
@@ -733,7 +734,7 @@ async function submitEntry() {
   if (base.investigator) localStorage.setItem('tli_last_investigator', base.investigator);
   const toLog = [base];
   if (isTravel) {
-    toLog.push({ ...base, type: 'Mileage', duration: '',
+    toLog.push({ ...base, id: Date.now() + Math.random(), type: 'Out of Pocket - Mileage', duration: '',
       mileage: document.getElementById('actMileage').value,
       travelFrom: document.getElementById('travelFrom').value.trim(),
       travelTo: document.getElementById('travelTo').value.trim(),
