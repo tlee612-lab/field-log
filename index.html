@@ -592,7 +592,7 @@ async function aiParse() {
   btn.disabled = true;
   document.getElementById('aiPreview').classList.remove('visible');
   const validTypes = Array.from(document.getElementById('actType').options).map(opt => opt.value).filter(val => val).map(val => `"${val}"`).join(", ");
-  const systemPrompt = `You are a field assistant for a licensed private investigator working criminal defense cases in Oregon. Extract structured fields from raw investigator notes. Respond ONLY with a JSON object, no markdown, no preamble.\n\nFields:\n- case: Oregon court case number e.g. 25CR12345 (or "")\n- client: client last name (or "")\n- clientFirst: client first name (or "")\n- type: one of exactly: ${validTypes}\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h (or "")\n- duration: integer minutes as string (or "")\n- quantity: integer count for out-of-pocket items (or "")\n- mileage: miles as string (or "")\n- travelFrom: origin city (or "")\n- travelTo: destination city (or "")\n- notes: clean 1-3 sentence professional summary`;
+  const systemPrompt = `You are a billing assistant for a licensed private investigator. Parse raw field notes into separate billable line items. Always return a JSON ARRAY (even if only one item). Never wrap in markdown.\n\nBILLING RULES:\n1. Each driving leg = its own "Investigator Service - Travel Time" entry. Do NOT combine legs. Do NOT create a single round-trip entry.\n2. Each activity at a location = its own entry.\n3. travelFrom and travelTo are REQUIRED on every Travel Time entry — use the actual location names from the notes.\n4. mileage is REQUIRED on every Travel Time entry if miles are mentioned.\n5. You MUST use ONLY the exact type strings listed below. Do not invent types.\n\nValid types: ${validTypes}\n\nExample input: "Left office at 6:30am, drove 18 miles to subject residence, arrived 7:00am. Surveillance until 9:45am. Drove 18 miles back to office, arrived 10:20am."\nCorrect output (3 entries):\n[\n  {"type":"Investigator Service - Travel Time","time":"06:30","duration":"30","mileage":"18","travelFrom":"Office","travelTo":"Subject Residence","notes":"..."},\n  {"type":"Investigator Service - Surveillance","time":"07:00","duration":"165","notes":"..."},\n  {"type":"Investigator Service - Travel Time","time":"09:45","duration":"35","mileage":"18","travelFrom":"Subject Residence","travelTo":"Office","notes":"..."}\n]\n\nEach object fields:\n- case: Oregon court case number e.g. 26CR00089 (or "")\n- client: client last name (or "")\n- clientFirst: client first name (or "")\n- investigator: investigator full name if mentioned (or "")\n- type: MUST be one of the valid types above — no exceptions\n- date: YYYY-MM-DD (today if not specified: ${new Date().toISOString().slice(0,10)})\n- time: HH:MM 24h start time for this specific entry (or "")\n- duration: integer minutes — time-based entries only (or "")\n- quantity: integer count — Out of Pocket non-mileage entries only (or "")\n- mileage: miles as string — Travel Time and Mileage entries only (or "")\n- travelFrom: origin location — Travel Time entries only (or "")\n- travelTo: destination location — Travel Time entries only (or "")\n- notes: clean 1-2 sentence professional summary for this specific entry\n\nKeep case, client, clientFirst, investigator identical across all entries from the same narrative.`;
   try {
     const activeKey = cfg.aiProvider === 'gemini' ? cfg.geminiKey : (cfg.aiProvider === 'openai' ? cfg.openaiKey : cfg.anthropicKey);
     if (!activeKey) throw new Error(`Missing ${cfg.aiProvider.toUpperCase()} API Key in Settings`);
@@ -625,22 +625,39 @@ async function aiParse() {
       const text = data.content?.map(c => c.text||'').join('');
       parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
     }
-    if (parsed.case) document.getElementById('caseNum').value = parsed.case;
-    if (parsed.client) document.getElementById('clientLast').value = parsed.client;
-    if (parsed.clientFirst) document.getElementById('clientFirst').value = parsed.clientFirst;
-    if (parsed.type) { document.getElementById('actType').value = parsed.type; onTypeChange(parsed.type); }
-    if (parsed.date) document.getElementById('actDate').value = parsed.date;
-    if (parsed.time) document.getElementById('actTime').value = parsed.time;
-    const amountVal = parsed.quantity || parsed.duration || '';
-    if (amountVal) document.getElementById('actDuration').value = amountVal;
-    if (parsed.mileage) document.getElementById('actMileage').value = parsed.mileage;
-    if (parsed.travelFrom) document.getElementById('travelFrom').value = parsed.travelFrom;
-    if (parsed.travelTo) document.getElementById('travelTo').value = parsed.travelTo;
-    if (parsed.notes) document.getElementById('actNotes').value = parsed.notes;
+    const parsedArr = Array.isArray(parsed) ? parsed : [parsed];
+    const inv = document.getElementById('investigatorField').value.trim();
+    const first = parsedArr[0];
+    // Fill investigator from AI if not already set
+    if (first.investigator && !inv) document.getElementById('investigatorField').value = first.investigator;
+    const resolvedInv = document.getElementById('investigatorField').value.trim();
+    // Add all entries directly to the log as pending
+    const newEntries = parsedArr.map(ex => ({
+      id: Date.now() + Math.random(),
+      case: ex.case || '',
+      client: ex.client || '',
+      clientFirst: ex.clientFirst || '',
+      type: ex.type || '',
+      date: ex.date || '',
+      time: ex.time || '',
+      duration: ex.duration || '',
+      quantity: ex.quantity || '',
+      mileage: ex.mileage || '',
+      travelFrom: ex.travelFrom || '',
+      travelTo: ex.travelTo || '',
+      investigator: ex.investigator || resolvedInv,
+      notes: ex.notes || '',
+      logged: new Date().toISOString(),
+      synced: false
+    }));
+    entries.unshift(...newEntries);
+    localStorage.setItem('tli_entries', JSON.stringify(entries));
+    renderLog();
+    document.getElementById('aiInput').value = '';
     const preview = document.getElementById('aiPreview');
-    preview.textContent = '✓ Parsed:\n' + JSON.stringify(parsed, null, 2);
+    preview.textContent = '✓ Added to log:\n' + JSON.stringify(parsedArr, null, 2);
     preview.classList.add('visible');
-    showToast('Fields filled — review and submit');
+    showToast(`${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log — review before syncing`);
   } catch(err) {
     console.error('AI Parse Error:', err);
     showToast(err.message.includes('Unexpected token') ? 'AI returned invalid data. Try again.' : err.message, true);
