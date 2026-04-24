@@ -653,9 +653,10 @@ async function aiParse() {
     entries.unshift(...newEntries);
     localStorage.setItem('tli_entries', JSON.stringify(entries));
     renderLog();
+    updateSyncBtn();
     document.getElementById('aiInput').value = '';
     const preview = document.getElementById('aiPreview');
-    preview.textContent = '✓ Added to log:\n' + JSON.stringify(parsedArr, null, 2);
+    preview.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>✓ ${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log</strong><button onclick="document.getElementById('aiPreview').classList.remove('visible')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button></div><pre style="margin:0;font-size:11px;overflow-x:auto;white-space:pre-wrap">${JSON.stringify(parsedArr, null, 2)}</pre>`;
     preview.classList.add('visible');
     showToast(`${newEntries.length} ${newEntries.length===1?'entry':'entries'} added to log — review before syncing`);
   } catch(err) {
