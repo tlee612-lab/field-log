@@ -224,9 +224,9 @@
         </div>
         <div id="cfg-ai" class="config-pane">
           <div class="ai-sub-tabs">
-            <button id="ai-sub-tab-anthropic" class="ai-sub-tab" onclick="setAiProviderTab('anthropic', this); saveConfig()">Claude</button>
-            <button id="ai-sub-tab-gemini" class="ai-sub-tab" onclick="setAiProviderTab('gemini', this); saveConfig()">Gemini</button>
-            <button id="ai-sub-tab-openai" class="ai-sub-tab" onclick="setAiProviderTab('openai', this); saveConfig()">ChatGPT</button>
+            <button id="ai-sub-tab-anthropic" class="ai-sub-tab" onclick="setAiProviderTab('anthropic', this)">Claude</button>
+            <button id="ai-sub-tab-gemini" class="ai-sub-tab" onclick="setAiProviderTab('gemini', this)">Gemini</button>
+            <button id="ai-sub-tab-openai" class="ai-sub-tab" onclick="setAiProviderTab('openai', this)">ChatGPT</button>
           </div>
           <div class="config-row">
             <label>Provider</label>
@@ -314,7 +314,6 @@ function setAiProviderTab(providerId, btnElement) {
   const input = document.getElementById('aiInput');
   if (pill) pill.textContent = name;
   if (input) input.placeholder = `Type or paste raw notes, voice-to-text, or a rough summary. ${name} will clean it up and extract fields automatically...`;
-  saveConfig();
 }
 
 function setCfgTab(tabId, btn) {
