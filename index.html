@@ -793,7 +793,7 @@ function showToast(msg, isError=false) {
   t.className = 'toast' + (isError ? ' error' : '');
   void t.offsetWidth;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  setTimeout(() => t.classList.remove('show'), 5000);
 }
 </script>
 </body>
