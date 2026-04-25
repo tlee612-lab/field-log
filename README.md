@@ -162,6 +162,31 @@ Each case gets its own folder and spreadsheet in your Drive folder. Columns:
 
 ---
 
+## Hosting Options
+
+### Option A — Use the shared app (simplest)
+Just open the live URL in your browser. All investigators use the same app but each has their own backend configured in Settings. Any updates pushed to the repo go live for everyone automatically.
+
+```
+https://tlee612-lab.github.io/field-log/
+```
+
+### Option B — Run your own independent copy
+
+If you want full control over your own version (your own URL, your own updates, no dependency on the main repo):
+
+1. Create a new repo on your GitHub account (e.g. `field-log`)
+2. Copy `index.html` and `Code.JS` into it
+3. Go to repo **Settings → Pages → Branch: main → Save**
+4. Your app will be live at `https://YOUR-USERNAME.github.io/field-log/`
+5. Follow the backend setup steps above using your own Drive folder
+
+**To pull updates from the main repo later:**
+- Download the latest `index.html` from [tlee612-lab/field-log](https://github.com/tlee612-lab/field-log)
+- Replace your copy and push — your backend and settings are unaffected
+
+---
+
 ## For Developers
 
 To run locally:
