@@ -4,6 +4,69 @@ A mobile-first field logging app for licensed private investigators. Captures bi
 
 ---
 
+## Quick Start (New User Setup)
+
+Each investigator runs their own backend. Setup takes about 10 minutes.
+
+### Step 1 — Create your Google Drive folder
+
+1. Open [Google Drive](https://drive.google.com)
+2. Create a new folder — name it something like **TLI Auto Log**
+3. Open the folder and copy the folder ID from the URL:
+   ```
+   https://drive.google.com/drive/folders/THIS_PART_IS_YOUR_FOLDER_ID
+   ```
+   Save that ID — you'll need it in the next step.
+
+---
+
+### Step 2 — Deploy the Google Apps Script backend
+
+1. Open [Google Apps Script](https://script.google.com)
+2. Click **New project**
+3. Delete the default code and paste the full contents of [`Code.JS`](Code.JS) from this repo
+4. On line 6, replace the folder ID with your own:
+   ```javascript
+   const AUTO_LOG_FOLDER_ID = 'YOUR_FOLDER_ID_HERE';
+   ```
+5. Click **Save** (Ctrl+S), name the project something like **TLI Field Log**
+6. Click **Deploy → New deployment**
+   - Type: **Web app**
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+7. Click **Deploy** — approve any permission prompts
+8. Copy the **Web app URL** — it looks like:
+   ```
+   https://script.google.com/macros/s/LONG_ID/exec
+   ```
+
+---
+
+### Step 3 — Configure the app
+
+1. Open the app: **https://tlee612-lab.github.io/field-log/**
+2. Tap the **⚙ Settings** button
+3. Under **Cloud Sync**, paste your webhook URL and tap **Save**
+4. Tap **Test** to confirm the connection — you should see ✓ Webhook connected
+5. Under **AI Assist**, pick your AI provider and enter your API key:
+   - **Anthropic (Claude)** — get key at [console.anthropic.com](https://console.anthropic.com)
+   - **Google Gemini** — get key at [aistudio.google.com](https://aistudio.google.com)
+   - **OpenAI (ChatGPT)** — get key at [platform.openai.com](https://platform.openai.com)
+6. Tap **Save Changes**
+
+---
+
+### Step 4 — First entry test
+
+1. Enter your name in the **Investigator** field at the top
+2. Tap **Manual** and fill in a test entry
+3. Tap **LOG ACTIVITY →**
+4. Check your Google Drive folder — a subfolder for the case and a Google Sheet should appear automatically
+
+If no sheet appears, go to Google Apps Script → **Executions** to see if there were any errors.
+
+---
+
 ## Features
 
 ### AI Mode
@@ -30,35 +93,6 @@ A mobile-first field logging app for licensed private investigators. Captures bi
 - Webhook URL configuration with lock/unlock
 - Dev Mode — shows raw JSON parse output for debugging
 - Refresh Cases — pulls case list from Google Drive folder structure
-
----
-
-## Setup
-
-### 1. Deploy the Google Apps Script backend
-
-- Open [Google Apps Script](https://script.google.com)
-- Create a new project and paste the contents of `Code.gs`
-- Set `AUTO_LOG_FOLDER_ID` to your Google Drive folder ID
-- Deploy as a Web App (Execute as: Me, Who has access: Anyone)
-- Copy the deployment URL
-
-### 2. Configure the app
-
-- Open the app in a browser (or on mobile via GitHub Pages)
-- Go to Settings → Cloud Sync
-- Paste your webhook URL and tap Save
-- Go to Settings → AI Assist
-- Select your AI provider and enter your API key
-- Tap Save Changes
-
-### 3. First use
-
-- Tap **AI Mode** to use voice/text dictation
-- Tap **Manual** for form-based entry
-- Fill in Investigator name — it persists across sessions
-- After processing notes, review entries in the log
-- Tap **↑ Sync All** to push entries to Google Sheets
 
 ---
 
@@ -109,6 +143,14 @@ For best results include in your dictated notes:
 
 ---
 
+## Google Sheets Layout
+
+Each case gets its own folder and spreadsheet in your Drive folder. Columns:
+
+| Logged At | Case # | Client Last | Client First | Activity Type | Date | Time | Duration | Quantity | Mileage | From | To | Investigator | Notes |
+
+---
+
 ## Tech Stack
 
 - Vanilla HTML/CSS/JavaScript — no framework, no build step
@@ -117,6 +159,22 @@ For best results include in your dictated notes:
 - Anthropic / Google Gemini / OpenAI — AI parsing
 - localStorage — offline entry queue
 - GitHub Pages — hosting
+
+---
+
+## For Developers
+
+To run locally:
+
+```bash
+git clone https://github.com/tlee612-lab/field-log.git
+cd field-log
+npx serve -p 3000 .
+```
+
+Then open `http://localhost:3000` in your browser.
+
+The entire app is a single file: `index.html`. `Code.JS` is the Google Apps Script backend — it does not run locally, it must be deployed as a Web App via [script.google.com](https://script.google.com).
 
 ---
 
