@@ -28,7 +28,8 @@
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   select option { background: var(--surface2); }
   textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
-  .time-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .time-btns { display: flex; gap: 6px; margin-top: 6px; }
   .picker-wrap { position: relative; display: flex; align-items: center; gap: 6px; }
   .picker-icon { background: var(--surface2); border: 1px solid var(--accent2); border-radius: 20px; color: var(--accent2); font-style: normal; font-size: 14px; padding: 8px 10px; cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
   .now-btn { background: var(--surface2); border: 1px solid var(--accent); border-radius: 20px; color: var(--accent); font-family: var(--ui); font-size: 12px; letter-spacing: 1px; padding: 11px 16px; cursor: pointer; white-space: nowrap; }
@@ -176,8 +177,11 @@
         <span class="picker-icon" onclick="document.getElementById('actTime').showPicker()">🕐</span>
         <input type="time" id="actTime">
       </div>
+      <div class="time-btns">
+        <button class="now-btn" style="flex:1;padding:8px 0" onclick="setToday()">TODAY</button>
+        <button class="now-btn" style="flex:1;padding:8px 0" onclick="setNow()">NOW</button>
+      </div>
     </div>
-    <button class="now-btn" onclick="setNow()">NOW</button>
   </div>
   <div class="field-group" style="margin-bottom:8px; max-width:180px">
     <label id="durationLabel">Duration (mins)</label>
@@ -663,6 +667,9 @@ async function syncPending() {
 renderLog();
 updateSyncBtn();
 
+function setToday() {
+  document.getElementById('actDate').value = new Date().toISOString().slice(0,10);
+}
 function setNow() {
   const now = new Date();
   document.getElementById('actDate').value = now.toISOString().slice(0,10);
