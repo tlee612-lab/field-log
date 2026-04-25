@@ -126,6 +126,9 @@
       <label>Client First Name</label>
       <input type="text" id="clientFirst" placeholder="e.g. John" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false">
     </div>
+    <div class="field-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
+      <button type="button" onclick="clearCaseFields()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">✕ Clear</button>
+    </div>
   </div>
   <div id="manualSection">
   <div class="field-group" style="margin-bottom:8px">
@@ -474,6 +477,11 @@ async function fetchRemoteCases(verbose = false) {
   } catch(e) { if (verbose) showToast('Failed: ' + e.message, true); }
 }
 fetchRemoteCases();
+
+function clearCaseFields() {
+  ['caseNum','clientLast','clientFirst'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('caseNum').focus();
+}
 
 function onCaseInput(val) {
   const match = knownCases.find(p => p.case.toLowerCase() === val.toLowerCase());
