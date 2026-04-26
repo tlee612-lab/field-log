@@ -216,35 +216,11 @@
   </div>
   <div id="oopAddon" style="display:none;margin-bottom:8px;border:1px solid var(--accent2);border-radius:8px;padding:10px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <span style="font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2)">OOP Expense</span>
+      <span style="font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2)">OOP Expenses</span>
       <button type="button" onclick="toggleOopAddon()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
     </div>
-    <div class="quick-row" style="margin-bottom:0">
-      <div class="field-group">
-        <label>OOP Type</label>
-        <select id="oopType">
-          <option value="">— Select —</option>
-          <option>Out of Pocket - Parking &amp; Tolls</option>
-          <option>Out of Pocket - CD/DVD/Discs</option>
-          <option>Out of Pocket - USB/Flash Drive</option>
-          <option>Out of Pocket - Circuit Court Copies</option>
-          <option>Out of Pocket - Discovery Fees</option>
-          <option>Out of Pocket - Process Service (Third-Party)</option>
-          <option>Out of Pocket - Photocopies (B&amp;W)</option>
-          <option>Out of Pocket - Photocopies (Color)</option>
-          <option>Out of Pocket - Photos (3x5 or 4x6)</option>
-          <option>Out of Pocket - Photos (Full Page)</option>
-          <option>Out of Pocket - Postage &amp; Shipping</option>
-          <option>Out of Pocket - Records (Public/Gov)</option>
-          <option>Out of Pocket - Records (Medical/DMV)</option>
-          <option>Out of Pocket - Scanning</option>
-        </select>
-      </div>
-      <div class="field-group" style="max-width:110px">
-        <label>Qty / Amount</label>
-        <input type="number" id="oopQty" placeholder="e.g. 3" step="1" min="0">
-      </div>
-    </div>
+    <div id="oopRows"></div>
+    <button type="button" onclick="addOopRow()" style="background:transparent;border:1px dashed var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 0;border-radius:6px;cursor:pointer;width:100%;margin-top:4px">+ Add Another</button>
   </div>
   <button class="submit-btn" id="submitBtn" onclick="submitEntry()">LOG ACTIVITY →</button>
   </div><!-- end manualSection -->
@@ -980,13 +956,60 @@ function editEntry(id) {
   showToast('Editing entry — make changes and tap Update');
 }
 
+const OOP_OPTIONS = [
+  'Out of Pocket - Parking &amp; Tolls',
+  'Out of Pocket - CD/DVD/Discs',
+  'Out of Pocket - USB/Flash Drive',
+  'Out of Pocket - Circuit Court Copies',
+  'Out of Pocket - Discovery Fees',
+  'Out of Pocket - Process Service (Third-Party)',
+  'Out of Pocket - Photocopies (B&amp;W)',
+  'Out of Pocket - Photocopies (Color)',
+  'Out of Pocket - Photos (3x5 or 4x6)',
+  'Out of Pocket - Photos (Full Page)',
+  'Out of Pocket - Postage &amp; Shipping',
+  'Out of Pocket - Records (Public/Gov)',
+  'Out of Pocket - Records (Medical/DMV)',
+  'Out of Pocket - Scanning'
+];
+let oopRowCount = 0;
+
+function oopOptionsHtml() {
+  return '<option value="">— Type —</option>' + OOP_OPTIONS.map(o => `<option>${o}</option>`).join('');
+}
+
+function addOopRow() {
+  const n = oopRowCount++;
+  const row = document.createElement('div');
+  row.id = 'oopRow_' + n;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 28px;gap:6px;align-items:center;margin-bottom:6px';
+  row.innerHTML = `
+    <select id="oopType_${n}" style="width:100%">${oopOptionsHtml()}</select>
+    <input type="number" id="oopQty_${n}" placeholder="Qty" step="1" min="0" style="width:100%">
+    <button type="button" onclick="removeOopRow(${n})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+  `;
+  document.getElementById('oopRows').appendChild(row);
+}
+
+function removeOopRow(n) {
+  const row = document.getElementById('oopRow_' + n);
+  if (row) row.remove();
+}
+
+function clearOopAddon() {
+  document.getElementById('oopRows').innerHTML = '';
+  document.getElementById('oopAddon').style.display = 'none';
+  document.getElementById('addOopBtnWrap').style.display = 'none';
+  const btn = document.getElementById('addOopBtn');
+  if (btn) btn.textContent = '+ OOP Expense';
+  oopRowCount = 0;
+}
+
 function toggleOopAddon() {
   const addon = document.getElementById('oopAddon');
-  const btn = document.getElementById('addOopBtn');
   const visible = addon.style.display !== 'none';
-  addon.style.display = visible ? 'none' : '';
-  btn.textContent = visible ? '+ Add OOP Expense' : '— Remove OOP Expense';
-  if (visible) { document.getElementById('oopType').value = ''; document.getElementById('oopQty').value = ''; }
+  if (visible) { clearOopAddon(); document.getElementById('addOopBtnWrap').style.display = ''; }
+  else { addon.style.display = ''; addOopRow(); }
 }
 
 function onTypeChange(val) {
@@ -1003,7 +1026,7 @@ function onTypeChange(val) {
   const isInvService = val.startsWith('Investigator Service') && val !== 'Investigator Service - Travel Time';
   document.getElementById('addOopBtnWrap').style.display = isInvService ? '' : 'none';
   // Hide addon panel if type no longer supports it
-  if (!isInvService) { document.getElementById('oopAddon').style.display = 'none'; document.getElementById('oopType').value = ''; document.getElementById('oopQty').value = ''; }
+  if (!isInvService) clearOopAddon();
 }
 
 async function submitEntry() {
@@ -1088,14 +1111,20 @@ async function submitEntry() {
       notes: `Travel: ${document.getElementById('travelFrom').value.trim()} → ${document.getElementById('travelTo').value.trim()}`
     });
   }
-  // OOP add-on: auto-generate second entry for any Investigator Service
-  const oopType = document.getElementById('oopType').value;
-  const oopQty = document.getElementById('oopQty').value;
-  if (oopType && document.getElementById('oopAddon').style.display !== 'none') {
-    toLog.push({ ...base, id: Date.now() + Math.random(), type: oopType,
-      duration: '', mileage: '', quantity: oopQty, travelFrom: '', travelTo: '',
-      notes: oopType.replace('Out of Pocket - ', '') + (oopQty ? ' × ' + oopQty : '') + ' — ' + (base.notes || '').slice(0, 60)
-    });
+  // OOP add-on: generate an entry for each filled OOP row
+  if (document.getElementById('oopAddon').style.display !== 'none') {
+    for (let i = 0; i < oopRowCount; i++) {
+      const typeEl = document.getElementById('oopType_' + i);
+      const qtyEl = document.getElementById('oopQty_' + i);
+      if (!typeEl) continue;
+      const oopType = typeEl.value.replace(/&amp;/g, '&');
+      const oopQty = qtyEl ? qtyEl.value : '';
+      if (!oopType) continue;
+      toLog.push({ ...base, id: Date.now() + Math.random(), type: oopType,
+        duration: '', mileage: '', quantity: oopQty, travelFrom: '', travelTo: '',
+        notes: oopType.replace('Out of Pocket - ', '') + (oopQty ? ' × ' + oopQty : '') + ' — ' + (base.notes || '').slice(0, 60)
+      });
+    }
   }
   btn.innerHTML = '<span class="spinner"></span>Logging...';
   btn.disabled = true;
@@ -1119,11 +1148,8 @@ async function submitEntry() {
   } else { showToast('✓ Logged locally — configure webhook to sync'); }
   localStorage.setItem('tli_entries', JSON.stringify(entries));
   renderLog(); updateSyncBtn();
-  ['actNotes','clientLast','clientFirst','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput','oopType','oopQty'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('oopAddon').style.display = 'none';
-  document.getElementById('addOopBtnWrap').style.display = 'none';
-  const addOopBtn = document.getElementById('addOopBtn');
-  if (addOopBtn) addOopBtn.textContent = '+ Add OOP Expense';
+  ['actNotes','clientLast','clientFirst','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput'].forEach(id => document.getElementById(id).value = '');
+  clearOopAddon();
   document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
   document.getElementById('aiPreview').classList.remove('visible');
   document.getElementById('actType').value = '';
