@@ -348,6 +348,7 @@ let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
 let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]').map(p => ({
   ...p, client: cleanName(p.client), clientFirst: cleanName(p.clientFirst)
 }));
+localStorage.setItem('tli_cases', JSON.stringify(knownCases)); // persist cleaned names
 let recognition;
 
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
