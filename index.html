@@ -217,10 +217,12 @@
   <div id="oopAddon" style="display:none;margin-bottom:8px;border:1px solid var(--accent2);border-radius:8px;padding:10px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span style="font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2)">OOP Expenses</span>
-      <button type="button" onclick="toggleOopAddon()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button type="button" onclick="addOopRow()" style="background:transparent;border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:20px;cursor:pointer">+ Add</button>
+        <button type="button" onclick="toggleOopAddon()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+      </div>
     </div>
     <div id="oopRows"></div>
-    <button type="button" onclick="addOopRow()" style="background:transparent;border:1px dashed var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 0;border-radius:6px;cursor:pointer;width:100%;margin-top:4px">+ Add Another</button>
   </div>
   <button class="submit-btn" id="submitBtn" onclick="submitEntry()">LOG ACTIVITY →</button>
   </div><!-- end manualSection -->
