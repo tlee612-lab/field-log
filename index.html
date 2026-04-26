@@ -508,6 +508,10 @@ function onClientInput(val) {
   }
 }
 
+function cleanName(val) {
+  return (val || '').trim().replace(/^[,\s]+|[,\s]+$/g, '').trim();
+}
+
 function saveKnownCase(caseNum, client, clientFirst) {
   if (!caseNum || !client) return;
   const exists = knownCases.find(p => p.case.toLowerCase() === caseNum.toLowerCase());
@@ -808,8 +812,8 @@ async function aiParse(skipWarning = false) {
     const newEntries = parsedArr.map(ex => ({
       id: Date.now() + Math.random(),
       case: ex.case || '',
-      client: ex.client || '',
-      clientFirst: ex.clientFirst || '',
+      client: cleanName(ex.client),
+      clientFirst: cleanName(ex.clientFirst),
       type: ex.type || '',
       date: ex.date || '',
       time: ex.time || '',
@@ -925,8 +929,8 @@ async function submitEntry() {
     if (idx !== -1) {
       entries[idx] = { ...entries[idx],
         case: document.getElementById('caseNum').value.trim(),
-        client: document.getElementById('clientLast').value.trim(),
-        clientFirst: document.getElementById('clientFirst').value.trim(),
+        client: cleanName(document.getElementById('clientLast').value),
+        clientFirst: cleanName(document.getElementById('clientFirst').value),
         type: typeVal,
         date: document.getElementById('actDate').value,
         time: document.getElementById('actTime').value,
@@ -952,8 +956,8 @@ async function submitEntry() {
   const base = {
     id: Date.now() + Math.random(),
     case: document.getElementById('caseNum').value.trim(),
-    client: document.getElementById('clientLast').value.trim(),
-    clientFirst: document.getElementById('clientFirst').value.trim(),
+    client: cleanName(document.getElementById('clientLast').value),
+    clientFirst: cleanName(document.getElementById('clientFirst').value),
     type: typeVal,
     date: document.getElementById('actDate').value,
     time: document.getElementById('actTime').value,
