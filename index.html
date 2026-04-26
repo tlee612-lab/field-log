@@ -621,6 +621,7 @@ function renderLog() {
           ${e._missing ? `<button onclick="editEntry('${e.id}')" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:3px 10px;border-radius:20px">✏ Fix: ${e._missing.join(', ')}</button>` : ''}
         </div>
         ${e.synced === false && !e._missing ? `<button onclick="syncEntry('${e.id}')" style="background:var(--surface);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
+        ${e.synced !== false ? `<button onclick="resyncEntry('${e.id}')" style="background:none;border:none;color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 6px" title="Force resync to Drive">↑ Resync</button>` : ''}
       </div>
     </div>
   `).join('');
@@ -651,6 +652,19 @@ async function syncEntry(id) {
     updateSyncBtn();
     showToast('✓ Entry synced');
   } catch(err) { showToast('Sync failed — check connection', true); }
+}
+
+async function resyncEntry(id) {
+  const entry = entries.find(e => String(e.id) === String(id));
+  if (!entry) return;
+  if (!cfg.webhookUrl) { showToast('No webhook configured', true); return; }
+  try {
+    await postToWebhook([entry]);
+    entry.synced = true;
+    localStorage.setItem('tli_entries', JSON.stringify(entries));
+    renderLog();
+    showToast('✓ Entry resynced to Drive');
+  } catch(err) { showToast('Resync failed — check connection', true); }
 }
 
 async function syncPending() {
