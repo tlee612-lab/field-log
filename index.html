@@ -658,6 +658,7 @@ async function resyncEntry(id) {
   const entry = entries.find(e => String(e.id) === String(id));
   if (!entry) return;
   if (!cfg.webhookUrl) { showToast('No webhook configured', true); return; }
+  if (!confirm('⚠ Resync may create a duplicate row if the original sync succeeded.\n\nOnly continue if the entry is missing from the sheet.')) return;
   try {
     await postToWebhook([entry]);
     entry.synced = true;
