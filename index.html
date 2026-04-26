@@ -345,7 +345,9 @@ let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","anthr
 if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
 if (!cfg.webhookUrl) cfg.webhookUrl = DEFAULT_WEBHOOK;
 let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
-let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]');
+let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]').map(p => ({
+  ...p, client: cleanName(p.client), clientFirst: cleanName(p.clientFirst)
+}));
 let recognition;
 
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
