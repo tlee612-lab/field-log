@@ -206,11 +206,13 @@
     </div>
   </div>
   <div class="field-group" style="margin-bottom:8px">
-    <label>Notes</label>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <label style="margin-bottom:0">Notes</label>
+      <div id="addOopBtnWrap" style="display:none">
+        <button type="button" id="addOopBtn" onclick="toggleOopAddon()" style="background:transparent;border:1px dashed var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:6px;cursor:pointer">+ OOP Expense</button>
+      </div>
+    </div>
     <textarea id="actNotes" placeholder="Location, observations, contacts, findings..." oninput="enableSubmitBtn()"></textarea>
-  </div>
-  <div id="addOopBtnWrap" style="display:none;margin-bottom:8px">
-    <button type="button" id="addOopBtn" onclick="toggleOopAddon()" style="background:transparent;border:1px dashed var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;border-radius:6px;cursor:pointer;width:100%">+ Add OOP Expense</button>
   </div>
   <div id="oopAddon" style="display:none;margin-bottom:8px;border:1px solid var(--accent2);border-radius:8px;padding:10px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
