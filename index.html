@@ -676,7 +676,7 @@ async function syncPending() {
   if (!pending.length) return;
   const btn = document.getElementById('syncBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Syncing...';
+  btn.innerHTML = `<span class="spinner"></span>${syncQuip()}`;
   try {
     await postToWebhook(pending);
     pending.forEach(e => e.synced = true);
@@ -698,6 +698,25 @@ function setNow() {
   document.getElementById('actTime').value = now.toTimeString().slice(0,5);
 }
 setNow();
+
+const SYNC_QUIPS = [
+  'Bribing the Google servers...',
+  'Teaching the AI to spell subpoena...',
+  'Counting your miles twice, billing once...',
+  'Cross-referencing your alibi...',
+  'Checking if the witness actually showed up...',
+  'Converting coffee to billable hours...',
+  'Syncing before the DA does...',
+  'Making sure you spelled the client\'s name right...',
+  'Uploading evidence of billable activity...',
+  'Verifying you were actually there...',
+  'Confirming the subject did not follow you home...',
+  'Logging hours faster than the attorney reads them...',
+  'Calculating mileage at the speed of justice...',
+  'Filing paperwork so you don\'t have to...',
+  'Notifying Google of your whereabouts...',
+];
+function syncQuip() { return SYNC_QUIPS[Math.floor(Math.random() * SYNC_QUIPS.length)]; }
 
 function cleanSpeechTranscript(text) {
   // Android STT artifact: repeated short tokens like "CR CR CR CR" → "CR"
@@ -1023,7 +1042,7 @@ async function submitEntry() {
   toLog.forEach(e => entries.push(e));
   if (cfg.webhookUrl) {
     try {
-      btn.innerHTML = '<span class="spinner"></span>Syncing to Drive...';
+      btn.innerHTML = `<span class="spinner"></span>${syncQuip()}`;
       await postToWebhook(toLog);
       toLog.forEach(e => { e.synced = true; });
       showToast(isTravel ? '✓ 2 entries logged to Drive' : '✓ Logged to Google Drive');
