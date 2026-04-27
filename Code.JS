@@ -160,6 +160,14 @@ function logEntry(entry) {
   let filedTo = '';
   try {
     const masterSheet = getOrCreateMasterSheet();
+    // Blank separator row when the case changes — keeps the master log readable
+    const mlr = masterSheet.getLastRow();
+    if (mlr > 1) {
+      const prevCase = String(masterSheet.getRange(mlr, 2).getValue()).trim();
+      if (prevCase !== '' && prevCase !== caseNum) {
+        masterSheet.getRange(mlr + 1, 1).setValue(' ');
+      }
+    }
     masterSheet.appendRow([...row, 'PENDING']);
     filedTo = 'PENDING';
   } catch(masterErr) {
@@ -190,6 +198,14 @@ function logEntry(entry) {
   Logger.log('Getting or creating sheet...');
   const sheet = getOrCreateSheet(caseFolder);
   Logger.log('Sheet ready, appending row...');
+  // Blank separator row when the submission batch changes — groups Travel Time + Mileage pairs together
+  const clr = sheet.getLastRow();
+  if (clr > 1) {
+    const prevLogged = String(sheet.getRange(clr, 1).getValue()).trim();
+    if (prevLogged !== '' && prevLogged !== logged) {
+      sheet.getRange(clr + 1, 1).setValue(' ');
+    }
+  }
   sheet.appendRow(row);
   Logger.log('Row appended successfully');
 
@@ -224,7 +240,18 @@ function getOrCreateMasterSheet() {
   // Look for existing master log spreadsheet
   const files = autoLogFolder.getFilesByName(MASTER_LOG_NAME);
   if (files.hasNext()) {
-    return SpreadsheetApp.openById(files.next().getId()).getActiveSheet();
+    const sheet = SpreadsheetApp.openById(files.next().getId()).getActiveSheet();
+    // Add headers if the sheet exists but was created without them
+    if (String(sheet.getRange(1, 1).getValue()) !== 'Logged At') {
+      Logger.log('Master log missing headers — adding now');
+      if (sheet.getLastRow() > 0) sheet.insertRowBefore(1);
+      const hr = sheet.getRange(1, 1, 1, MASTER_HEADERS.length);
+      hr.setValues([MASTER_HEADERS]);
+      hr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+      sheet.setFrozenRows(1);
+      [160,110,120,120,280,90,70,100,80,80,100,100,120,400,220].forEach((w,i) => sheet.setColumnWidth(i+1, w));
+    }
+    return sheet;
   }
   // Create it
   Logger.log('Creating master log spreadsheet...');
