@@ -1,14 +1,21 @@
 /**
  * TLI Field Log - Server Side (Code.gs)
- * Version: 2026.04.24-Stable
+ * Version: 2026.04.27-Stable
  */
 
 const AUTO_LOG_FOLDER_ID = '1Q3BWEfnUoqoPYWFQ0eDeSXGRAjPybQov';
+const MASTER_LOG_NAME = 'Master Activity Log';
 
 const HEADERS = [
   'Logged At', 'Case Number', 'Client Last Name', 'Client First Name', 'Activity Type',
   'Date', 'Time', 'Duration (mins)', 'Quantity', 'Mileage', 'From', 'To',
   'Investigator', 'Notes'
+];
+
+const MASTER_HEADERS = [
+  'Logged At', 'Case Number', 'Client Last Name', 'Client First Name', 'Activity Type',
+  'Date', 'Time', 'Duration (mins)', 'Quantity', 'Mileage', 'From', 'To',
+  'Investigator', 'Notes', 'Filed To'
 ];
 
 function doOptions(e) {
@@ -52,7 +59,7 @@ function doPost(e) {
 
     const body = JSON.parse(raw);
     const reqId = body.reqId || '';
-    const incoming = body.data !== undefined ? body.data : body; // support both {reqId,data:[]} and bare array
+    const incoming = body.data !== undefined ? body.data : body;
 
     if (reqId && !checkAndSetReqId(reqId)) {
       return buildResponse({ status: 'ok', message: 'duplicate request ignored' });
@@ -144,8 +151,22 @@ function logEntry(entry) {
   const notes        = (entry.notes        || '').trim();
   const logged       = (entry.logged       || new Date().toISOString()).trim();
 
+  const row = [logged, caseNum, clientLast, clientFirst, type, date, time,
+               duration, quantity, mileage, travelFrom, travelTo, investigator, notes];
+
   if (!caseNum || !clientLast) throw new Error('case and client are required');
 
+  // Always write to master log first — captures everything regardless of case folder issues
+  let filedTo = '';
+  try {
+    const masterSheet = getOrCreateMasterSheet();
+    masterSheet.appendRow([...row, 'PENDING']);
+    filedTo = 'PENDING';
+  } catch(masterErr) {
+    Logger.log('Master log write failed: ' + masterErr.message);
+  }
+
+  // Attempt case folder + sheet
   Logger.log('Creating/finding folder for case: ' + caseNum);
   const caseFolder = getOrCreateCaseFolder(caseNum, clientLast, clientFirst);
   Logger.log('Folder ready: ' + caseFolder.getName());
@@ -157,21 +178,71 @@ function logEntry(entry) {
     const lastMismatch = existingLast.toLowerCase() !== clientLast.toLowerCase();
     const firstMismatch = existingFirst && clientFirst && existingFirst.toLowerCase() !== clientFirst.toLowerCase();
     if (lastMismatch || firstMismatch) {
-      throw new Error('Name mismatch: ' + caseNum + ' belongs to ' + existingLast + (existingFirst ? ', ' + existingFirst : '') + ' — not ' + clientLast + (clientFirst ? ', ' + clientFirst : ''));
+      const errMsg = 'Name mismatch: ' + caseNum + ' belongs to ' + existingLast +
+        (existingFirst ? ', ' + existingFirst : '') + ' — not ' + clientLast +
+        (clientFirst ? ', ' + clientFirst : '');
+      // Update master log row status to the error
+      updateMasterLogStatus(logged, caseNum, 'ERROR: ' + errMsg);
+      throw new Error(errMsg);
     }
   }
 
   Logger.log('Getting or creating sheet...');
   const sheet = getOrCreateSheet(caseFolder);
   Logger.log('Sheet ready, appending row...');
-  sheet.appendRow([logged, caseNum, clientLast, clientFirst, type, date, time, duration, quantity, mileage, travelFrom, travelTo, investigator, notes]);
+  sheet.appendRow(row);
   Logger.log('Row appended successfully');
 
-  const folderName = caseFolder.getName();
-  const fParts = folderName.split(' - ');
-  const existingClientPart = fParts.length >= 2 ? fParts.slice(1).join(' - ').trim() : clientLast;
-  const existingClient = existingClientPart.split(',')[0].trim();
-  return { case: caseNum, client: clientLast, folder: folderName, existingClient };
+  // Update master log Filed To column with the actual folder name
+  filedTo = caseFolder.getName();
+  updateMasterLogStatus(logged, caseNum, filedTo);
+
+  return { case: caseNum, client: clientLast, folder: filedTo };
+}
+
+// Updates the 'Filed To' column on the most recent master log row matching logged+caseNum
+function updateMasterLogStatus(logged, caseNum, status) {
+  try {
+    const masterSheet = getOrCreateMasterSheet();
+    const lastRow = masterSheet.getLastRow();
+    if (lastRow < 2) return;
+    // Search from bottom up for the matching row
+    const data = masterSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (String(data[i][0]) === String(logged) && String(data[i][1]) === String(caseNum)) {
+        masterSheet.getRange(i + 2, MASTER_HEADERS.length).setValue(status);
+        return;
+      }
+    }
+  } catch(e) {
+    Logger.log('updateMasterLogStatus failed: ' + e.message);
+  }
+}
+
+function getOrCreateMasterSheet() {
+  const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+  // Look for existing master log spreadsheet
+  const files = autoLogFolder.getFilesByName(MASTER_LOG_NAME);
+  if (files.hasNext()) {
+    return SpreadsheetApp.openById(files.next().getId()).getActiveSheet();
+  }
+  // Create it
+  Logger.log('Creating master log spreadsheet...');
+  const ss = SpreadsheetApp.create(MASTER_LOG_NAME);
+  const file = DriveApp.getFileById(ss.getId());
+  autoLogFolder.addFile(file);
+  DriveApp.getRootFolder().removeFile(file);
+  const sheet = ss.getActiveSheet();
+  sheet.setName('All Entries');
+  sheet.appendRow(MASTER_HEADERS);
+  const hr = sheet.getRange(1, 1, 1, MASTER_HEADERS.length);
+  hr.setFontWeight('bold');
+  hr.setBackground('#1c2030');
+  hr.setFontColor('#00c8a0');
+  sheet.setFrozenRows(1);
+  [160,110,120,120,280,90,70,100,80,80,100,100,120,400,220].forEach((w,i) => sheet.setColumnWidth(i+1, w));
+  Logger.log('Master log created');
+  return sheet;
 }
 
 function getOrCreateCaseFolder(caseNum, clientLast, clientFirst) {
@@ -231,7 +302,7 @@ function testLogEntry() {
     client: 'TestClient',
     clientFirst: 'John',
     type: 'Investigator Service - Case Consultation',
-    date: '2026-04-24',
+    date: '2026-04-27',
     time: '09:00',
     duration: '60',
     quantity: '',
