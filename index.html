@@ -73,10 +73,14 @@
   .sync-btn { width: 100%; background: transparent; border: 1px solid var(--warn); border-radius: 8px; color: var(--warn); font-family: var(--ui); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 12px; cursor: pointer; margin-top: 10px; display: none; transition: background 0.2s; }
   .sync-btn:active { background: rgba(255,107,53,0.15); }
   .config-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-top: 8px; }
-  .config-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .config-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
   .config-row:last-child { margin-bottom: 0; }
-  .config-row input { flex: 1; }
+  .config-row input { flex: 1; min-width: 0; }
   .config-row label { font-family: var(--ui); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); white-space: nowrap; min-width: 80px; }
+  .key-row { flex-wrap: wrap; }
+  .key-row label { width: 100%; margin-bottom: 2px; }
+  .key-row input { flex: 1; min-width: 0; }
+  .key-char-count { font-size: 10px; color: var(--muted); width: 100%; margin-top: 2px; letter-spacing: 0; text-transform: none; font-family: var(--ui); }
   details summary { cursor: pointer; font-family: var(--ui); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); background: var(--surface2); border: 1px solid var(--accent2); border-radius: 20px; padding: 8px 16px; list-style: none; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
   details summary::-webkit-details-marker { display: none; }
   details[open] summary { color: var(--accent); border-color: var(--accent); }
@@ -303,27 +307,30 @@
           </div>
           <div id="ai-sub-panes">
             <div id="ai-sub-pane-anthropic" class="ai-sub-pane">
-              <div class="config-row" id="anthropicKeyRow">
+              <div class="config-row key-row" id="anthropicKeyRow">
                 <label>API Key</label>
-                <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="off" class="ai-key-input">
+                <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="new-password" class="ai-key-input" oninput="updateKeyCount('anthropicKey','anthropicKeyCount')">
                 <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('anthropicKey')">👁</button>
                 <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+                <span class="key-char-count" id="anthropicKeyCount"></span>
               </div>
             </div>
             <div id="ai-sub-pane-gemini" class="ai-sub-pane">
-              <div class="config-row" id="geminiKeyRow">
+              <div class="config-row key-row" id="geminiKeyRow">
                 <label>API Key</label>
-                <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="off" class="ai-key-input">
+                <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="new-password" class="ai-key-input" oninput="updateKeyCount('geminiKey','geminiKeyCount')">
                 <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('geminiKey')">👁</button>
                 <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+                <span class="key-char-count" id="geminiKeyCount"></span>
               </div>
             </div>
             <div id="ai-sub-pane-openai" class="ai-sub-pane">
-              <div class="config-row" id="openaiKeyRow">
+              <div class="config-row key-row" id="openaiKeyRow">
                 <label>API Key</label>
-                <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="off" class="ai-key-input">
+                <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="new-password" class="ai-key-input" oninput="updateKeyCount('openaiKey','openaiKeyCount')">
                 <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('openaiKey')">👁</button>
                 <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+                <span class="key-char-count" id="openaiKeyCount"></span>
               </div>
             </div>
           </div>
@@ -371,9 +378,18 @@ localStorage.setItem('tli_cases', JSON.stringify(knownCases)); // persist cleane
 let recognition;
 
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
-if (document.getElementById('anthropicKey')) document.getElementById('anthropicKey').value = cfg.anthropicKey || '';
-if (document.getElementById('geminiKey')) document.getElementById('geminiKey').value = cfg.geminiKey || '';
-if (document.getElementById('openaiKey')) document.getElementById('openaiKey').value = cfg.openaiKey || '';
+if (document.getElementById('anthropicKey')) { document.getElementById('anthropicKey').value = cfg.anthropicKey || ''; updateKeyCount('anthropicKey','anthropicKeyCount'); }
+if (document.getElementById('geminiKey'))    { document.getElementById('geminiKey').value    = cfg.geminiKey    || ''; updateKeyCount('geminiKey','geminiKeyCount'); }
+if (document.getElementById('openaiKey'))    { document.getElementById('openaiKey').value    = cfg.openaiKey    || ''; updateKeyCount('openaiKey','openaiKeyCount'); }
+
+function updateKeyCount(inputId, countId) {
+  const el = document.getElementById(inputId);
+  const ct = document.getElementById(countId);
+  if (!el || !ct) return;
+  const len = el.value.length;
+  ct.textContent = len ? len + ' characters' : '';
+  ct.style.color = len > 0 && len < 20 ? 'var(--warn)' : 'var(--muted)';
+}
 if (document.getElementById('aiProvider')) document.getElementById('aiProvider').value = cfg.aiProvider || 'anthropic';
 if (document.getElementById('devMode')) document.getElementById('devMode').checked = cfg.devMode || false;
 
