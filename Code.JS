@@ -33,6 +33,7 @@ function doGet(e) {
       return buildResponse({ status: 'ok', message: 'TLI Field Log webhook is live' });
     }
     if (action === 'getCases') return buildResponse(getCases());
+    if (action === 'verifyLog') return buildResponse(verifyLog());
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
       const reqId = e.parameter.reqId || '';
@@ -294,6 +295,83 @@ function getOrCreateSheet(caseFolder) {
   [160,110,120,120,280,90,70,100,80,80,100,100,120,400].forEach((w,i) => sheet.setColumnWidth(i+1, w));
   Logger.log('Sheet setup complete');
   return sheet;
+}
+
+function verifyLog() {
+  try {
+    const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+
+    // Read Master Log
+    const masterFiles = autoLogFolder.getFilesByName(MASTER_LOG_NAME);
+    if (!masterFiles.hasNext()) {
+      return { status: 'ok', masterCount: 0, caseSheetCount: 0, casesChecked: 0,
+               discrepancies: [], message: 'Master log not found — sync an entry first' };
+    }
+    const masterSheet = SpreadsheetApp.openById(masterFiles.next().getId()).getActiveSheet();
+    const masterData = masterSheet.getLastRow() > 1
+      ? masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, MASTER_HEADERS.length).getValues()
+      : [];
+
+    const masterEntries = masterData.map(r => ({
+      logged: String(r[0]), case: String(r[1]), client: String(r[2]),
+      clientFirst: String(r[3]), type_: String(r[4]), date: String(r[5]),
+      time: String(r[6]), investigator: String(r[12]), notes: String(r[13]),
+      filedTo: String(r[14] || ''),
+      key: [String(r[0]), String(r[1]), String(r[4]), String(r[12])].join('|')
+    }));
+
+    // Read each case sheet
+    const caseSheetEntries = [];
+    const casesChecked = new Set();
+    const folders = autoLogFolder.getFolders();
+    while (folders.hasNext()) {
+      const folder = folders.next();
+      const folderName = folder.getName();
+      const parts = folderName.split(' - ');
+      if (parts.length < 2) continue;
+      const caseNum = parts[0].trim();
+      const files = folder.getFiles();
+      while (files.hasNext()) {
+        const file = files.next();
+        if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
+        try {
+          const ss = SpreadsheetApp.openById(file.getId());
+          const sheet = ss.getActiveSheet();
+          if (sheet.getLastRow() < 2) continue;
+          const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.length).getValues();
+          casesChecked.add(caseNum);
+          data.forEach(r => {
+            caseSheetEntries.push({
+              logged: String(r[0]), case: String(r[1]), client: String(r[2]),
+              clientFirst: String(r[3]), type_: String(r[4]), date: String(r[5]),
+              time: String(r[6]), investigator: String(r[12]), notes: String(r[13]),
+              key: [String(r[0]), String(r[1]), String(r[4]), String(r[12])].join('|')
+            });
+          });
+        } catch(e) { Logger.log('Could not read sheet in ' + folderName + ': ' + e.message); }
+        break;
+      }
+    }
+
+    // Compare
+    const masterKeys = new Set(masterEntries.map(e => e.key));
+    const caseKeys   = new Set(caseSheetEntries.map(e => e.key));
+    const discrepancies = [];
+    masterEntries.forEach(e => {
+      if (!e.filedTo.startsWith('ERROR') && !caseKeys.has(e.key))
+        discrepancies.push({ ...e, type: 'missing-case' });
+    });
+    caseSheetEntries.forEach(e => {
+      if (!masterKeys.has(e.key))
+        discrepancies.push({ ...e, type: 'missing-master' });
+    });
+
+    return { status: 'ok', masterCount: masterEntries.length,
+             caseSheetCount: caseSheetEntries.length,
+             casesChecked: casesChecked.size, discrepancies };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
 }
 
 function testLogEntry() {
