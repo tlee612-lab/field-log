@@ -725,14 +725,27 @@ renderLog();
 updateSyncBtn();
 
 function setToday() {
-  document.getElementById('actDate').value = new Date().toISOString().slice(0,10);
+  const d = new Date().toISOString().slice(0,10);
+  document.getElementById('actDate').value = d;
+  localStorage.setItem('tli_last_date', d);
 }
 function setNow() {
   const now = new Date();
-  document.getElementById('actDate').value = now.toISOString().slice(0,10);
+  const d = now.toISOString().slice(0,10);
+  document.getElementById('actDate').value = d;
   document.getElementById('actTime').value = now.toTimeString().slice(0,5);
+  localStorage.setItem('tli_last_date', d);
 }
-setNow();
+// Persist date whenever the user changes it manually
+document.getElementById('actDate').addEventListener('change', function() {
+  if (this.value) localStorage.setItem('tli_last_date', this.value);
+});
+// On load: restore last picked date, fall back to today
+(function() {
+  const now = new Date();
+  document.getElementById('actDate').value = localStorage.getItem('tli_last_date') || now.toISOString().slice(0,10);
+  document.getElementById('actTime').value = now.toTimeString().slice(0,5);
+})();
 
 const SYNC_QUIPS = [
   'Bribing the Google servers...',
