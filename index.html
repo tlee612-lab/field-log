@@ -517,7 +517,12 @@ function minutesToTenths(totalMinutes) {
 }
 
 // PAE data store keyed by case number
-let paeStore = JSON.parse(localStorage.getItem('tli_pae_store') || '{}');
+let paeStore = (() => {
+  const raw = JSON.parse(localStorage.getItem('tli_pae_store') || '{}');
+  // Normalize any old single-object entries to arrays
+  Object.keys(raw).forEach(k => { if (!Array.isArray(raw[k])) raw[k] = [raw[k]]; });
+  return raw;
+})();
 function savePaeStore() { localStorage.setItem('tli_pae_store', JSON.stringify(paeStore)); }
 let _lastParsedPae = null; // holds most recently parsed PAE for Create Case button
 
