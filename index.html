@@ -114,7 +114,7 @@
     <button id="modePae" onclick="openPaeModal()"
             style="flex:1;padding:12px 14px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;white-space:nowrap"
             title="Import PAE PDF — fills case #, client, and authorized hours">📋 PAE</button>
-    <input type="file" id="paeFileInput" accept="application/pdf" style="display:none" onchange="closePaeModal();handlePaeFile(this.files[0]);this.value=''">
+    <input type="file" id="paeFileInput" accept="application/pdf" style="display:none" onchange="handlePaeFile(this.files[0]);this.value=''">
   </div>
   <div class="section-label">Quick Entry</div>
   <div class="field-group" style="margin-bottom:8px">
@@ -390,14 +390,17 @@
     <div id="paeDropZone"
          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
          ondragleave="this.style.borderColor='var(--border)'"
-         ondrop="event.preventDefault();this.style.borderColor='var(--border)';closePaeModal();handlePaeFile(event.dataTransfer.files[0])"
-         style="border:2px dashed var(--border);border-radius:8px;padding:32px 16px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:12px"
+         ondrop="event.preventDefault();this.style.borderColor='var(--border)';handlePaeFile(event.dataTransfer.files[0])"
+         style="border:2px dashed var(--border);border-radius:8px;padding:24px 16px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:12px"
          onclick="document.getElementById('paeFileInput').click()">
       <div style="font-size:28px;margin-bottom:8px">📄</div>
       Drop PAE PDF here<br>
       <span style="color:var(--accent);text-decoration:underline">or tap to select a file</span>
     </div>
-    <div style="font-size:11px;color:var(--muted);text-align:center">Fills Case #, Client Name, and Authorized Hours</div>
+    <!-- Accumulated PAE list shown after each drop -->
+    <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
+    <button id="paeDoneBtn" onclick="closePaeModal()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
+    <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
   </div>
 </div>
 <script>
@@ -560,7 +563,6 @@ async function handlePaeFile(file) {
     if (filled.length > 0) {
       // Store PAE data keyed by case number
       if (parsed.caseNumber) {
-        // Accumulate PAEs per case — avoid duplicates by auth number
         const rawExisting = paeStore[parsed.caseNumber];
         const existing = Array.isArray(rawExisting) ? rawExisting : (rawExisting ? [rawExisting] : []);
         const isDupe = parsed.authNumber && existing.some(p => p.authNumber === parsed.authNumber);
@@ -578,9 +580,25 @@ async function handlePaeFile(file) {
       infoEl.textContent = '📋 ' + filled.join(' · ') + hrsLabel + countLabel + attLabel + authLabel;
       infoEl.style.display = 'block';
       createEl.style.display = 'block';
-      // Show hours bar with local data then fetch from sheet
       if (parsed.caseNumber) showCaseHours(parsed.caseNumber);
-      showToast('✓ PAE imported');
+
+      // Update the modal list — keep modal open for more drops
+      const listEl = document.getElementById('paeModalList');
+      const doneBtn = document.getElementById('paeDoneBtn');
+      const hintEl = document.getElementById('paeModalHint');
+      if (listEl) {
+        listEl.style.display = 'block';
+        listEl.innerHTML = allPaes.map((p, i) =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:5px;background:${i%2===0?'var(--surface2)':'transparent'};font-size:11px;font-family:var(--ui)">
+            <span style="color:var(--accent)">PAE #${p.authNumber || '—'}</span>
+            <span style="color:var(--muted)">${p.hours ? p.hours + ' hrs' : ''}</span>
+            <span style="color:var(--text)">${p.effectiveDate || ''} – ${p.expirationDate || ''}</span>
+          </div>`
+        ).join('');
+        if (doneBtn) doneBtn.style.display = 'block';
+        if (hintEl) hintEl.textContent = 'Drop another PAE or tap Done';
+      }
+      showToast('✓ PAE imported' + (allPaes.length > 1 ? ` (${allPaes.length} total)` : ''));
     } else {
       showToast('Could not read case info from PDF', true);
     }

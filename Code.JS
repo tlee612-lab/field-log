@@ -652,20 +652,28 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
  * Returns the count of rows actually added.
  */
 function addPaesToSummarySheet(sheet, paes) {
-  // Collect existing authNumbers from rows 6+
-  const lastRow = sheet.getLastRow();
+  // PAE data lives in rows 6–50. Billing chart starts at row 57.
+  // Scan only rows 6–50 so getLastRow() (which sees the chart rows) doesn't push PAEs to row 70+.
+  const PAE_DATA_START = 6;
+  const PAE_DATA_END   = 50;
+  const paeZone = sheet.getRange(PAE_DATA_START, 1, PAE_DATA_END - PAE_DATA_START + 1, 1).getValues();
+
   const existingAuthNums = new Set();
-  if (lastRow >= 6) {
-    const existing = sheet.getRange(6, 1, lastRow - 5, 1).getValues();
-    existing.forEach(r => { if (r[0]) existingAuthNums.add(String(r[0]).trim()); });
-  }
+  let lastPaeRow = PAE_DATA_START - 1; // one before first data slot
+
+  paeZone.forEach((r, i) => {
+    if (r[0] !== '' && r[0] !== null) {
+      existingAuthNums.add(String(r[0]).trim());
+      lastPaeRow = PAE_DATA_START + i;
+    }
+  });
 
   let added = 0;
   paes.forEach(p => {
     const authNum = String(p.authNumber || '').trim();
     if (authNum && existingAuthNums.has(authNum)) return; // skip duplicate
 
-    const nextRow = Math.max(6, lastRow + 1 + added);
+    const nextRow = lastPaeRow + 1 + added;
     sheet.getRange(nextRow, 1).setValue(authNum || '—');
     sheet.getRange(nextRow, 2).setValue(parseFloat(p.hours)        || '');
     sheet.getRange(nextRow, 3).setValue(parseFloat(p.approvedRate) || '');
