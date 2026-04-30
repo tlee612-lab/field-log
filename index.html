@@ -77,10 +77,11 @@
   .config-row:last-child { margin-bottom: 0; }
   .config-row input { flex: 1; min-width: 0; }
   .config-row label { font-family: var(--ui); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); white-space: nowrap; min-width: 80px; }
-  .key-row { flex-wrap: wrap; }
-  .key-row label { width: 100%; margin-bottom: 2px; }
-  .key-row input { flex: 1; min-width: 0; }
-  .key-char-count { font-size: 10px; color: var(--muted); width: 100%; margin-top: 2px; letter-spacing: 0; text-transform: none; font-family: var(--ui); }
+  .key-row { display: flex; flex-direction: column; gap: 6px; }
+  .key-row label { width: 100%; }
+  .key-row input { width: 100%; box-sizing: border-box; }
+  .key-row-btns { display: flex; gap: 8px; align-items: center; }
+  .key-char-count { font-size: 10px; color: var(--muted); margin-left: auto; letter-spacing: 0; text-transform: none; font-family: var(--ui); white-space: nowrap; }
   details summary { cursor: pointer; font-family: var(--ui); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); background: var(--surface2); border: 1px solid var(--accent2); border-radius: 20px; padding: 8px 16px; list-style: none; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
   details summary::-webkit-details-marker { display: none; }
   details[open] summary { color: var(--accent); border-color: var(--accent); }
@@ -312,30 +313,36 @@
           </div>
           <div id="ai-sub-panes">
             <div id="ai-sub-pane-anthropic" class="ai-sub-pane">
-              <div class="config-row key-row" id="anthropicKeyRow">
-                <label>API Key</label>
-                <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('anthropicKey','anthropicKeyCount')">
-                <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('anthropicKey')">👁</button>
-                <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
-                <span class="key-char-count" id="anthropicKeyCount"></span>
+              <div class="key-row" id="anthropicKeyRow">
+                <label style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">API Key</label>
+                <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('anthropicKey','anthropicKeyCount')" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:monospace;font-size:13px">
+                <div class="key-row-btns">
+                  <button class="ai-btn secondary" style="padding:8px 14px" onclick="togglePassword('anthropicKey')">👁 Show</button>
+                  <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 14px;cursor:pointer">🔒 Locked</button>
+                  <span class="key-char-count" id="anthropicKeyCount"></span>
+                </div>
               </div>
             </div>
             <div id="ai-sub-pane-gemini" class="ai-sub-pane">
-              <div class="config-row key-row" id="geminiKeyRow">
-                <label>API Key</label>
-                <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('geminiKey','geminiKeyCount')">
-                <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('geminiKey')">👁</button>
-                <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
-                <span class="key-char-count" id="geminiKeyCount"></span>
+              <div class="key-row" id="geminiKeyRow">
+                <label style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">API Key</label>
+                <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('geminiKey','geminiKeyCount')" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:monospace;font-size:13px">
+                <div class="key-row-btns">
+                  <button class="ai-btn secondary" style="padding:8px 14px" onclick="togglePassword('geminiKey')">👁 Show</button>
+                  <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 14px;cursor:pointer">🔒 Locked</button>
+                  <span class="key-char-count" id="geminiKeyCount"></span>
+                </div>
               </div>
             </div>
             <div id="ai-sub-pane-openai" class="ai-sub-pane">
-              <div class="config-row key-row" id="openaiKeyRow">
-                <label>API Key</label>
-                <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('openaiKey','openaiKeyCount')">
-                <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('openaiKey')">👁</button>
-                <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
-                <span class="key-char-count" id="openaiKeyCount"></span>
+              <div class="key-row" id="openaiKeyRow">
+                <label style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">API Key</label>
+                <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('openaiKey','openaiKeyCount')" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:monospace;font-size:13px">
+                <div class="key-row-btns">
+                  <button class="ai-btn secondary" style="padding:8px 14px" onclick="togglePassword('openaiKey')">👁 Show</button>
+                  <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 14px;cursor:pointer">🔒 Locked</button>
+                  <span class="key-char-count" id="openaiKeyCount"></span>
+                </div>
               </div>
             </div>
           </div>
