@@ -346,8 +346,9 @@
               </div>
             </div>
           </div>
-          <div style="margin-top:12px">
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
             <button class="ai-btn secondary" style="max-width:160px" onclick="testAiConnection(this)">Test Connection</button>
+            <div id="keyDebug" style="display:none;font-family:monospace;font-size:11px;color:var(--muted);word-break:break-all;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px"></div>
           </div>
         </div>
         <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center">
@@ -742,6 +743,8 @@ async function testAiConnection(btn) {
   const provider = document.getElementById('aiProvider').value;
   const key = sanitizeKey(document.getElementById(provider + 'Key').value);
   if (!key) { showToast('API key required', true); return; }
+  const dbg = document.getElementById('keyDebug');
+  if (dbg) { dbg.style.display = 'block'; dbg.textContent = `Sending: ${key.length} chars · starts: ${key.slice(0,10)} · ends: …${key.slice(-6)}`; }
   const originalLabel = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span>Testing...';
   btn.disabled = true;
@@ -767,7 +770,7 @@ async function testAiConnection(btn) {
     if (!res.ok) {
       let errMsg = `${provider.toUpperCase()} Error ${res.status}`;
       try { const ed = await res.json(); errMsg = ed.error?.message || errMsg; } catch(e) {}
-      throw new Error(`${errMsg} [${key.length}ch: ${key.slice(0,8)}…${key.slice(-4)}]`);
+      throw new Error(errMsg);
     }
     showToast(`✓ ${provider.charAt(0).toUpperCase() + provider.slice(1)} connected!`);
   } catch (err) { showToast(err.message, true); }
