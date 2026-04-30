@@ -1321,7 +1321,7 @@ async function aiParse(skipWarning = false) {
       clientFirst: cleanName(ex.clientFirst),
       type: ex.type || '',
       date: ex.date || '',
-      time: ex.time || '',
+      time: ex.time || new Date().toTimeString().slice(0,5),
       duration: ex.duration || '',
       quantity: ex.quantity || '',
       mileage: ex.mileage || '',
