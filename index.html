@@ -314,7 +314,7 @@
             <div id="ai-sub-pane-anthropic" class="ai-sub-pane">
               <div class="config-row key-row" id="anthropicKeyRow">
                 <label>API Key</label>
-                <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="new-password" class="ai-key-input" oninput="updateKeyCount('anthropicKey','anthropicKeyCount')">
+                <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('anthropicKey','anthropicKeyCount')">
                 <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('anthropicKey')">👁</button>
                 <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
                 <span class="key-char-count" id="anthropicKeyCount"></span>
@@ -323,7 +323,7 @@
             <div id="ai-sub-pane-gemini" class="ai-sub-pane">
               <div class="config-row key-row" id="geminiKeyRow">
                 <label>API Key</label>
-                <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="new-password" class="ai-key-input" oninput="updateKeyCount('geminiKey','geminiKeyCount')">
+                <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('geminiKey','geminiKeyCount')">
                 <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('geminiKey')">👁</button>
                 <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
                 <span class="key-char-count" id="geminiKeyCount"></span>
@@ -332,7 +332,7 @@
             <div id="ai-sub-pane-openai" class="ai-sub-pane">
               <div class="config-row key-row" id="openaiKeyRow">
                 <label>API Key</label>
-                <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="new-password" class="ai-key-input" oninput="updateKeyCount('openaiKey','openaiKeyCount')">
+                <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" class="ai-key-input" oninput="updateKeyCount('openaiKey','openaiKeyCount')">
                 <button class="ai-btn secondary" style="padding:8px; min-width:40px" onclick="togglePassword('openaiKey')">👁</button>
                 <button class="ai-key-lock-btn" onclick="toggleAiKeyLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
                 <span class="key-char-count" id="openaiKeyCount"></span>
