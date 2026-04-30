@@ -553,45 +553,15 @@ function openPaeModal() {
 async function handlePaeImage(imageFile) {
   if (!imageFile) return;
 
-  // Show modal to choose OCR method
+  // Simple choice prompt instead of complex modal
+  const hasAnthropicKey = cfg.anthropicKey ? true : false;
   const choice = await new Promise((resolve) => {
-    window._paeOcrResolve = resolve; // Store resolve function globally
-    const hasAnthropicKey = cfg.anthropicKey ? true : false;
-    const html = `
-      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(90vw,340px)">
-          <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:16px">Extract Text Method</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <button id="paeOcrLocal" style="padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
-              🔍 Local OCR (Free, Private)
-            </button>
-            ${hasAnthropicKey ? `<button id="paeOcrClaude" style="padding:12px;border-radius:8px;border:2px solid var(--accent2);background:var(--surface2);color:var(--accent2);font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
-              📸 Claude Vision (Fast)
-            </button>` : '<div style="font-size:11px;color:var(--muted);text-align:center;padding:12px;border:1px solid var(--border);border-radius:8px">⚠ Add Anthropic API key in Settings to use Claude Vision</div>'}
-            <button id="paeOcrCancel" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>`;
-    const modal = document.createElement('div');
-    modal.setAttribute('data-pae-choice', '1');
-    modal.innerHTML = html;
-    document.body.appendChild(modal);
-
-    // Attach event listeners
-    document.getElementById('paeOcrLocal')?.addEventListener('click', () => {
-      modal.remove();
-      window._paeOcrResolve('local');
-    });
-    document.getElementById('paeOcrClaude')?.addEventListener('click', () => {
-      modal.remove();
-      window._paeOcrResolve('claude');
-    });
-    document.getElementById('paeOcrCancel')?.addEventListener('click', () => {
-      modal.remove();
-      window._paeOcrResolve(null);
-    });
+    setTimeout(() => {
+      const selected = hasAnthropicKey
+        ? confirm('Use Claude Vision for fast extraction?\n\nOK = Claude Vision\nCancel = Local OCR (free, slower)')
+        : 'local';
+      resolve(selected === true ? 'claude' : (selected === false ? 'local' : null));
+    }, 100);
   });
 
   if (!choice) return; // User cancelled
