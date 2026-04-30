@@ -140,7 +140,11 @@
       <button type="button" onclick="clearCaseFields()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">✕ Clear</button>
     </div>
   </div>
-  <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--accent)"></div>
+  <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:var(--accent)"></div>
+  <div id="paeCreateBtn" style="display:none;margin-bottom:8px">
+    <button type="button" onclick="createCaseFromPae()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
+  </div>
+  <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-family:var(--ui)"></div>
   <div id="manualSection">
   <div class="field-group" style="margin-bottom:8px">
     <label>Activity Type</label>
@@ -433,34 +437,89 @@ function parsePaeText(text) {
   const flat = String(text || '').replace(/\s+/g, ' ').trim();
   const result = {};
 
+  // Authorization number
+  const auth = flat.match(/Authorization\s+No[:\s]*([0-9]+)/i);
+  if (auth) result.authNumber = auth[1].trim();
+
   // Case number
-  const cn = flat.match(/\b(?:Case|Court)\s*(?:No\.?|#|Number)[:\s]+([A-Z0-9\-]{4,20})/i)
-          || flat.match(/\b(?:Case)\s*(?:No\.?|#|Number)?[:\s]+([A-Z0-9\-]*[0-9][A-Z0-9\-]*)/i);
+  const cn = flat.match(/\bCase\s*#[:\s]+([A-Z0-9\-]{4,20})/i)
+          || flat.match(/\bCase\s*(?:No\.?|Number)[:\s]+([A-Z0-9\-]*[0-9][A-Z0-9\-]*)/i);
   if (cn) result.caseNumber = cn[1].trim();
 
-  // Client name — "Client: Last, First" or "Client: First Last"
-  const clientRaw = flat.match(/\bClient(?:\s*Name)?\s*[:\-]?\s*([A-Za-z][A-Za-z,\.\s\-']{2,60}?)(?=\s*(?:Case|County|Attorney|Authorization|Auth|PAE|Court|Funding|$))/i);
+  // County
+  const county = flat.match(/\bCounty[:\s]+([A-Za-z]+)/i);
+  if (county) result.county = county[1].trim();
+
+  // Client name — "Client: First Last"
+  const clientRaw = flat.match(/\bClient[:\s]+([A-Za-z][A-Za-z\s\-'\.]{2,50}?)(?=\s*(?:Case\s*#|County|Attorney|Authorization|$))/i);
   if (clientRaw) {
     const raw = clientRaw[1].replace(/\s+/g, ' ').trim();
-    // "Last, First" format
     const commaMatch = raw.match(/^([A-Za-z\-']+),\s*([A-Za-z\-']+)/);
     if (commaMatch) {
       result.clientLast = commaMatch[1].trim();
       result.clientFirst = commaMatch[2].trim();
     } else {
-      // "First Last" format
       const parts = raw.split(/\s+/);
       result.clientFirst = parts[0] || '';
       result.clientLast = parts[parts.length - 1] || '';
     }
   }
 
+  // Attorney
+  const att = flat.match(/\bAttorney[:\s]+([A-Za-z][A-Za-z\s\-'\.]{2,50}?)(?=\s*(?:Authorization|Total|Authorized|Effective|$))/i);
+  if (att) result.attorney = att[1].replace(/\s+/g, ' ').trim();
+
   // Maximum hours / authorized quantity
-  const hrs = flat.match(/(?:Maximum\s+Quantity|Max(?:imum)?\s+Hours?|Quantity)[:\s]*([0-9]+(?:\.[0-9]+)?)/i);
+  const hrs = flat.match(/Maximum\s+Quantity[:\s]*([0-9]+(?:\.[0-9]+)?)/i);
   if (hrs) result.hours = hrs[1].trim();
+
+  // Approved rate
+  const rate = flat.match(/Approved\s+Rate[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
+  if (rate) result.approvedRate = rate[1].replace(/,/g,'').trim();
+
+  // Authorized service amount
+  const svc = flat.match(/Authorized\s+Service\s+Amount\s+Not\s+to\s+Exceed[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
+  if (svc) result.serviceAmount = svc[1].replace(/,/g,'').trim();
+
+  // Est. travel costs
+  const trav = flat.match(/Est\.?\s*Travel\s+Costs?[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
+  if (trav) result.travelCosts = trav[1].replace(/,/g,'').trim();
+
+  // Total authorized costs
+  const total = flat.match(/Total\s+Authorized\s+Costs?[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
+  if (total) result.totalCosts = total[1].replace(/,/g,'').trim();
+
+  // Effective date
+  const eff = flat.match(/Effective\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  if (eff) result.effectiveDate = eff[1].trim();
+
+  // Expiration date
+  const exp = flat.match(/Expiration\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  if (exp) result.expirationDate = exp[1].trim();
 
   return result;
 }
+
+// Billing chart lookup: minutes → tenths of hours (OPDC standard)
+const BILLING_BREAKPOINTS = [0, 1, 7, 13, 19, 25, 31, 37, 43, 49, 55];
+function minutesToTenths(totalMinutes) {
+  const mins = parseInt(totalMinutes) || 0;
+  if (mins === 0) return 0;
+  const wholeHours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  let tenths = 0;
+  if (rem > 0) {
+    for (let i = BILLING_BREAKPOINTS.length - 1; i >= 1; i--) {
+      if (rem >= BILLING_BREAKPOINTS[i]) { tenths = i * 0.1; break; }
+    }
+  }
+  return parseFloat((wholeHours + tenths).toFixed(1));
+}
+
+// PAE data store keyed by case number
+let paeStore = JSON.parse(localStorage.getItem('tli_pae_store') || '{}');
+function savePaeStore() { localStorage.setItem('tli_pae_store', JSON.stringify(paeStore)); }
+let _lastParsedPae = null; // holds most recently parsed PAE for Create Case button
 
 function openPaeModal() {
   document.getElementById('paeModal').style.display = 'flex';
@@ -482,21 +541,32 @@ async function handlePaeFile(file) {
     let filled = [];
     if (parsed.caseNumber) {
       document.getElementById('caseNum').value = parsed.caseNumber;
-      onCaseInput(parsed.caseNumber);
       filled.push('Case #: ' + parsed.caseNumber);
     }
     if (parsed.clientLast) {
       document.getElementById('clientLast').value = parsed.clientLast;
       filled.push('Client: ' + parsed.clientLast + (parsed.clientFirst ? ', ' + parsed.clientFirst : ''));
     }
-    if (parsed.clientFirst) {
-      document.getElementById('clientFirst').value = parsed.clientFirst;
-    }
+    if (parsed.clientFirst) document.getElementById('clientFirst').value = parsed.clientFirst;
+
     const infoEl = document.getElementById('paeInfo');
+    const createEl = document.getElementById('paeCreateBtn');
+
     if (filled.length > 0) {
-      const hrsLabel = parsed.hours ? ' | Auth hrs: ' + parsed.hours : '';
-      infoEl.textContent = '📋 PAE loaded — ' + filled.join(' · ') + hrsLabel;
+      // Store PAE data keyed by case number
+      if (parsed.caseNumber) {
+        paeStore[parsed.caseNumber] = parsed;
+        savePaeStore();
+        _lastParsedPae = parsed;
+      }
+      const hrsLabel = parsed.hours ? ' | Auth: ' + parsed.hours + ' hrs' : '';
+      const attLabel = parsed.attorney ? ' | Atty: ' + parsed.attorney : '';
+      const authLabel = parsed.authNumber ? ' | PAE #' + parsed.authNumber : '';
+      infoEl.textContent = '📋 ' + filled.join(' · ') + hrsLabel + attLabel + authLabel;
       infoEl.style.display = 'block';
+      createEl.style.display = 'block';
+      // Show hours bar with local data then fetch from sheet
+      if (parsed.caseNumber) showCaseHours(parsed.caseNumber);
       showToast('✓ PAE imported');
     } else {
       showToast('Could not read case info from PDF', true);
@@ -506,6 +576,57 @@ async function handlePaeFile(file) {
   } finally {
     btn.textContent = '📋 PAE';
     btn.disabled = false;
+  }
+}
+
+async function createCaseFromPae() {
+  // Placeholder — full GAS createCase endpoint coming with sheet redesign
+  showToast('Create Case coming soon — use PAE data to pre-build the sheet');
+}
+
+// Show hours bar for selected case
+async function showCaseHours(caseNum) {
+  const bar = document.getElementById('caseHoursBar');
+  if (!caseNum) { bar.style.display = 'none'; return; }
+
+  // Local auth hours from PAE store
+  const pae = paeStore[caseNum];
+  const authHours = pae ? parseFloat(pae.hours || 0) : null;
+
+  // Local hours used from entries array
+  const localMins = entries
+    .filter(e => e.case && e.case.toLowerCase() === caseNum.toLowerCase() && /^Investigator Service/i.test(e.type || ''))
+    .reduce((sum, e) => sum + (parseFloat(e.duration) || 0), 0);
+  const localUsed = minutesToTenths(localMins);
+
+  function renderBar(used, auth, source) {
+    const remaining = auth !== null ? parseFloat((auth - used).toFixed(1)) : null;
+    const pct = auth ? used / auth : 0;
+    const color = pct >= 1 ? '#dc2626' : pct >= 0.8 ? '#f59e0b' : 'var(--accent)';
+    const authStr = auth !== null ? `Auth: <b>${auth}</b> hrs` : 'Auth: —';
+    const usedStr = `Used: <b style="color:${color}">${used}</b> hrs`;
+    const remStr = remaining !== null ? `Remaining: <b style="color:${color}">${remaining}</b> hrs` : '';
+    const src = source ? `<span style="color:var(--muted);font-size:10px"> (${source})</span>` : '';
+    bar.innerHTML = `⏱ ${authStr} &nbsp;·&nbsp; ${usedStr}${remStr ? ' &nbsp;·&nbsp; ' + remStr : ''}${src}`;
+    bar.style.display = 'block';
+    bar.style.background = 'var(--surface2)';
+    bar.style.border = `1px solid ${color}`;
+    bar.style.color = 'var(--text)';
+  }
+
+  // Show local data immediately
+  renderBar(localUsed, authHours, 'local');
+
+  // Fetch from sheet for accurate total
+  if (cfg.webhookUrl) {
+    try {
+      const url = cfg.webhookUrl + '?action=getCaseSummary&case=' + encodeURIComponent(caseNum);
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'ok' && data.found) {
+        renderBar(data.hoursUsed, authHours, 'sheet');
+      }
+    } catch(e) { /* keep local display */ }
   }
 }
 // ────────────────────────────────────────────────────────────────────────────
@@ -676,6 +797,8 @@ function onCaseInput(val) {
     document.getElementById('clientLast').value = match.client;
     if (match.clientFirst) document.getElementById('clientFirst').value = match.clientFirst;
   }
+  if (val && val.length >= 4) showCaseHours(val);
+  else document.getElementById('caseHoursBar').style.display = 'none';
 }
 
 function onClientInput(val) {

@@ -33,6 +33,7 @@ function doGet(e) {
       return buildResponse({ status: 'ok', message: 'TLI Field Log webhook is live' });
     }
     if (action === 'getCases') return buildResponse(getCases());
+    if (action === 'getCaseSummary') return buildResponse(getCaseSummary(e.parameter.case || ''));
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
       const reqId = e.parameter.reqId || '';
@@ -321,6 +322,77 @@ function getOrCreateSheet(caseFolder) {
   [160,110,120,120,280,90,70,100,80,80,100,100,120,400].forEach((w,i) => sheet.setColumnWidth(i+1, w));
   Logger.log('Sheet setup complete');
   return sheet;
+}
+
+// Billing chart: minutes → tenths of hours (OPDC standard)
+// breakpoints[i] = minimum minutes required for i tenths
+const BILLING_BREAKPOINTS = [0, 1, 7, 13, 19, 25, 31, 37, 43, 49, 55];
+
+function minutesToTenths(totalMinutes) {
+  const mins = parseInt(totalMinutes) || 0;
+  if (mins === 0) return 0;
+  const wholeHours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  let tenths = 0;
+  if (rem > 0) {
+    for (let i = BILLING_BREAKPOINTS.length - 1; i >= 1; i--) {
+      if (rem >= BILLING_BREAKPOINTS[i]) { tenths = i * 0.1; break; }
+    }
+  }
+  return parseFloat((wholeHours + tenths).toFixed(1));
+}
+
+// Returns hours used for a case by reading its Activity Log sheet
+function getCaseSummary(caseNum) {
+  if (!caseNum) return { status: 'error', message: 'case required' };
+  try {
+    const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+    const allFolders = autoLogFolder.getFolders();
+    let caseFolder = null;
+    while (allFolders.hasNext()) {
+      const f = allFolders.next();
+      const name = f.getName();
+      if (name === caseNum || name.startsWith(caseNum + ' - ')) { caseFolder = f; break; }
+    }
+    if (!caseFolder) return { status: 'ok', found: false };
+
+    // Find the sheet without creating one
+    const files = caseFolder.getFiles();
+    let sheet = null;
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+        sheet = SpreadsheetApp.openById(file.getId()).getActiveSheet();
+        break;
+      }
+    }
+    if (!sheet) return { status: 'ok', found: false };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { status: 'ok', found: true, hoursUsed: 0, totalMins: 0, totalMileage: 0 };
+
+    // Col 5 = Activity Type, Col 8 = Duration (mins), Col 10 = Mileage
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+    let totalMins = 0;
+    let totalMileage = 0;
+    for (const row of data) {
+      const type = String(row[4] || '').trim();
+      const dur  = parseFloat(row[7]) || 0;
+      const mil  = parseFloat(row[9]) || 0;
+      if (/^Investigator Service/i.test(type) && dur > 0) totalMins += dur;
+      if (mil > 0) totalMileage += mil;
+    }
+
+    return {
+      status: 'ok',
+      found: true,
+      hoursUsed: minutesToTenths(totalMins),
+      totalMins,
+      totalMileage: parseFloat(totalMileage.toFixed(1))
+    };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
 }
 
 function testLogEntry() {
