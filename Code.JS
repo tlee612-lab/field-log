@@ -610,7 +610,7 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
   infoLabels.setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
 
   sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
-  sheet.getRange('B2:B3').setFontColor('#c8e8e0');
+  sheet.getRange('B2:B3').setFontColor('#ffffff').setFontWeight('bold').setFontSize(11);
 
   // Total auth row background
   sheet.getRange('A1:B1').setBackground('#0d1117');
