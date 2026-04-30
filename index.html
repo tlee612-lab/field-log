@@ -1377,6 +1377,17 @@ async function aiParse(skipWarning = false) {
     document.getElementById('aiInput').value = '';
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true;
+
+    // Show user what was created
+    const missingCount = newEntries.filter(e => e._missing).length;
+    const message = `✓ ${newEntries.length} entries parsed${missingCount ? ` · ${missingCount} need review` : ''} — scroll down to check before syncing`;
+    showToast(message);
+
+    // Scroll to show new entries
+    setTimeout(() => {
+      const recentLog = document.getElementById('recentLog');
+      if (recentLog && recentLog.firstChild) recentLog.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
     submitBtn.style.opacity = '0.4';
     const incomplete = newEntries.filter(e => e._missing).length;
     if (incomplete) showToast(`${newEntries.length} entries added — ${incomplete} incomplete, review before syncing`, true);
