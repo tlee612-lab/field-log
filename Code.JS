@@ -685,10 +685,6 @@ function addPaesToSummarySheet(sheet, paes) {
     sheet.getRange(nextRow, 9).setValue(p.county    || '');
     sheet.getRange(nextRow, 10).setValue(p.attorney || '');
 
-    // Zebra stripe
-    if (added % 2 === 0) {
-      sheet.getRange(nextRow, 1, 1, 10).setBackground('#141922');
-    }
     existingAuthNums.add(authNum);
     added++;
   });
