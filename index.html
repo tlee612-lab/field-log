@@ -574,7 +574,10 @@ function setUrlLock(locked) {
 function setAiKeyLock(locked) {
   document.querySelectorAll('.ai-key-input').forEach(input => {
     input.readOnly = locked;
-    input.style.opacity = locked ? '0.5' : '1';
+    input.style.opacity = '1';
+    input.style.borderColor = locked ? 'var(--border)' : 'var(--accent2)';
+    input.style.userSelect = 'text';
+    input.style.webkitUserSelect = 'text';
   });
   document.querySelectorAll('.ai-key-lock-btn').forEach(btn => {
     btn.textContent = locked ? '🔒 Locked' : '🔓 Unlock';
