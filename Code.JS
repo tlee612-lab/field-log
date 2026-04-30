@@ -59,6 +59,11 @@ function doPost(e) {
     if (!raw) throw new Error('No data received');
 
     const body = JSON.parse(raw);
+
+    // Route action-based requests first
+    const action = body.action || '';
+    if (action === 'createCase') return buildResponse(createCase(body));
+
     const reqId = body.reqId || '';
     const incoming = body.data !== undefined ? body.data : body;
 
@@ -299,7 +304,9 @@ function getOrCreateSheet(caseFolder) {
     Logger.log('Found file: ' + file.getName() + ' type: ' + file.getMimeType());
     if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
       Logger.log('Existing sheet found, returning it');
-      return SpreadsheetApp.openById(file.getId()).getActiveSheet();
+      const ss = SpreadsheetApp.openById(file.getId());
+      // Always return Activity Log tab; fall back to active sheet if not found
+      return ss.getSheetByName('Activity Log') || ss.getActiveSheet();
     }
   }
   Logger.log('No sheet found, creating new one...');
@@ -368,10 +375,17 @@ function getCaseSummary(caseNum) {
     }
     if (!sheet) return { status: 'ok', found: false };
 
+    // Always read from Activity Log tab specifically (PAE Summary may be active after createCase)
+    const actLog = sheet.getParent().getSheetByName('Activity Log');
+    if (actLog) sheet = actLog;
+
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return { status: 'ok', found: true, hoursUsed: 0, totalMins: 0, totalMileage: 0 };
 
     // Col 5 = Activity Type, Col 8 = Duration (mins), Col 10 = Mileage
+    // New format: rows 1-3 are totals/blank/headers — data starts at row 4.
+    // Old format: row 1 = headers, data starts at row 2.
+    // In both cases the Investigator Service regex filters out non-data rows safely.
     const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
     let totalMins = 0;
     let totalMileage = 0;
@@ -394,6 +408,287 @@ function getCaseSummary(caseNum) {
     return { status: 'error', message: err.message };
   }
 }
+
+// ── createCase: create or upgrade a case spreadsheet with PAE data ──────────
+
+/**
+ * Main entry point. Accepts:
+ *   { action:'createCase', caseNum, clientLast, clientFirst, paes: [...] }
+ * Returns:
+ *   { status, created, upgraded, folder, sheetId, paeCount }
+ */
+function createCase(body) {
+  const caseNum     = String(body.caseNum    || '').trim();
+  const clientLast  = String(body.clientLast  || '').trim();
+  const clientFirst = String(body.clientFirst || '').trim();
+  const paes        = Array.isArray(body.paes) ? body.paes : (body.paes ? [body.paes] : []);
+
+  if (!caseNum || !clientLast) {
+    return { status: 'error', message: 'caseNum and clientLast are required' };
+  }
+
+  // Get or create case folder
+  const caseFolder = getOrCreateCaseFolder(caseNum, clientLast, clientFirst);
+  Logger.log('createCase: folder = ' + caseFolder.getName());
+
+  // Find existing spreadsheet
+  let ss    = null;
+  let isNew = false;
+  const files = caseFolder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+      ss = SpreadsheetApp.openById(file.getId());
+      break;
+    }
+  }
+
+  // Create spreadsheet if none exists
+  if (!ss) {
+    isNew = true;
+    ss    = SpreadsheetApp.create(caseFolder.getName());
+    const newFile = DriveApp.getFileById(ss.getId());
+    caseFolder.addFile(newFile);
+    DriveApp.getRootFolder().removeFile(newFile);
+    Logger.log('createCase: new spreadsheet created');
+  }
+
+  // ── Activity Log tab ──────────────────────────────────────────────────────
+  let activitySheet = ss.getSheetByName('Activity Log');
+  if (!activitySheet) {
+    // Rename the default Sheet1 if it exists
+    const defaultSheet = ss.getActiveSheet();
+    defaultSheet.setName('Activity Log');
+    activitySheet = defaultSheet;
+  }
+
+  let upgraded = false;
+  const a1Val  = String(activitySheet.getRange(1, 1).getValue()).trim();
+
+  if (isNew || activitySheet.getLastRow() === 0) {
+    // Brand-new — build full new-format layout
+    setupNewActivityLog(activitySheet);
+  } else if (a1Val === 'Logged At') {
+    // Old format: row 1 = headers, row 2+ = data → insert 2 rows, add totals bar
+    upgradeActivityLog(activitySheet);
+    upgraded = true;
+    Logger.log('createCase: activity log upgraded');
+  } else {
+    Logger.log('createCase: activity log already in new format, no changes');
+  }
+
+  // ── PAE Summary tab ───────────────────────────────────────────────────────
+  let paeSheet = ss.getSheetByName('PAE Summary');
+  if (!paeSheet) {
+    paeSheet = ss.insertSheet('PAE Summary');
+    setupPaeSummarySheet(paeSheet, caseNum, clientLast, clientFirst);
+    Logger.log('createCase: PAE Summary tab created');
+  }
+
+  // Add new PAEs (duplicate-safe)
+  let paeCount = 0;
+  if (paes.length > 0) {
+    paeCount = addPaesToSummarySheet(paeSheet, paes);
+    Logger.log('createCase: ' + paeCount + ' new PAE row(s) added');
+  }
+
+  return {
+    status:   'ok',
+    created:   isNew,
+    upgraded,
+    folder:    caseFolder.getName(),
+    sheetId:   ss.getId(),
+    paeCount
+  };
+}
+
+/**
+ * Set up a brand-new Activity Log sheet in the 3-row-header format.
+ *   Row 1  – Totals bar (Auth Hrs, Used Hrs, Remaining, Mileage)
+ *   Row 2  – blank spacer
+ *   Row 3  – Column headers (frozen)
+ *   Row 4+ – Data
+ */
+function setupNewActivityLog(sheet) {
+  // Clear any default content
+  sheet.clearContents();
+
+  // Row 1: totals bar labels + formulas
+  const totalsLabels = ['Auth Hrs', '=\'PAE Summary\'!B1', 'Used Hrs',
+    '=IFERROR(CEILING(SUMIF(E4:E9999,"Investigator Service*",H4:H9999)/60,0.1),0)',
+    'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)'];
+  sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
+
+  // Style totals row
+  styleActivityTotalsRow(sheet);
+
+  // Row 2: blank spacer (leave empty)
+
+  // Row 3: column headers
+  sheet.getRange(3, 1, 1, HEADERS.length).setValues([HEADERS]);
+  const hdr = sheet.getRange(3, 1, 1, HEADERS.length);
+  hdr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+
+  sheet.setFrozenRows(3);
+  applyActivityLogColumnWidths(sheet);
+  Logger.log('setupNewActivityLog: complete');
+}
+
+/**
+ * Upgrade an old-format Activity Log (row 1 = headers, row 2+ = data)
+ * to new format by inserting 2 rows at top and adding the totals bar.
+ */
+function upgradeActivityLog(sheet) {
+  // Insert 2 blank rows before existing header (now becomes row 3)
+  sheet.insertRowsBefore(1, 2);
+
+  // Row 1: totals bar
+  const totalsLabels = ['Auth Hrs', '=\'PAE Summary\'!B1', 'Used Hrs',
+    '=IFERROR(CEILING(SUMIF(E4:E9999,"Investigator Service*",H4:H9999)/60,0.1),0)',
+    'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)'];
+  sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
+
+  styleActivityTotalsRow(sheet);
+
+  // Row 3 is now the old header row — re-apply header style
+  const hdr = sheet.getRange(3, 1, 1, HEADERS.length);
+  hdr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+
+  sheet.setFrozenRows(3);
+  applyActivityLogColumnWidths(sheet);
+}
+
+/** Apply visual style to the totals bar in row 1 of Activity Log. */
+function styleActivityTotalsRow(sheet) {
+  const totalsRange = sheet.getRange(1, 1, 1, 8);
+  totalsRange.setBackground('#0d1117').setFontColor('#00c8a0').setFontWeight('bold');
+
+  // Label cells (A, C, E, G) — slightly muted
+  [1, 3, 5, 7].forEach(col => {
+    sheet.getRange(1, col).setFontColor('#5a8a7a').setFontSize(9);
+  });
+  // Value cells (B, D, F, H) — bright, larger
+  [2, 4, 6, 8].forEach(col => {
+    sheet.getRange(1, col).setFontColor('#00c8a0').setFontSize(11);
+  });
+}
+
+/** Set column widths for Activity Log. */
+function applyActivityLogColumnWidths(sheet) {
+  [160, 110, 120, 120, 280, 90, 70, 100, 80, 80, 100, 100, 120, 400]
+    .forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+}
+
+// ── PAE Summary tab ─────────────────────────────────────────────────────────
+
+/**
+ * PAE Summary layout:
+ *   A1 = "Total Auth Hrs"   B1 = =SUM(B6:B50)
+ *   A2 = "Case #"            B2 = caseNum
+ *   A3 = "Client"            B3 = "Last, First"
+ *   A4 = blank
+ *   A5:J5 = PAE table headers
+ *   Row 6+ = PAE data rows
+ *   Row 56 = blank divider
+ *   Row 57 = "OPDC Billing Chart" header
+ *   Row 58 = chart column headers
+ *   Rows 59-69 = 11 breakpoint rows
+ */
+function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
+  sheet.clearContents();
+
+  // ── Info block ─────────────────────────────────────────────────────────────
+  sheet.getRange('A1').setValue('Total Auth Hrs');
+  sheet.getRange('B1').setFormula('=SUM(B6:B50)');
+  sheet.getRange('A2').setValue('Case #');
+  sheet.getRange('B2').setValue(caseNum);
+  sheet.getRange('A3').setValue('Client');
+  sheet.getRange('B3').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
+
+  // Style info block
+  const infoLabels = sheet.getRange('A1:A3');
+  infoLabels.setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
+
+  sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
+  sheet.getRange('B2:B3').setFontColor('#c8e8e0');
+
+  // Total auth row background
+  sheet.getRange('A1:B1').setBackground('#0d1117');
+
+  // ── PAE table headers (row 5) ──────────────────────────────────────────────
+  const PAE_HEADERS = [
+    'Auth #', 'Auth Hrs', 'Rate/Hr', 'Svc Amt', 'Travel Est',
+    'Total Costs', 'Eff Date', 'Exp Date', 'County', 'Attorney'
+  ];
+  sheet.getRange(5, 1, 1, PAE_HEADERS.length).setValues([PAE_HEADERS]);
+  const ph = sheet.getRange(5, 1, 1, PAE_HEADERS.length);
+  ph.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+
+  sheet.setFrozenRows(5);
+
+  // ── OPDC Billing Chart (starting at row 57) ────────────────────────────────
+  sheet.getRange(57, 1).setValue('OPDC Billing Chart')
+       .setFontWeight('bold').setFontColor('#00c8a0').setBackground('#1c2030');
+  sheet.getRange(57, 2).setBackground('#1c2030');
+
+  sheet.getRange(58, 1).setValue('Minutes').setFontWeight('bold').setFontColor('#5a8a7a');
+  sheet.getRange(58, 2).setValue('Tenths').setFontWeight('bold').setFontColor('#5a8a7a');
+
+  const chartData = [
+    [0, 0], [1, 0.1], [7, 0.2], [13, 0.3], [19, 0.4],
+    [25, 0.5], [31, 0.6], [37, 0.7], [43, 0.8], [49, 0.9], [55, 1.0]
+  ];
+  sheet.getRange(59, 1, chartData.length, 2).setValues(chartData);
+  sheet.getRange(59, 1, chartData.length, 1).setFontColor('#c8e8e0');
+  sheet.getRange(59, 2, chartData.length, 1).setFontColor('#00c8a0');
+
+  // Column widths
+  [120, 90, 80, 90, 90, 90, 90, 90, 100, 160].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  Logger.log('setupPaeSummarySheet: complete');
+}
+
+/**
+ * Add PAE rows to the PAE Summary sheet, skipping duplicates by authNumber.
+ * Returns the count of rows actually added.
+ */
+function addPaesToSummarySheet(sheet, paes) {
+  // Collect existing authNumbers from rows 6+
+  const lastRow = sheet.getLastRow();
+  const existingAuthNums = new Set();
+  if (lastRow >= 6) {
+    const existing = sheet.getRange(6, 1, lastRow - 5, 1).getValues();
+    existing.forEach(r => { if (r[0]) existingAuthNums.add(String(r[0]).trim()); });
+  }
+
+  let added = 0;
+  paes.forEach(p => {
+    const authNum = String(p.authNumber || '').trim();
+    if (authNum && existingAuthNums.has(authNum)) return; // skip duplicate
+
+    const nextRow = Math.max(6, lastRow + 1 + added);
+    sheet.getRange(nextRow, 1).setValue(authNum || '—');
+    sheet.getRange(nextRow, 2).setValue(parseFloat(p.hours)        || '');
+    sheet.getRange(nextRow, 3).setValue(parseFloat(p.approvedRate) || '');
+    sheet.getRange(nextRow, 4).setValue(parseFloat(p.serviceAmount)|| '');
+    sheet.getRange(nextRow, 5).setValue(parseFloat(p.travelCosts)  || '');
+    sheet.getRange(nextRow, 6).setValue(parseFloat(p.totalCosts)   || '');
+    sheet.getRange(nextRow, 7).setValue(p.effectiveDate  || '');
+    sheet.getRange(nextRow, 8).setValue(p.expirationDate || '');
+    sheet.getRange(nextRow, 9).setValue(p.county    || '');
+    sheet.getRange(nextRow, 10).setValue(p.attorney || '');
+
+    // Zebra stripe
+    if (added % 2 === 0) {
+      sheet.getRange(nextRow, 1, 1, 10).setBackground('#141922');
+    }
+    existingAuthNums.add(authNum);
+    added++;
+  });
+
+  return added;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 
 function testLogEntry() {
   const result = logEntry({

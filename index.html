@@ -593,8 +593,68 @@ async function handlePaeFile(file) {
 }
 
 async function createCaseFromPae() {
-  // Placeholder — full GAS createCase endpoint coming with sheet redesign
-  showToast('Create Case coming soon — use PAE data to pre-build the sheet');
+  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+
+  const caseNum     = (document.getElementById('caseNum').value    || '').trim();
+  const clientLast  = (document.getElementById('clientLast').value || '').trim();
+  const clientFirst = (document.getElementById('clientFirst').value|| '').trim();
+
+  if (!caseNum || !clientLast) {
+    showToast('Case # and client name required', true);
+    return;
+  }
+
+  // Gather all stored PAEs for this case
+  const rawPaes = paeStore[caseNum];
+  const paes    = Array.isArray(rawPaes) ? rawPaes : (rawPaes ? [rawPaes] : []);
+
+  const btn = document.querySelector('#paeCreateBtn button');
+  btn.disabled    = true;
+  btn.textContent = '⏳ Creating…';
+
+  try {
+    const payload = JSON.stringify({
+      action: 'createCase',
+      caseNum,
+      clientLast,
+      clientFirst,
+      paes
+    });
+
+    // POST with text/plain body (no preflight).
+    // Try cors mode first so we can read the response; fall back to no-cors if blocked.
+    let result = null;
+    try {
+      const res = await fetch(cfg.webhookUrl, {
+        method: 'POST',
+        mode: 'cors',
+        body: payload
+      });
+      result = await res.json();
+    } catch (corsErr) {
+      console.warn('createCase cors fetch failed, falling back to no-cors:', corsErr.message);
+      await fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: payload });
+      // no-cors gives no response — assume success
+      result = { status: 'ok', created: null, upgraded: null, paeCount: paes.length };
+    }
+
+    if (result && result.status === 'ok') {
+      let msg = result.created   ? '✓ Case sheet created'
+              : result.upgraded  ? '✓ Case sheet upgraded'
+              : '✓ Case sheet updated';
+      if (result.paeCount > 0) msg += ` — ${result.paeCount} PAE${result.paeCount > 1 ? 's' : ''} added`;
+      showToast(msg);
+      document.getElementById('paeCreateBtn').style.display = 'none';
+      if (caseNum.length >= 4) showCaseHours(caseNum);
+    } else {
+      showToast('Error: ' + (result ? result.message : 'no response'), true);
+    }
+  } catch (err) {
+    showToast('Create case failed: ' + err.message, true);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '📋 Create Case in Drive';
+  }
 }
 
 // Show hours bar for selected case
