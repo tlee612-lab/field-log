@@ -1202,8 +1202,25 @@ function toggleMic() {
     recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
     let micBaseText = '';
     let micActive = false;
-    recognition.onstart = () => { micBaseText = input.value ? input.value.trimEnd() + ' ' : ''; };
+    let lastResultTime = 0;
+    let silenceTimeout = null;
+    const SILENCE_TIMEOUT_MS = 10000; // 10 seconds of silence stops mic
+
+    recognition.onstart = () => { micBaseText = input.value ? input.value.trimEnd() + ' ' : ''; lastResultTime = Date.now(); };
     recognition.onresult = (event) => {
+      lastResultTime = Date.now();
+      // Clear any pending silence timeout
+      if (silenceTimeout) clearTimeout(silenceTimeout);
+      // Set new timeout for next silence check
+      if (micActive) {
+        silenceTimeout = setTimeout(() => {
+          if (micActive && recognition) {
+            recognition._setActive(false);
+            try { recognition.stop(); } catch(e) {}
+            showToast('Mic stopped: no sound detected');
+          }
+        }, SILENCE_TIMEOUT_MS);
+      }
       // Only process new/updated results using resultIndex — avoids duplication on interim events
       let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -1214,7 +1231,7 @@ function toggleMic() {
       input.value = cleanSpeechTranscript(micBaseText + interim);
     };
     recognition.onerror = (event) => { if (event.error !== 'no-speech') showToast('Speech error: ' + event.error, true); };
-    recognition.onend = () => { if (micActive) { try { recognition.start(); } catch(e) { btn.innerHTML = '▶ Tap to Continue'; btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)'; btn.classList.add('mic-active'); } } else { btn.innerHTML = '🎙 Mic'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; btn.classList.remove('mic-active'); } };
+    recognition.onend = () => { if (silenceTimeout) clearTimeout(silenceTimeout); if (micActive) { try { recognition.start(); } catch(e) { btn.innerHTML = '▶ Tap to Continue'; btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)'; btn.classList.add('mic-active'); } } else { btn.innerHTML = '🎙 Mic'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; btn.classList.remove('mic-active'); } };
     recognition._setActive = (val) => { micActive = val; };
   }
   if (btn.textContent.includes('Stop')) { recognition._setActive(false); recognition.stop(); }
