@@ -270,7 +270,7 @@
     <div id="parseWarningList" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:10px;"></div>
     <div style="display:flex;gap:8px;">
       <button onclick="aiParse(true)" class="ai-btn" style="background:var(--warn);color:var(--bg);border:none;">Proceed Anyway</button>
-      <button onclick="document.getElementById('parseWarning').style.display='none'" class="ai-btn secondary" style="border-color:var(--muted);color:var(--muted);flex:0 0 auto;padding:10px 16px;">Fix First</button>
+      <button onclick="document.getElementById('parseWarning').style.display='none'; document.getElementById('aiInput').value=''; document.getElementById('aiInput').focus();" class="ai-btn secondary" style="border-color:var(--muted);color:var(--muted);flex:0 0 auto;padding:10px 16px;">Clear</button>
     </div>
   </div>
   <div class="ai-bar">
