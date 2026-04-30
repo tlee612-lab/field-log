@@ -1045,7 +1045,7 @@ function renderLog() {
           ${e._missing ? `<button onclick="editEntry('${e.id}')" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:3px 10px;border-radius:20px">✏ Fix: ${e._missing.join(', ')}</button>` : ''}
         </div>
         ${e.synced === false && !e._missing ? `<button onclick="syncEntry('${e.id}')" style="background:var(--surface);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
-        ${e.synced !== false ? `<button onclick="resyncEntry('${e.id}')" style="background:none;border:none;color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 6px" title="Force resync to Drive">↑ Resync</button>` : ''}
+        ${cfg.devMode && e.synced !== false ? `<button onclick="resyncEntry('${e.id}')" style="background:none;border:none;color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 6px" title="Force resync to Drive">↑ Resync</button>` : ''}
       </div>
     </div>
   `).join('');
