@@ -257,13 +257,17 @@
       <strong>AI Assist — Quick Reference</strong>
       <button onclick="document.getElementById('aiHelp').classList.remove('visible')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button>
     </div>
-    <strong>Always include in your notes:</strong><br>
-    Case number · Client last name · Your name · City names · Departure &amp; arrival times for every leg · Miles per leg · What you did &amp; how long<br><br>
-    <strong>Example:</strong><br>
-    <em>Case 26CR00145, client Hendricks. Investigator Tom Lee. Left Salem at 8:00am, drove 22 miles to Eugene, arrived 8:35am. Conducted witness interview until 10:15am. Drove 22 miles back to Salem, arrived 10:50am.</em><br><br>
-    <strong>Creates 5 entries:</strong> Travel Time + Mileage (Salem→Eugene) · Witness Interview · Travel Time + Mileage (Eugene→Salem)<br><br>
-    <strong>After parsing:</strong> Review entries in log · ✏ to edit · ✕ to delete · ↑ Sync when ready<br><br>
-    <strong>Log manually instead for:</strong> Single-location activities · Out of Pocket expenses · Court appearances
+    <strong>✓ What to include:</strong><br>
+    Case number · Client name · Your name · From city · To city · Departure time · Arrival time · Miles · What you did &amp; how long<br><br>
+    <strong>📋 Example script to dictate:</strong><br>
+    <em>"Case number 25CR12345. Client James Wilson. Investigator Lee. Left Medford office at 10 AM, drove 25 miles to Eagle Point, arrived 10:30 AM. Conducted witness interview from 10:30 AM to 12 noon. Drove 25 miles back to Medford, arrived 12:30 PM."</em><br><br>
+    <strong>Creates 5 entries:</strong><br>
+    • Travel Time (Medford→Eagle Point, 30 mins)<br>
+    • Mileage (25 miles)<br>
+    • Witness Interview (150 mins)<br>
+    • Travel Time (Eagle Point→Medford, 30 mins)<br>
+    • Mileage (25 miles)<br><br>
+    <strong>After parsing:</strong> Review entries · ✏ edit · ✕ delete · ↑ Sync
   </div>
   <div id="parseWarning" style="display:none;background:var(--surface);border:1px solid var(--warn);border-radius:8px;padding:12px;margin-bottom:8px;">
     <div style="font-family:var(--ui);font-size:11px;letter-spacing:1px;color:var(--warn);margin-bottom:6px;">⚠ MISSING INFO — ENTRIES MAY BE INCOMPLETE</div>
