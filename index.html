@@ -408,6 +408,7 @@
     </div>
     <!-- Accumulated PAE list shown after each drop -->
     <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
+    <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
     <button id="paeDoneBtn" onclick="closePaeModal()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
     <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
   </div>
@@ -448,6 +449,9 @@ async function extractPdfText(file) {
 function parsePaeText(text) {
   const flat = String(text || '').replace(/\s+/g, ' ').trim();
   const result = {};
+
+  // DEBUG: Store a sample of extracted text to see what we're working with
+  result._textSample = flat.substring(0, 300);
 
   // Authorization number
   const auth = flat.match(/Authorization\s+No[:\s]*([0-9]+)/i);
@@ -501,13 +505,23 @@ function parsePaeText(text) {
   const total = flat.match(/Total\s+Authorized\s+Costs?[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
   if (total) result.totalCosts = total[1].replace(/,/g,'').trim();
 
-  // Effective date — handle various formats: MM/DD/YYYY, M/D/YYYY, Jan 1 2020, etc.
-  const eff = flat.match(/Effective\s+Date[:\s]*([0-9]{1,2}[\/\-\s][0-9]{1,2}[\/\-\s][0-9]{2,4}|[A-Za-z]{3,9}\s+[0-9]{1,2}\s+[0-9]{4})/i);
-  if (eff) result.effectiveDate = eff[1].trim();
+  // Extract dates — find all date patterns and assume first is effective, last is expiration
+  const datePattern = /([0-9]{1,2})[\/\-]([0-9]{1,2})[\/\-]([0-9]{2,4})/g;
+  const allDates = [];
+  let dateMatch;
+  while ((dateMatch = datePattern.exec(flat)) !== null) {
+    allDates.push(dateMatch[0]);
+  }
 
-  // Expiration date — handle various formats: MM/DD/YYYY, M/D/YYYY, Jan 1 2020, etc.
-  const exp = flat.match(/Expiration\s+Date[:\s]*([0-9]{1,2}[\/\-\s][0-9]{1,2}[\/\-\s][0-9]{2,4}|[A-Za-z]{3,9}\s+[0-9]{1,2}\s+[0-9]{4})/i);
-  if (exp) result.expirationDate = exp[1].trim();
+  if (allDates.length > 0) {
+    result.effectiveDate = allDates[0]; // First date found
+    if (allDates.length > 1) {
+      result.expirationDate = allDates[allDates.length - 1]; // Last date found
+    }
+  }
+
+  // Store debug info for display in toast
+  result._debugDates = `Found ${allDates.length} dates: ${allDates.join(', ')}`;
 
   return result;
 }
@@ -636,6 +650,7 @@ function closePaeModal() {
 }
 
 async function handlePaeFile(file) {
+  console.log('HANDLE PAE FILE called, file:', file?.name);
   if (!file || file.type !== 'application/pdf') {
     showToast('Please drop a PDF file', true); return;
   }
@@ -700,7 +715,8 @@ async function handlePaeFile(file) {
         if (doneBtn) doneBtn.style.display = 'block';
         if (hintEl) hintEl.textContent = 'Drop another PAE or tap Done';
       }
-      showToast('✓ PAE imported' + (_sessionPaes.length > 1 ? ` (${_sessionPaes.length} this session)` : ''));
+      const debugMsg = parsed._debugDates ? ` | ${parsed._debugDates}` : '';
+      showToast('✓ PAE imported' + (_sessionPaes.length > 1 ? ` (${_sessionPaes.length} this session)` : '') + debugMsg);
     } else {
       showToast('Could not read case info from PDF', true);
     }
