@@ -392,6 +392,10 @@
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(92vw,380px);position:relative">
     <button onclick="closePaeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">✕</button>
     <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:16px">📋 Import PAE</div>
+    <input type="file" id="paeCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePaeImage(this.files[0]);this.value=''">
+    <div id="paeCameraBtn" style="display:none;margin-bottom:12px">
+      <button onclick="document.getElementById('paeCameraInput').click()" style="width:100%;padding:12px;border-radius:8px;border:2px solid var(--accent2);background:var(--surface2);color:var(--accent2);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📸 Take Photo</button>
+    </div>
     <div id="paeDropZone"
          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
          ondragleave="this.style.borderColor='var(--border)'"
@@ -541,8 +545,65 @@ function openPaeModal() {
   document.getElementById('paeModalList').innerHTML = '';
   document.getElementById('paeDoneBtn').style.display = 'none';
   document.getElementById('paeModalHint').textContent = 'Fills Case #, Client Name, and Authorized Hours';
+  // Show camera button on mobile devices
+  document.getElementById('paeCameraBtn').style.display = isMobileDevice() ? 'block' : 'none';
   document.getElementById('paeModal').style.display = 'flex';
 }
+
+async function handlePaeImage(imageFile) {
+  if (!imageFile) return;
+  // Show modal to choose OCR method
+  const choice = await new Promise((resolve) => {
+    const hasAnthropicKey = cfg.anthropicKey ? true : false;
+    const html = `
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(90vw,340px)">
+          <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:16px">Extract Text Method</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button onclick="(function(){ document.querySelector('[data-pae-choice]').remove(); resolve('local'); })()" style="padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
+              🔍 Local OCR (Free, Private)
+            </button>
+            ${hasAnthropicKey ? `<button onclick="(function(){ document.querySelector('[data-pae-choice]').remove(); resolve('claude'); })()" style="padding:12px;border-radius:8px;border:2px solid var(--accent2);background:var(--surface2);color:var(--accent2);font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
+              📸 Claude Vision (Fast)
+            </button>` : '<div style="font-size:11px;color:var(--muted);text-align:center;padding:12px;border:1px solid var(--border);border-radius:8px">⚠ Add Anthropic API key in Settings to use Claude Vision</div>'}
+            <button onclick="(function(){ document.querySelector('[data-pae-choice]').remove(); resolve(null); })()" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>`;
+    const modal = document.createElement('div');
+    modal.setAttribute('data-pae-choice', '1');
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+  });
+
+  if (!choice) return; // User cancelled
+
+  try {
+    let text;
+    if (choice === 'local') {
+      text = await extractTextFromImageLocal(imageFile);
+    } else {
+      text = await extractTextFromImageClaudeVision(imageFile);
+    }
+
+    // Parse extracted text as PAE
+    const parsed = parsePaeText(text);
+    let filled = [];
+    if (parsed.caseNumber) filled.push(`Case: ${parsed.caseNumber}`);
+    if (parsed.clientLast) filled.push(`Client: ${parsed.clientLast}${parsed.clientFirst ? ', ' + parsed.clientFirst : ''}`);
+    if (parsed.hours) filled.push(`Hours: ${parsed.hours}`);
+
+    _sessionPaes.push(parsed);
+    updatePaeModalDisplay();
+    showToast(`✓ PAE extracted: ${filled.join(' · ')}`);
+  } catch (err) {
+    showToast('OCR failed: ' + err.message, true);
+    console.error('PAE image extraction error:', err);
+  }
+}
+
 function closePaeModal() {
   document.getElementById('paeModal').style.display = 'none';
 }
