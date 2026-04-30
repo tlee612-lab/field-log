@@ -555,14 +555,21 @@ async function handlePaeFile(file) {
     if (filled.length > 0) {
       // Store PAE data keyed by case number
       if (parsed.caseNumber) {
-        paeStore[parsed.caseNumber] = parsed;
+        // Accumulate PAEs per case — avoid duplicates by auth number
+        const existing = paeStore[parsed.caseNumber] || [];
+        const isDupe = parsed.authNumber && existing.some(p => p.authNumber === parsed.authNumber);
+        if (!isDupe) paeStore[parsed.caseNumber] = [...existing, parsed];
         savePaeStore();
         _lastParsedPae = parsed;
       }
-      const hrsLabel = parsed.hours ? ' | Auth: ' + parsed.hours + ' hrs' : '';
+      const allPaes = paeStore[parsed.caseNumber] || [parsed];
+      const totalAuthHrs = allPaes.reduce((s, p) => s + (parseFloat(p.hours) || 0), 0);
+      const paeNums = allPaes.map(p => p.authNumber).filter(Boolean).join(', ');
+      const hrsLabel = totalAuthHrs ? ' | Auth: ' + totalAuthHrs + ' hrs' : '';
       const attLabel = parsed.attorney ? ' | Atty: ' + parsed.attorney : '';
-      const authLabel = parsed.authNumber ? ' | PAE #' + parsed.authNumber : '';
-      infoEl.textContent = '📋 ' + filled.join(' · ') + hrsLabel + attLabel + authLabel;
+      const authLabel = paeNums ? ' | PAE #' + paeNums : '';
+      const countLabel = allPaes.length > 1 ? ` (${allPaes.length} PAEs)` : '';
+      infoEl.textContent = '📋 ' + filled.join(' · ') + hrsLabel + countLabel + attLabel + authLabel;
       infoEl.style.display = 'block';
       createEl.style.display = 'block';
       // Show hours bar with local data then fetch from sheet
@@ -589,9 +596,11 @@ async function showCaseHours(caseNum) {
   const bar = document.getElementById('caseHoursBar');
   if (!caseNum) { bar.style.display = 'none'; return; }
 
-  // Local auth hours from PAE store
-  const pae = paeStore[caseNum];
-  const authHours = pae ? parseFloat(pae.hours || 0) : null;
+  // Local auth hours — sum across all PAEs for this case
+  const paes = paeStore[caseNum] || [];
+  const authHours = paes.length > 0
+    ? paes.reduce((sum, p) => sum + (parseFloat(p.hours) || 0), 0) || null
+    : null;
 
   // Local hours used from entries array
   const localMins = entries
