@@ -724,14 +724,21 @@ async function syncPending() {
 renderLog();
 updateSyncBtn();
 
+// Returns today's date in YYYY-MM-DD using LOCAL timezone (not UTC)
+function localDateStr(d) {
+  const dt = d || new Date();
+  return dt.getFullYear() + '-' +
+    String(dt.getMonth() + 1).padStart(2, '0') + '-' +
+    String(dt.getDate()).padStart(2, '0');
+}
 function setToday() {
-  const d = new Date().toISOString().slice(0,10);
+  const d = localDateStr();
   document.getElementById('actDate').value = d;
   localStorage.setItem('tli_last_date', d);
 }
 function setNow() {
   const now = new Date();
-  const d = now.toISOString().slice(0,10);
+  const d = localDateStr(now);
   document.getElementById('actDate').value = d;
   document.getElementById('actTime').value = now.toTimeString().slice(0,5);
   localStorage.setItem('tli_last_date', d);
@@ -740,10 +747,10 @@ function setNow() {
 document.getElementById('actDate').addEventListener('change', function() {
   if (this.value) localStorage.setItem('tli_last_date', this.value);
 });
-// On load: restore last picked date, fall back to today
+// On load: restore last used date, fall back to today (local timezone)
 (function() {
   const now = new Date();
-  document.getElementById('actDate').value = localStorage.getItem('tli_last_date') || now.toISOString().slice(0,10);
+  document.getElementById('actDate').value = localStorage.getItem('tli_last_date') || localDateStr(now);
   document.getElementById('actTime').value = now.toTimeString().slice(0,5);
 })();
 
@@ -1137,6 +1144,7 @@ async function submitEntry() {
 
   saveKnownCase(base.case, base.client, base.clientFirst);
   if (base.investigator) localStorage.setItem('tli_last_investigator', base.investigator);
+  if (base.date) localStorage.setItem('tli_last_date', base.date);
   const toLog = [base];
   if (isTravel) {
     const driver = document.getElementById('mileageDriver').value.trim();
