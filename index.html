@@ -605,6 +605,8 @@ async function handlePaeImage(imageFile) {
     if (parsed.caseNumber) filled.push(`Case: ${parsed.caseNumber}`);
     if (parsed.clientLast) filled.push(`Client: ${parsed.clientLast}${parsed.clientFirst ? ', ' + parsed.clientFirst : ''}`);
     if (parsed.hours) filled.push(`Hours: ${parsed.hours}`);
+    if (parsed.effectiveDate) filled.push(`Eff: ${parsed.effectiveDate}`);
+    if (parsed.expirationDate) filled.push(`Exp: ${parsed.expirationDate}`);
 
     _sessionPaes.push(parsed);
 
