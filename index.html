@@ -282,7 +282,7 @@
     <textarea id="aiInput" placeholder="Type or paste raw notes..."></textarea>
     <div id="aiPreview" class="ai-preview"></div>
     <div class="ai-actions">
-      <button class="ai-btn" id="aiParseBtn" onclick="aiParse()">⚡ Process Notes</button>
+      <button class="ai-btn" id="aiParseBtn" onclick="stopMicIfActive(); aiParse()">⚡ Process Notes</button>
       <button class="ai-btn secondary" id="micBtn" onclick="toggleMic()">🎙 Mic</button>
       <button class="ai-btn secondary" onclick="document.getElementById('aiInput').value=''">Clear</button>
     </div>
