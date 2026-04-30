@@ -273,9 +273,9 @@
     <div style="font-family:var(--ui);font-size:11px;letter-spacing:1px;color:var(--warn);margin-bottom:6px;">⚠ MISSING INFO — ENTRIES MAY BE INCOMPLETE</div>
     <div id="parseWarningList" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:10px;"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="aiParse(true)" class="ai-btn" style="background:var(--warn);color:var(--bg);border:none;flex:1">Proceed Anyway</button>
-      <button onclick="document.getElementById('parseWarning').style.display='none'" class="ai-btn secondary" style="border-color:var(--muted);color:var(--muted);flex:0 0 auto;padding:10px 16px;">Fix First</button>
-      <button onclick="document.getElementById('parseWarning').style.display='none'; document.getElementById('aiInput').value=''; document.getElementById('aiInput').focus();" class="ai-btn secondary" style="border-color:var(--warn);color:var(--warn);flex:0 0 auto;padding:10px 16px;">Clear All</button>
+      <button onclick="stopMicIfActive(); aiParse(true)" class="ai-btn" style="background:var(--warn);color:var(--bg);border:none;flex:1">Proceed Anyway</button>
+      <button onclick="stopMicIfActive(); document.getElementById('parseWarning').style.display='none'" class="ai-btn secondary" style="border-color:var(--muted);color:var(--muted);flex:0 0 auto;padding:10px 16px;">Fix First</button>
+      <button onclick="stopMicIfActive(); document.getElementById('parseWarning').style.display='none'; document.getElementById('aiInput').value=''; document.getElementById('aiInput').focus();" class="ai-btn secondary" style="border-color:var(--warn);color:var(--warn);flex:0 0 auto;padding:10px 16px;">Clear All</button>
     </div>
   </div>
   <div class="ai-bar">
@@ -1174,6 +1174,21 @@ function cleanSpeechTranscript(text) {
 function extractCaseNumberFromText(text) {
   const match = text.match(/\b(\d{2}[a-zA-Z]{2}\d{4,6})\b/i);
   return match ? match[1].toUpperCase().replace(/\s+/g, '') : '';
+}
+
+// Stop mic if it's currently recording
+function stopMicIfActive() {
+  if (recognition && recognition._setActive) {
+    const btn = document.getElementById('micBtn');
+    if (btn && btn.textContent.includes('Stop')) {
+      recognition._setActive(false);
+      try { recognition.stop(); } catch(e) {}
+      btn.innerHTML = '🎙 Mic';
+      btn.style.borderColor = 'var(--accent2)';
+      btn.style.color = 'var(--accent2)';
+      btn.classList.remove('mic-active');
+    }
+  }
 }
 
 function toggleMic() {
