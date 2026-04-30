@@ -582,7 +582,21 @@ async function handlePaeImage(imageFile) {
     if (parsed.hours) filled.push(`Hours: ${parsed.hours}`);
 
     _sessionPaes.push(parsed);
-    updatePaeModalDisplay();
+
+    // Update PAE modal display
+    const sessionTotal = _sessionPaes.reduce((s, p) => s + (parseFloat(p.hours) || 0), 0);
+    const sessionNums  = _sessionPaes.map(p => p.authNumber).filter(Boolean).join(', ');
+    const countLabel = _sessionPaes.length > 1 ? ` (${_sessionPaes.length} PAEs)` : '';
+    document.getElementById('paeDoneBtn').style.display = 'block';
+    document.getElementById('paeModalHint').innerHTML = `<strong>${sessionNums}</strong> — ${sessionTotal} hrs total${countLabel}`;
+    const listEl = document.getElementById('paeModalList');
+    listEl.style.display = 'block';
+    listEl.innerHTML = _sessionPaes.map((p, i) =>
+      `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px">
+        <strong>${p.authNumber || '(no auth #)'}</strong> · ${p.clientLast || '?'} · ${p.hours || '?'} hrs
+      </div>`
+    ).join('');
+
     showToast(`✓ PAE extracted: ${filled.join(' · ')}`);
   } catch (err) {
     showToast('OCR failed: ' + err.message, true);
