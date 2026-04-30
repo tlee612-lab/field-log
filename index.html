@@ -561,7 +561,8 @@ async function handlePaeFile(file) {
       // Store PAE data keyed by case number
       if (parsed.caseNumber) {
         // Accumulate PAEs per case — avoid duplicates by auth number
-        const existing = paeStore[parsed.caseNumber] || [];
+        const rawExisting = paeStore[parsed.caseNumber];
+        const existing = Array.isArray(rawExisting) ? rawExisting : (rawExisting ? [rawExisting] : []);
         const isDupe = parsed.authNumber && existing.some(p => p.authNumber === parsed.authNumber);
         if (!isDupe) paeStore[parsed.caseNumber] = [...existing, parsed];
         savePaeStore();
