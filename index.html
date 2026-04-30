@@ -272,9 +272,10 @@
   <div id="parseWarning" style="display:none;background:var(--surface);border:1px solid var(--warn);border-radius:8px;padding:12px;margin-bottom:8px;">
     <div style="font-family:var(--ui);font-size:11px;letter-spacing:1px;color:var(--warn);margin-bottom:6px;">⚠ MISSING INFO — ENTRIES MAY BE INCOMPLETE</div>
     <div id="parseWarningList" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:10px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="aiParse(true)" class="ai-btn" style="background:var(--warn);color:var(--bg);border:none;">Proceed Anyway</button>
-      <button onclick="document.getElementById('parseWarning').style.display='none'; document.getElementById('aiInput').value=''; document.getElementById('aiInput').focus();" class="ai-btn secondary" style="border-color:var(--muted);color:var(--muted);flex:0 0 auto;padding:10px 16px;">Clear</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="aiParse(true)" class="ai-btn" style="background:var(--warn);color:var(--bg);border:none;flex:1">Proceed Anyway</button>
+      <button onclick="document.getElementById('parseWarning').style.display='none'" class="ai-btn secondary" style="border-color:var(--muted);color:var(--muted);flex:0 0 auto;padding:10px 16px;">Fix First</button>
+      <button onclick="document.getElementById('parseWarning').style.display='none'; document.getElementById('aiInput').value=''; document.getElementById('aiInput').focus();" class="ai-btn secondary" style="border-color:var(--warn);color:var(--warn);flex:0 0 auto;padding:10px 16px;">Clear All</button>
     </div>
   </div>
   <div class="ai-bar">
