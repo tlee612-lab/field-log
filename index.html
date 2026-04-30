@@ -553,16 +553,14 @@ function openPaeModal() {
 async function handlePaeImage(imageFile) {
   if (!imageFile) return;
 
-  // Simple choice prompt instead of complex modal
+  // Simple choice prompt
   const hasAnthropicKey = cfg.anthropicKey ? true : false;
-  const choice = await new Promise((resolve) => {
-    setTimeout(() => {
-      const selected = hasAnthropicKey
-        ? confirm('Use Claude Vision for fast extraction?\n\nOK = Claude Vision\nCancel = Local OCR (free, slower)')
-        : 'local';
-      resolve(selected === true ? 'claude' : (selected === false ? 'local' : null));
-    }, 100);
-  });
+  let choice = 'local';
+
+  if (hasAnthropicKey) {
+    const useFast = confirm('Fast: Claude\nFree: Local\n\nOK = Fast | Cancel = Free');
+    choice = useFast ? 'claude' : 'local';
+  }
 
   if (!choice) return; // User cancelled
 
