@@ -527,9 +527,11 @@ let paeStore = (() => {
   return raw;
 })();
 function savePaeStore() { localStorage.setItem('tli_pae_store', JSON.stringify(paeStore)); }
-let _lastParsedPae = null; // holds most recently parsed PAE for Create Case button
+let _lastParsedPae = null;
+let _sessionPaes = []; // PAEs dropped in the current modal session only
 
 function openPaeModal() {
+  _sessionPaes = []; // fresh session — don't carry over prior drops
   document.getElementById('paeModalList').style.display = 'none';
   document.getElementById('paeModalList').innerHTML = '';
   document.getElementById('paeDoneBtn').style.display = 'none';
@@ -573,14 +575,17 @@ async function handlePaeFile(file) {
         if (!isDupe) paeStore[parsed.caseNumber] = [...existing, parsed];
         savePaeStore();
         _lastParsedPae = parsed;
+        // Add to current session (dedupe by authNumber within session)
+        const sessIsDupe = parsed.authNumber && _sessionPaes.some(p => p.authNumber === parsed.authNumber);
+        if (!sessIsDupe) _sessionPaes.push(parsed);
       }
-      const allPaes = paeStore[parsed.caseNumber] || [parsed];
-      const totalAuthHrs = allPaes.reduce((s, p) => s + (parseFloat(p.hours) || 0), 0);
-      const paeNums = allPaes.map(p => p.authNumber).filter(Boolean).join(', ');
-      const hrsLabel = totalAuthHrs ? ' | Auth: ' + totalAuthHrs + ' hrs' : '';
-      const attLabel = parsed.attorney ? ' | Atty: ' + parsed.attorney : '';
-      const authLabel = paeNums ? ' | PAE #' + paeNums : '';
-      const countLabel = allPaes.length > 1 ? ` (${allPaes.length} PAEs)` : '';
+      // Info bar uses session PAEs only
+      const sessionTotal = _sessionPaes.reduce((s, p) => s + (parseFloat(p.hours) || 0), 0);
+      const sessionNums  = _sessionPaes.map(p => p.authNumber).filter(Boolean).join(', ');
+      const hrsLabel   = sessionTotal ? ' | Auth: ' + sessionTotal + ' hrs' : '';
+      const attLabel   = parsed.attorney ? ' | Atty: ' + parsed.attorney : '';
+      const authLabel  = sessionNums ? ' | PAE #' + sessionNums : '';
+      const countLabel = _sessionPaes.length > 1 ? ` (${_sessionPaes.length} PAEs)` : '';
       infoEl.textContent = '📋 ' + filled.join(' · ') + hrsLabel + countLabel + attLabel + authLabel;
       infoEl.style.display = 'block';
       createEl.style.display = 'block';
@@ -592,7 +597,7 @@ async function handlePaeFile(file) {
       const hintEl = document.getElementById('paeModalHint');
       if (listEl) {
         listEl.style.display = 'block';
-        listEl.innerHTML = allPaes.map((p, i) =>
+        listEl.innerHTML = _sessionPaes.map((p, i) =>
           `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:5px;background:${i%2===0?'var(--surface2)':'transparent'};font-size:11px;font-family:var(--ui)">
             <span style="color:var(--accent)">PAE #${p.authNumber || '—'}</span>
             <span style="color:var(--muted)">${p.hours ? p.hours + ' hrs' : ''}</span>
@@ -602,7 +607,7 @@ async function handlePaeFile(file) {
         if (doneBtn) doneBtn.style.display = 'block';
         if (hintEl) hintEl.textContent = 'Drop another PAE or tap Done';
       }
-      showToast('✓ PAE imported' + (allPaes.length > 1 ? ` (${allPaes.length} total)` : ''));
+      showToast('✓ PAE imported' + (_sessionPaes.length > 1 ? ` (${_sessionPaes.length} this session)` : ''));
     } else {
       showToast('Could not read case info from PDF', true);
     }
@@ -626,9 +631,10 @@ async function createCaseFromPae() {
     return;
   }
 
-  // Gather all stored PAEs for this case
-  const rawPaes = paeStore[caseNum];
-  const paes    = Array.isArray(rawPaes) ? rawPaes : (rawPaes ? [rawPaes] : []);
+  // Send only PAEs from the current modal session
+  const paes = _sessionPaes.filter(p =>
+    !p.caseNumber || p.caseNumber.toLowerCase() === caseNum.toLowerCase()
+  );
 
   const btn = document.querySelector('#paeCreateBtn button');
   btn.disabled    = true;
