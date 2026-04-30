@@ -742,8 +742,6 @@ async function testAiConnection(btn) {
   const provider = document.getElementById('aiProvider').value;
   const key = sanitizeKey(document.getElementById(provider + 'Key').value);
   if (!key) { showToast('API key required', true); return; }
-  // Debug: show key fingerprint so user can verify it looks right
-  showToast(`Key: ${key.length} chars · ${key.slice(0,8)}...${key.slice(-4)}`, false);
   const originalLabel = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span>Testing...';
   btn.disabled = true;
@@ -769,7 +767,7 @@ async function testAiConnection(btn) {
     if (!res.ok) {
       let errMsg = `${provider.toUpperCase()} Error ${res.status}`;
       try { const ed = await res.json(); errMsg = ed.error?.message || errMsg; } catch(e) {}
-      throw new Error(errMsg);
+      throw new Error(`${errMsg} [${key.length}ch: ${key.slice(0,8)}…${key.slice(-4)}]`);
     }
     showToast(`✓ ${provider.charAt(0).toUpperCase() + provider.slice(1)} connected!`);
   } catch (err) { showToast(err.message, true); }
