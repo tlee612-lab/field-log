@@ -742,6 +742,8 @@ async function testAiConnection(btn) {
   const provider = document.getElementById('aiProvider').value;
   const key = sanitizeKey(document.getElementById(provider + 'Key').value);
   if (!key) { showToast('API key required', true); return; }
+  // Debug: show key fingerprint so user can verify it looks right
+  showToast(`Key: ${key.length} chars · ${key.slice(0,8)}...${key.slice(-4)}`, false);
   const originalLabel = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span>Testing...';
   btn.disabled = true;
