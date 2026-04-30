@@ -530,6 +530,10 @@ function savePaeStore() { localStorage.setItem('tli_pae_store', JSON.stringify(p
 let _lastParsedPae = null; // holds most recently parsed PAE for Create Case button
 
 function openPaeModal() {
+  document.getElementById('paeModalList').style.display = 'none';
+  document.getElementById('paeModalList').innerHTML = '';
+  document.getElementById('paeDoneBtn').style.display = 'none';
+  document.getElementById('paeModalHint').textContent = 'Fills Case #, Client Name, and Authorized Hours';
   document.getElementById('paeModal').style.display = 'flex';
 }
 function closePaeModal() {
