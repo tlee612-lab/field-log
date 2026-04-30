@@ -1172,8 +1172,9 @@ function cleanSpeechTranscript(text) {
 
 // Extract case number from raw text using regex
 function extractCaseNumberFromText(text) {
+  if (!text || typeof text !== 'string') return '';
   const match = text.match(/\b(\d{2}[a-zA-Z]{2}\d{4,6})\b/i);
-  return match ? match[1].toUpperCase().replace(/\s+/g, '') : '';
+  return (match && match[1]) ? match[1].toUpperCase().replace(/\s+/g, '') : '';
 }
 
 // Stop mic if it's currently recording
