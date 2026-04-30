@@ -940,6 +940,8 @@ async function aiParse(skipWarning = false) {
     });
     entries.unshift(...newEntries);
     localStorage.setItem('tli_entries', JSON.stringify(entries));
+    const parsedDate = newEntries.find(e => e.date)?.date;
+    if (parsedDate) localStorage.setItem('tli_last_date', parsedDate);
     renderLog();
     updateSyncBtn();
     document.getElementById('aiInput').value = '';
@@ -1202,7 +1204,9 @@ async function submitEntry() {
   enableSubmitBtn();
   editingId = null;
   document.getElementById('submitBtn').textContent = 'LOG ACTIVITY →';
-  setNow();
+  // Reset time to now but keep last-used date (not today)
+  document.getElementById('actTime').value = new Date().toTimeString().slice(0,5);
+  document.getElementById('actDate').value = localStorage.getItem('tli_last_date') || localDateStr(new Date());
   btn.innerHTML = 'LOG ACTIVITY →';
   btn.disabled = false;
 }
