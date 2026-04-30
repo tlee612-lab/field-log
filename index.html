@@ -736,7 +736,9 @@ async function testWebhook() {
 
 // Strip invisible/non-ASCII characters mobile browsers inject into password fields
 function sanitizeKey(raw) {
-  return String(raw || '').replace(/[^\x20-\x7E]/g, '').trim();
+  // API keys never contain spaces — strip all whitespace (mobile paste injects spaces)
+  // Also strip non-printable/non-ASCII characters
+  return String(raw || '').replace(/\s/g, '').replace(/[^\x21-\x7E]/g, '');
 }
 
 async function testAiConnection(btn) {
