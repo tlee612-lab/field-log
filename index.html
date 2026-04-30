@@ -110,6 +110,10 @@
   <div style="display:flex;gap:8px;margin-bottom:16px">
     <button id="modeAI" onclick="setMode('ai')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">🎙 AI Mode</button>
     <button id="modeManual" onclick="setMode('manual')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✏ Manual</button>
+    <button id="modePae" onclick="openPaeModal()"
+            style="padding:12px 14px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;white-space:nowrap"
+            title="Import PAE PDF — fills case #, client, and authorized hours">📋 PAE</button>
+    <input type="file" id="paeFileInput" accept="application/pdf" style="display:none" onchange="closePaeModal();handlePaeFile(this.files[0]);this.value=''">
   </div>
   <div class="section-label">Quick Entry</div>
   <div class="field-group" style="margin-bottom:8px">
@@ -135,6 +139,7 @@
       <button type="button" onclick="clearCaseFields()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">✕ Clear</button>
     </div>
   </div>
+  <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--accent)"></div>
   <div id="manualSection">
   <div class="field-group" style="margin-bottom:8px">
     <label>Activity Type</label>
@@ -365,8 +370,138 @@
   <div id="recentLog"></div>
 </main>
 <div class="toast" id="toast"></div>
+
+<!-- PAE Import Modal -->
+<div id="paeModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(92vw,380px);position:relative">
+    <button onclick="closePaeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:16px">📋 Import PAE</div>
+    <div id="paeDropZone"
+         ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+         ondragleave="this.style.borderColor='var(--border2)'"
+         ondrop="event.preventDefault();this.style.borderColor='var(--border2)';closePaeModal();handlePaeFile(event.dataTransfer.files[0])"
+         style="border:2px dashed var(--border2);border-radius:8px;padding:32px 16px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:12px"
+         onclick="document.getElementById('paeFileInput').click()">
+      <div style="font-size:28px;margin-bottom:8px">📄</div>
+      Drop PAE PDF here<br>
+      <span style="color:var(--accent);text-decoration:underline">or tap to select a file</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center">Fills Case #, Client Name, and Authorized Hours</div>
+  </div>
+</div>
 <script>
 const DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxUcyYasL_3vMIpcwTgfBJNzWpK7jE81Puyiw7nxL6BhfX3fy8ZPCqY9rDAZZ6OC2Ud/exec';
+
+// ── PAE PDF import ──────────────────────────────────────────────────────────
+let _pdfjsLib = null;
+async function loadPdfJs() {
+  if (_pdfjsLib) return _pdfjsLib;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  _pdfjsLib = window['pdfjs-dist/build/pdf'];
+  if (!_pdfjsLib) _pdfjsLib = window.pdfjsLib;
+  _pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  return _pdfjsLib;
+}
+
+async function extractPdfText(file) {
+  const lib = await loadPdfJs();
+  const buf = await file.arrayBuffer();
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  const pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    pages.push(content.items.map(it => it.str).join(' '));
+  }
+  return pages.join('\f');
+}
+
+function parsePaeText(text) {
+  const flat = String(text || '').replace(/\s+/g, ' ').trim();
+  const result = {};
+
+  // Case number
+  const cn = flat.match(/\b(?:Case|Court)\s*(?:No\.?|#|Number)[:\s]+([A-Z0-9\-]{4,20})/i)
+          || flat.match(/\b(?:Case)\s*(?:No\.?|#|Number)?[:\s]+([A-Z0-9\-]*[0-9][A-Z0-9\-]*)/i);
+  if (cn) result.caseNumber = cn[1].trim();
+
+  // Client name — "Client: Last, First" or "Client: First Last"
+  const clientRaw = flat.match(/\bClient(?:\s*Name)?\s*[:\-]?\s*([A-Za-z][A-Za-z,\.\s\-']{2,60}?)(?=\s*(?:Case|County|Attorney|Authorization|Auth|PAE|Court|Funding|$))/i);
+  if (clientRaw) {
+    const raw = clientRaw[1].replace(/\s+/g, ' ').trim();
+    // "Last, First" format
+    const commaMatch = raw.match(/^([A-Za-z\-']+),\s*([A-Za-z\-']+)/);
+    if (commaMatch) {
+      result.clientLast = commaMatch[1].trim();
+      result.clientFirst = commaMatch[2].trim();
+    } else {
+      // "First Last" format
+      const parts = raw.split(/\s+/);
+      result.clientFirst = parts[0] || '';
+      result.clientLast = parts[parts.length - 1] || '';
+    }
+  }
+
+  // Maximum hours / authorized quantity
+  const hrs = flat.match(/(?:Maximum\s+Quantity|Max(?:imum)?\s+Hours?|Quantity)[:\s]*([0-9]+(?:\.[0-9]+)?)/i);
+  if (hrs) result.hours = hrs[1].trim();
+
+  return result;
+}
+
+function openPaeModal() {
+  document.getElementById('paeModal').style.display = 'flex';
+}
+function closePaeModal() {
+  document.getElementById('paeModal').style.display = 'none';
+}
+
+async function handlePaeFile(file) {
+  if (!file || file.type !== 'application/pdf') {
+    showToast('Please drop a PDF file', true); return;
+  }
+  const btn = document.getElementById('modePae');
+  btn.textContent = '⏳ Reading...';
+  btn.disabled = true;
+  try {
+    const text = await extractPdfText(file);
+    const parsed = parsePaeText(text);
+    let filled = [];
+    if (parsed.caseNumber) {
+      document.getElementById('caseNum').value = parsed.caseNumber;
+      onCaseInput(parsed.caseNumber);
+      filled.push('Case #: ' + parsed.caseNumber);
+    }
+    if (parsed.clientLast) {
+      document.getElementById('clientLast').value = parsed.clientLast;
+      filled.push('Client: ' + parsed.clientLast + (parsed.clientFirst ? ', ' + parsed.clientFirst : ''));
+    }
+    if (parsed.clientFirst) {
+      document.getElementById('clientFirst').value = parsed.clientFirst;
+    }
+    const infoEl = document.getElementById('paeInfo');
+    if (filled.length > 0) {
+      const hrsLabel = parsed.hours ? ' | Auth hrs: ' + parsed.hours : '';
+      infoEl.textContent = '📋 PAE loaded — ' + filled.join(' · ') + hrsLabel;
+      infoEl.style.display = 'block';
+      showToast('✓ PAE imported');
+    } else {
+      showToast('Could not read case info from PDF', true);
+    }
+  } catch(err) {
+    showToast('PDF read failed: ' + err.message, true);
+  } finally {
+    btn.textContent = '📋 PAE';
+    btn.disabled = false;
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
 let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
 if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
 if (!cfg.webhookUrl) cfg.webhookUrl = DEFAULT_WEBHOOK;
