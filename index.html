@@ -797,6 +797,10 @@ fetchRemoteCases();
 
 function clearCaseFields() {
   ['caseNum','clientLast','clientFirst'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('paeInfo').style.display = 'none';
+  document.getElementById('paeCreateBtn').style.display = 'none';
+  document.getElementById('caseHoursBar').style.display = 'none';
+  _lastParsedPae = null;
   document.getElementById('caseNum').focus();
 }
 
