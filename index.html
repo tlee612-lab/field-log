@@ -553,14 +553,41 @@ function openPaeModal() {
 async function handlePaeImage(imageFile) {
   if (!imageFile) return;
 
-  // Simple choice prompt
+  // Show styled modal to choose OCR method
   const hasAnthropicKey = cfg.anthropicKey ? true : false;
-  let choice = 'local';
+  const choice = await new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center';
 
-  if (hasAnthropicKey) {
-    const useFast = confirm('Fast: Claude\nFree: Local\n\nOK = Fast | Cancel = Free');
-    choice = useFast ? 'claude' : 'local';
-  }
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(90vw,340px)';
+
+    modal.innerHTML = `
+      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:16px">Extract Text</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button data-choice="local" style="padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%">
+          🔍 Free (10-30 sec)
+        </button>
+        ${hasAnthropicKey ? `<button data-choice="claude" style="padding:12px;border-radius:8px;border:2px solid var(--accent2);background:var(--surface2);color:var(--accent2);font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%">
+          ⚡ Fast (2 sec)
+        </button>` : ''}
+        <button data-choice="cancel" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%">
+          Cancel
+        </button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    modal.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const c = btn.dataset.choice;
+        overlay.remove();
+        resolve(c === 'cancel' ? null : c);
+      });
+    });
+  });
 
   if (!choice) return; // User cancelled
 
