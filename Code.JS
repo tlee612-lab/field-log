@@ -713,6 +713,13 @@ function ensureNewColumns(sheet) {
       }
     }
 
+    // Update Hours Used formula in D1 if sheet is in new format
+    if (headerRow === 3) {
+      const d1Formula = '=IFERROR(SUMIF(E4:E9999,"Investigator Service*",I4:I9999),0)';
+      sheet.getRange(1, 4).setFormula(d1Formula);
+      Logger.log('Updated Hours Used formula in D1');
+    }
+
     Logger.log('Columns and formulas are up to date');
   } catch(e) {
     Logger.log('ensureNewColumns failed: ' + e.message);
