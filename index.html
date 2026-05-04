@@ -1034,13 +1034,10 @@ async function fetchRemoteCases(verbose = false) {
     const data = await res.json();
     console.log('Cases fetched:', data);
     if (data.status === 'ok' && Array.isArray(data.cases)) {
-      let added = 0;
-      data.cases.forEach(p => {
-        if (!knownCases.find(k => k.case.toLowerCase() === p.case.toLowerCase())) {
-          knownCases.push(p); added++;
-        }
-      });
-      if (added) { localStorage.setItem('tli_cases', JSON.stringify(knownCases)); refreshDataLists(); }
+      // Replace entire case list with fresh data from Google Drive (removes deleted cases)
+      knownCases = data.cases;
+      localStorage.setItem('tli_cases', JSON.stringify(knownCases));
+      refreshDataLists();
       if (data.lastInvestigator && !localStorage.getItem('tli_last_investigator')) {
         localStorage.setItem('tli_last_investigator', data.lastInvestigator);
         updateHeaderName();
