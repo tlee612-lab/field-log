@@ -415,27 +415,31 @@ function getCaseSummary(caseNum) {
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return { status: 'ok', found: true, hoursUsed: 0, totalMins: 0, totalMileage: 0 };
 
-    // Col 5 = Activity Type, Col 8 = Duration (mins), Col 10 = Mileage
+    // Read Hours Used directly from D1 (which has the correct formula)
+    // and Mileage from H1 (both in the totals bar)
+    const d1 = sheet.getRange(1, 4).getValue(); // Column D, row 1
+    const h1 = sheet.getRange(1, 8).getValue(); // Column H, row 1
+    const hoursUsed = parseFloat(d1) || 0;
+    const totalMileage = parseFloat(h1) || 0;
+
+    // For reference, also calculate total minutes from data rows
+    // Col 5 = Activity Type, Col 8 = Duration (mins)
     // New format: rows 1-3 are totals/blank/headers — data starts at row 4.
     // Old format: row 1 = headers, data starts at row 2.
-    // In both cases the Investigator Service regex filters out non-data rows safely.
     const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
     let totalMins = 0;
-    let totalMileage = 0;
     for (const row of data) {
       const type = String(row[4] || '').trim();
       const dur  = parseFloat(row[7]) || 0;
-      const mil  = parseFloat(row[9]) || 0;
       if (/^Investigator Service/i.test(type) && dur > 0) totalMins += dur;
-      if (mil > 0) totalMileage += mil;
     }
 
     return {
       status: 'ok',
       found: true,
-      hoursUsed: minutesToTenths(totalMins),
+      hoursUsed,
       totalMins,
-      totalMileage: parseFloat(totalMileage.toFixed(1))
+      totalMileage
     };
   } catch(err) {
     return { status: 'error', message: err.message };
