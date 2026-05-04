@@ -250,8 +250,8 @@ function logEntry(entry) {
 
   // Add formulas to the newly appended row (columns 9 and 10)
   try {
-    // Tenths formula: 15-min floor applies only if duration < 15 total
-    const tenthsFormula = '=IF(H' + newRowNum + '="","",IF(H' + newRowNum + '<15,0.3,INT(H' + newRowNum + '/60) + IF(MOD(H' + newRowNum + ',60)=0,0,IF(MOD(H' + newRowNum + ',60)<=6,0.1,IF(MOD(H' + newRowNum + ',60)<=12,0.2,IF(MOD(H' + newRowNum + ',60)<=18,0.3,IF(MOD(H' + newRowNum + ',60)<=24,0.4,IF(MOD(H' + newRowNum + ',60)<=30,0.5,IF(MOD(H' + newRowNum + ',60)<=36,0.6,IF(MOD(H' + newRowNum + ',60)<=42,0.7,IF(MOD(H' + newRowNum + ',60)<=48,0.8,IF(MOD(H' + newRowNum + ',60)<=54,0.9,1))))))))))))';
+    // Tenths formula: 15-min floor only if < 15 total, else use chart directly
+    const tenthsFormula = '=IF(H' + newRowNum + '="","",IF(H' + newRowNum + '<15,0.3,IF(H' + newRowNum + '<=6,0.1,IF(H' + newRowNum + '<=12,0.2,IF(H' + newRowNum + '<=18,0.3,IF(H' + newRowNum + '<=24,0.4,IF(H' + newRowNum + '<=30,0.5,IF(H' + newRowNum + '<=36,0.6,IF(H' + newRowNum + '<=42,0.7,IF(H' + newRowNum + '<=48,0.8,IF(H' + newRowNum + '<=54,0.9,1)))))))))))';
     const dataStartRow = 4; // New format always starts data at row 4
     const runningTotalFormula = '=IF(I' + newRowNum + '="","",SUMIF($B$' + dataStartRow + ':B' + newRowNum + ',B' + newRowNum + ',$I$' + dataStartRow + ':I' + newRowNum + '))';
     sheet.getRange(newRowNum, 9).setFormula(tenthsFormula);
@@ -700,9 +700,8 @@ function ensureNewColumns(sheet) {
 
     if (lastRow >= dataStartRow) {
       Logger.log('Adding formulas to rows ' + dataStartRow + ' to ' + lastRow);
-      // Formula for Tenths of Hours (column 9): 15-min floor applies only if duration < 15 total
-      // If < 15: always 0.3. If >= 15: use chart directly (hours + chart on remainder)
-      const tenthsFormula = '=IF(H{ROW}="","",IF(H{ROW}<15,0.3,INT(H{ROW}/60) + IF(MOD(H{ROW},60)=0,0,IF(MOD(H{ROW},60)<=6,0.1,IF(MOD(H{ROW},60)<=12,0.2,IF(MOD(H{ROW},60)<=18,0.3,IF(MOD(H{ROW},60)<=24,0.4,IF(MOD(H{ROW},60)<=30,0.5,IF(MOD(H{ROW},60)<=36,0.6,IF(MOD(H{ROW},60)<=42,0.7,IF(MOD(H{ROW},60)<=48,0.8,IF(MOD(H{ROW},60)<=54,0.9,1))))))))))))';
+      // Formula for Tenths of Hours (column 9): 15-min floor only if < 15 total, else use chart directly
+      const tenthsFormula = '=IF(H{ROW}="","",IF(H{ROW}<15,0.3,IF(H{ROW}<=6,0.1,IF(H{ROW}<=12,0.2,IF(H{ROW}<=18,0.3,IF(H{ROW}<=24,0.4,IF(H{ROW}<=30,0.5,IF(H{ROW}<=36,0.6,IF(H{ROW}<=42,0.7,IF(H{ROW}<=48,0.8,IF(H{ROW}<=54,0.9,1)))))))))))';
 
       // Formula for Running Total (column 10): blank if Tenths is blank, otherwise sum by case
       const runningTotalFormula = '=IF(I{ROW}="","",SUMIF($B$' + dataStartRow + ':B{ROW},B{ROW},$I$' + dataStartRow + ':I{ROW}))';
