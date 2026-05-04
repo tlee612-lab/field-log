@@ -591,7 +591,7 @@ function setupNewActivityLog(sheet) {
 
   // Row 1: totals bar labels + formulas
   const totalsLabels = ['Auth Hrs', '=\'PAE Summary\'!B1', 'Used Hrs',
-    '=IFERROR(CEILING(SUMIF(E4:E9999,"Investigator Service*",H4:H9999)/60,0.1),0)',
+    '=IFERROR(SUMIF(E4:E9999,"Investigator Service*",I4:I9999),0)',
     'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)'];
   sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
 
@@ -620,7 +620,7 @@ function upgradeActivityLog(sheet) {
 
   // Row 1: totals bar
   const totalsLabels = ['Auth Hrs', '=\'PAE Summary\'!B1', 'Used Hrs',
-    '=IFERROR(CEILING(SUMIF(E4:E9999,"Investigator Service*",H4:H9999)/60,0.1),0)',
+    '=IFERROR(SUMIF(E4:E9999,"Investigator Service*",I4:I9999),0)',
     'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)'];
   sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
 
