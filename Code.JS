@@ -245,7 +245,20 @@ function logEntry(entry) {
     }
   }
   sheet.appendRow(row);
-  Logger.log('Row appended successfully');
+  const newRowNum = sheet.getLastRow();
+  Logger.log('Row appended at row ' + newRowNum);
+
+  // Add formulas to the newly appended row (columns 9 and 10)
+  try {
+    const tenthsFormula = '=IF(H' + newRowNum + '="","",IF(MAX(H' + newRowNum + ',15)<=6,0.1,IF(MAX(H' + newRowNum + ',15)<=12,0.2,IF(MAX(H' + newRowNum + ',15)<=18,0.3,IF(MAX(H' + newRowNum + ',15)<=24,0.4,IF(MAX(H' + newRowNum + ',15)<=30,0.5,IF(MAX(H' + newRowNum + ',15)<=36,0.6,IF(MAX(H' + newRowNum + ',15)<=42,0.7,IF(MAX(H' + newRowNum + ',15)<=48,0.8,IF(MAX(H' + newRowNum + ',15)<=54,0.9,1))))))))))';
+    const dataStartRow = 4; // New format always starts data at row 4
+    const runningTotalFormula = '=IF(I' + newRowNum + '="","",SUMIF($B$' + dataStartRow + ':B' + newRowNum + ',B' + newRowNum + ',$I$' + dataStartRow + ':I' + newRowNum + '))';
+    sheet.getRange(newRowNum, 9).setFormula(tenthsFormula);
+    sheet.getRange(newRowNum, 10).setFormula(runningTotalFormula);
+    Logger.log('Formulas added to new row');
+  } catch(formulaErr) {
+    Logger.log('Failed to add formulas: ' + formulaErr.message);
+  }
 
   // Auto-sort by Date (col 6) then Time (col 7)
   autoSortActivityLog(sheet);
