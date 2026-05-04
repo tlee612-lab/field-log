@@ -415,7 +415,42 @@
   </div>
 </div>
 <script>
-const DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxUcyYasL_3vMIpcwTgfBJNzWpK7jE81Puyiw7nxL6BhfX3fy8ZPCqY9rDAZZ6OC2Ud/exec';
+// ── STORAGE INITIALIZATION ──────────────────────────────────────────────────
+const DB_NAME = 'tli_config';
+const STORE_NAME = 'settings';
+
+async function initIndexedDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+async function saveToIndexedDB(key, value) {
+  try {
+    const db = await initIndexedDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(value, key);
+  } catch(e) { console.warn('IndexedDB save failed:', e); }
+}
+
+async function loadFromIndexedDB(key) {
+  try {
+    const db = await initIndexedDB();
+    return new Promise((resolve) => {
+      const request = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => resolve(null);
+    });
+  } catch(e) { console.warn('IndexedDB load failed:', e); return null; }
+}
 
 // ── PAE PDF import ──────────────────────────────────────────────────────────
 let _pdfjsLib = null;
@@ -843,9 +878,27 @@ async function showCaseHours(caseNum) {
   }
 }
 // ────────────────────────────────────────────────────────────────────────────
+// Load config with fallback chain: localStorage → sessionStorage → IndexedDB
 let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
 if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
-if (!cfg.webhookUrl) cfg.webhookUrl = DEFAULT_WEBHOOK;
+
+// Try sessionStorage if localStorage webhook is empty
+if (!cfg.webhookUrl) {
+  const sessionWebhook = sessionStorage.getItem('tli_webhookUrl');
+  if (sessionWebhook) cfg.webhookUrl = sessionWebhook;
+}
+
+// Try IndexedDB as final fallback
+(async () => {
+  if (!cfg.webhookUrl) {
+    const idbWebhook = await loadFromIndexedDB('webhookUrl');
+    if (idbWebhook) {
+      cfg.webhookUrl = idbWebhook;
+      document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
+    }
+  }
+})();
+
 let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');
 let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]').map(p => ({
   ...p, client: cleanName(p.client), clientFirst: cleanName(p.clientFirst)
@@ -1045,14 +1098,19 @@ function saveKnownCase(caseNum, client, clientFirst) {
   }
 }
 
-function saveConfig() {
+async function saveConfig() {
   cfg.webhookUrl = document.getElementById('webhookUrl').value.trim();
   cfg.anthropicKey = sanitizeKey(document.getElementById('anthropicKey').value);
   cfg.geminiKey = sanitizeKey(document.getElementById('geminiKey').value);
   cfg.openaiKey = sanitizeKey(document.getElementById('openaiKey').value);
   cfg.aiProvider = document.getElementById('aiProvider').value;
   cfg.devMode = document.getElementById('devMode').checked;
+
+  // Save to all three storage methods
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
+  sessionStorage.setItem('tli_webhookUrl', cfg.webhookUrl);
+  await saveToIndexedDB('webhookUrl', cfg.webhookUrl);
+
   if (cfg.webhookUrl) setUrlLock(true);
   setAiKeyLock(true);
   showToast('Config saved');
