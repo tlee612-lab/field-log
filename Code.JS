@@ -234,7 +234,9 @@ function logEntry(entry) {
 
   Logger.log('Getting or creating sheet...');
   const sheet = getOrCreateSheet(caseFolder);
-  Logger.log('Sheet ready, appending row...');
+  Logger.log('Sheet ready, checking for missing columns...');
+  ensureNewColumns(sheet); // Add new columns if needed
+  Logger.log('Appending row...');
   // Blank separator row when the submission batch changes — groups Travel Time + Mileage pairs together
   const clr = sheet.getLastRow();
   if (clr > 1) {
@@ -595,6 +597,51 @@ function styleActivityTotalsRow(sheet) {
 function applyActivityLogColumnWidths(sheet) {
   [160, 110, 120, 120, 280, 90, 70, 100, 90, 90, 80, 80, 100, 100, 120, 400]
     .forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+}
+
+/** Check if sheet is missing new columns; add them if needed. */
+function ensureNewColumns(sheet) {
+  try {
+    // Determine header row (row 3 for new format, row 1 for old format)
+    let headerRow = 3;
+    const a1 = String(sheet.getRange(1, 1).getValue()).trim();
+    const a3 = String(sheet.getRange(3, 1).getValue()).trim();
+
+    if (a1 === 'Logged At') headerRow = 1; // Old format
+    if (a3 === 'Logged At') headerRow = 3; // New format
+
+    const headerVals = sheet.getRange(headerRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headerStr = headerVals.join('|');
+
+    // Check if both new columns exist
+    const hasTenths = headerStr.includes('Tenths of Hours');
+    const hasRunningTotal = headerStr.includes('Running Total');
+
+    if (hasTenths && hasRunningTotal) return; // Already has both columns
+
+    Logger.log('Sheet missing new columns; upgrading...');
+
+    // Insert two columns after Duration (column 8)
+    sheet.insertColumns(9, 2);
+
+    // Add headers at row 3 (or row 1 if old format)
+    sheet.getRange(headerRow, 9).setValue('Tenths of Hours');
+    sheet.getRange(headerRow, 10).setValue('Running Total');
+
+    // Style the new headers to match existing headers
+    sheet.getRange(headerRow, 9, 1, 2)
+      .setFontWeight('bold')
+      .setBackground('#1c2030')
+      .setFontColor('#00c8a0');
+
+    // Set column widths for the new columns
+    sheet.setColumnWidth(9, 90);
+    sheet.setColumnWidth(10, 90);
+
+    Logger.log('New columns added successfully');
+  } catch(e) {
+    Logger.log('ensureNewColumns failed: ' + e.message);
+  }
 }
 
 /** Auto-sort Activity Log by Date (col 6) then Time (col 7). Preserves header rows. */
