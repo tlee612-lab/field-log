@@ -590,7 +590,7 @@ function styleActivityTotalsRow(sheet) {
 
 /** Set column widths for Activity Log. */
 function applyActivityLogColumnWidths(sheet) {
-  [160, 110, 120, 120, 280, 90, 70, 100, 80, 80, 100, 100, 120, 400]
+  [160, 110, 120, 120, 280, 90, 70, 100, 90, 90, 80, 80, 100, 100, 120, 400]
     .forEach((w, i) => sheet.setColumnWidth(i + 1, w));
 }
 
