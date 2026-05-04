@@ -8,15 +8,42 @@ const MASTER_LOG_NAME = 'Master Activity Log';
 
 const HEADERS = [
   'Logged At', 'Case Number', 'Client Last Name', 'Client First Name', 'Activity Type',
-  'Date', 'Time', 'Duration (mins)', 'Quantity', 'Mileage', 'From', 'To',
+  'Date', 'Time', 'Duration (mins)', 'Tenths of Hours', 'Running Total', 'Quantity', 'Mileage', 'From', 'To',
   'Investigator', 'Notes'
 ];
 
 const MASTER_HEADERS = [
   'Logged At', 'Case Number', 'Client Last Name', 'Client First Name', 'Activity Type',
-  'Date', 'Time', 'Duration (mins)', 'Quantity', 'Mileage', 'From', 'To',
+  'Date', 'Time', 'Duration (mins)', 'Tenths of Hours', 'Running Total', 'Quantity', 'Mileage', 'From', 'To',
   'Investigator', 'Notes', 'Filed To'
 ];
+
+// Convert minutes to tenths of hours using billing chart (15-minute minimum)
+function minutesToTenths(mins) {
+  const m = parseInt(mins) || 0;
+  if (m <= 0) return 0;
+  // Apply 15-minute minimum
+  const adjusted = Math.max(m, 15);
+  // Conversion chart: 0=0, 1-6=0.1, 7-12=0.2, 13-18=0.3, 19-24=0.4, 25-30=0.5, 31-36=0.6, 37-42=0.7, 43-48=0.8, 49-54=0.9, 55+=1.0
+  if (adjusted <= 6) return 0.1;
+  if (adjusted <= 12) return 0.2;
+  if (adjusted <= 18) return 0.3;
+  if (adjusted <= 24) return 0.4;
+  if (adjusted <= 30) return 0.5;
+  if (adjusted <= 36) return 0.6;
+  if (adjusted <= 42) return 0.7;
+  if (adjusted <= 48) return 0.8;
+  if (adjusted <= 54) return 0.9;
+  return 1.0;
+}
+
+// Get running total for a case
+let caseRunningTotals = {}; // Track running totals per case per session
+function getRunningTotal(caseNum, tenths) {
+  if (!caseRunningTotals[caseNum]) caseRunningTotals[caseNum] = 0;
+  caseRunningTotals[caseNum] += tenths;
+  return caseRunningTotals[caseNum];
+}
 
 function doOptions(e) {
   return ContentService.createTextOutput("")
@@ -157,8 +184,12 @@ function logEntry(entry) {
   const notes        = (entry.notes        || '').trim();
   const logged       = (entry.logged       || new Date().toISOString()).trim();
 
+  // Calculate tenths of hours and running total
+  const tenths = minutesToTenths(duration);
+  const runningTotal = getRunningTotal(caseNum, tenths);
+
   const row = [logged, caseNum, clientLast, clientFirst, type, date, time,
-               duration, quantity, mileage, travelFrom, travelTo, investigator, notes];
+               duration, tenths, runningTotal, quantity, mileage, travelFrom, travelTo, investigator, notes];
 
   if (!caseNum || !clientLast) throw new Error('case and client are required');
 
