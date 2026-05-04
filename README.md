@@ -93,6 +93,13 @@ The webhook URL stays the same — your settings don't change.
 
 ## Features
 
+### Billing Calculations
+- **Tenths of Hours column** — converts duration to billable tenths using industry-standard chart
+- **15-minute billing floor** — durations under 15 minutes bill as 0.3 tenths (18 mins)
+- **Running Total column** — accumulates billable hours per case throughout session
+- **Hours Used** — auto-calculated from billable entries, updated in real-time
+- Sorting by Date then Time — automatic on every entry and manual via "Upgrade Sheets"
+
 ### AI Mode
 - Dictate or type raw field notes — the AI parses them into structured billing entries
 - Supports Claude (Anthropic), Gemini (Google), and ChatGPT (OpenAI)
@@ -116,7 +123,37 @@ The webhook URL stays the same — your settings don't change.
 - Supports Anthropic, Gemini, and OpenAI API keys
 - Webhook URL configuration with lock/unlock
 - Dev Mode — shows raw JSON parse output for debugging
-- Refresh Cases — pulls case list from Google Drive folder structure
+- **Upgrade Sheets button** — adds new billing columns and formulas to existing sheets, sorts data by date/time
+- Refresh Cases — pulls updated case list from Google Drive, removes deleted cases
+
+---
+
+## Billing Calculation Details
+
+Each entry calculates billable hours using a standardized tenths chart:
+
+| Minutes | Tenths |
+|---------|--------|
+| 0       | 0.0    |
+| 1–6     | 0.1    |
+| 7–12    | 0.2    |
+| 13–18   | 0.3    |
+| 19–24   | 0.4    |
+| 25–30   | 0.5    |
+| 31–36   | 0.6    |
+| 37–42   | 0.7    |
+| 43–48   | 0.8    |
+| 49–54   | 0.9    |
+| 55+     | 1.0    |
+
+**15-Minute Floor Rule:** Entries under 15 minutes bill as 0.3 tenths (18 minutes minimum). Once duration reaches 15+ minutes, the chart applies directly with no floor.
+
+**Examples:**
+- 5 minutes → 0.3 tenths (floor applies)
+- 15 minutes → 0.3 tenths (no floor, chart = 0.3)
+- 30 minutes → 0.5 tenths
+- 65 minutes → 1.1 tenths (1 hour + 5 mins = 1.0 + 0.1)
+- 147 minutes → 2.5 tenths (2 hours + 27 mins = 2.0 + 0.5)
 
 ---
 
@@ -169,9 +206,19 @@ For best results include in your dictated notes:
 
 ## Google Sheets Layout
 
-Each case gets its own folder and spreadsheet in your Drive folder. Columns:
+Each case gets its own folder and spreadsheet in your Drive folder.
 
-| Logged At | Case # | Client Last | Client First | Activity Type | Date | Time | Duration | Quantity | Mileage | From | To | Investigator | Notes |
+**Row 1 (Totals Bar):** Auth Hrs | Used Hrs | Remaining | Mileage  
+**Row 2:** Blank spacer  
+**Row 3 (Headers):**
+
+| Logged At | Case # | Client Last | Client First | Activity Type | Date | Time | Duration | Tenths of Hours | Running Total | Quantity | Mileage | From | To | Investigator | Notes |
+
+**How it works:**
+- **Tenths of Hours (Col I)** — auto-calculated using the billing chart with 15-minute floor
+- **Running Total (Col J)** — cumulative billable hours per case (session-scoped)
+- **Used Hrs (D1)** — sums all "Investigator Service*" entries from Tenths column
+- Data sorted automatically by Date then Time on every entry
 
 ---
 
