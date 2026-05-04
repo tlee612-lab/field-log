@@ -67,6 +67,30 @@ If no sheet appears, go to Google Apps Script → **Executions** to see if there
 
 ---
 
+## ⚠️ Code.JS Updates
+
+When a new version of `Code.JS` is released, **you must update it manually** in your Google Apps Script project. The frontend (`index.html`) updates automatically, but the backend requires manual deployment.
+
+### To update your backend:
+
+1. Go to [Google Apps Script](https://script.google.com) and open your **TLI Field Log** project
+2. Download the latest `Code.JS` from [this repo](https://github.com/tlee612-lab/field-log/blob/main/Code.JS)
+3. Delete all code in your Apps Script editor
+4. Paste the new `Code.JS` code
+5. On line 6, make sure your folder ID is still there:
+   ```javascript
+   const AUTO_LOG_FOLDER_ID = 'YOUR_FOLDER_ID';
+   ```
+6. Click **Save** (Ctrl+S)
+7. Click **Deploy → Manage deployments**
+8. Click the pencil icon on the existing deployment
+9. Click **Redeploy** 
+10. Approve any new permission prompts if prompted
+
+The webhook URL stays the same — your settings don't change.
+
+---
+
 ## Features
 
 ### AI Mode
