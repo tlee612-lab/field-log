@@ -246,6 +246,9 @@ function logEntry(entry) {
   sheet.appendRow(row);
   Logger.log('Row appended successfully');
 
+  // Auto-sort by Date (col 6) then Time (col 7)
+  autoSortActivityLog(sheet);
+
   // Update master log Filed To column with the actual folder name
   filedTo = caseFolder.getName();
   updateMasterLogStatus(logged, caseNum, filedTo);
@@ -592,6 +595,23 @@ function styleActivityTotalsRow(sheet) {
 function applyActivityLogColumnWidths(sheet) {
   [160, 110, 120, 120, 280, 90, 70, 100, 90, 90, 80, 80, 100, 100, 120, 400]
     .forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+}
+
+/** Auto-sort Activity Log by Date (col 6) then Time (col 7). Preserves header rows. */
+function autoSortActivityLog(sheet) {
+  try {
+    const lastRow = sheet.getLastRow();
+    // Skip if fewer than 5 rows (rows 1-3 are headers/totals, need at least 1 data row)
+    if (lastRow < 5) return;
+
+    // Data range: row 4 onwards (row 3 is headers, rows 1-2 are totals bar)
+    // Sort by: Date (column 6) ascending, then Time (column 7) ascending
+    const dataRange = sheet.getRange(4, 1, lastRow - 3, sheet.getLastColumn());
+    dataRange.sort([6, 7]); // Column 6 = Date, Column 7 = Time
+    Logger.log('Activity Log sorted by Date and Time');
+  } catch(e) {
+    Logger.log('autoSortActivityLog failed: ' + e.message);
+  }
 }
 
 // ── PAE Summary tab ─────────────────────────────────────────────────────────
