@@ -848,12 +848,12 @@ async function showCaseHours(caseNum) {
   const localUsed = minutesToTenths(localMins);
 
   function renderBar(used, auth, source) {
-    const remaining = auth !== null ? parseFloat((auth - used).toFixed(1)) : null;
+    const remaining = auth !== null ? parseFloat((auth - used).toFixed(2)) : null;
     const pct = auth ? used / auth : 0;
     const color = pct >= 1 ? '#dc2626' : pct >= 0.8 ? '#f59e0b' : 'var(--accent)';
-    const authStr = auth !== null ? `Auth: <b>${auth}</b> hrs` : 'Auth: —';
-    const usedStr = `Used: <b style="color:${color}">${used}</b> hrs`;
-    const remStr = remaining !== null ? `Remaining: <b style="color:${color}">${remaining}</b> hrs` : '';
+    const authStr = auth !== null ? `Auth: <b>${parseFloat(auth).toFixed(2)}</b> hrs` : 'Auth: —';
+    const usedStr = `Used: <b style="color:${color}">${parseFloat(used).toFixed(2)}</b> hrs`;
+    const remStr = remaining !== null ? `Remaining: <b style="color:${color}">${remaining.toFixed(2)}</b> hrs` : '';
     const src = source ? `<span style="color:var(--muted);font-size:10px"> (${source})</span>` : '';
     bar.innerHTML = `⏱ ${authStr} &nbsp;·&nbsp; ${usedStr}${remStr ? ' &nbsp;·&nbsp; ' + remStr : ''}${src}`;
     bar.style.display = 'block';
