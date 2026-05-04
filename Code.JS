@@ -1,6 +1,6 @@
 /**
  * TLI Field Log - Server Side (Code.gs)
- * Version: 2026.04.27-Stable
+ * Version: 2026.05.04-Stable
  */
 
 const AUTO_LOG_FOLDER_ID = '1Q3BWEfnUoqoPYWFQ0eDeSXGRAjPybQov';
@@ -185,12 +185,10 @@ function logEntry(entry) {
   const notes        = (entry.notes        || '').trim();
   const logged       = (entry.logged       || new Date().toISOString()).trim();
 
-  // Calculate tenths of hours and running total
-  const tenths = minutesToTenths(duration);
-  const runningTotal = getRunningTotal(caseNum, tenths);
-
+  // Tenths and running total are now calculated by formulas in the sheet
+  // Append empty values for columns 9 and 10; formulas will populate them
   const row = [logged, caseNum, clientLast, clientFirst, type, date, time,
-               duration, tenths, runningTotal, quantity, mileage, travelFrom, travelTo, investigator, notes];
+               duration, '', '', quantity, mileage, travelFrom, travelTo, investigator, notes];
 
   if (!caseNum || !clientLast) throw new Error('case and client are required');
 
@@ -682,7 +680,25 @@ function ensureNewColumns(sheet) {
     sheet.setColumnWidth(9, 90);
     sheet.setColumnWidth(10, 90);
 
-    Logger.log('New columns added successfully');
+    // Add formulas to all data rows
+    const lastRow = sheet.getLastRow();
+    const dataStartRow = headerRow === 1 ? 2 : 4; // Row 2 for old format, row 4 for new format
+
+    if (lastRow >= dataStartRow) {
+      // Formula for Tenths of Hours (column 9): blank if Duration is blank, otherwise calculate with 15-min minimum
+      const tenthsFormula = '=IF(H{ROW}="","",IF(MAX(H{ROW},15)<=6,0.1,IF(MAX(H{ROW},15)<=12,0.2,IF(MAX(H{ROW},15)<=18,0.3,IF(MAX(H{ROW},15)<=24,0.4,IF(MAX(H{ROW},15)<=30,0.5,IF(MAX(H{ROW},15)<=36,0.6,IF(MAX(H{ROW},15)<=42,0.7,IF(MAX(H{ROW},15)<=48,0.8,IF(MAX(H{ROW},15)<=54,0.9,1))))))))))';
+
+      // Formula for Running Total (column 10): blank if Tenths is blank, otherwise sum by case
+      const runningTotalFormula = '=IF(I{ROW}="","",SUMIF($B$' + dataStartRow + ':B{ROW},B{ROW},$I$' + dataStartRow + ':I{ROW}))';
+
+      // Apply formulas to each data row
+      for (let row = dataStartRow; row <= lastRow; row++) {
+        sheet.getRange(row, 9).setFormula(tenthsFormula.replace(/{ROW}/g, row));
+        sheet.getRange(row, 10).setFormula(runningTotalFormula.replace(/{ROW}/g, row));
+      }
+    }
+
+    Logger.log('New columns added with formulas');
   } catch(e) {
     Logger.log('ensureNewColumns failed: ' + e.message);
   }
