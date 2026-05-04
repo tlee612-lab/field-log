@@ -671,33 +671,34 @@ function ensureNewColumns(sheet) {
     // Check if both new columns exist
     const hasTenths = headerStr.includes('Tenths of Hours');
     const hasRunningTotal = headerStr.includes('Running Total');
+    let needsInsert = !hasTenths || !hasRunningTotal;
 
-    if (hasTenths && hasRunningTotal) return; // Already has both columns
+    if (needsInsert) {
+      Logger.log('Sheet missing new columns; inserting...');
+      // Insert two columns after Duration (column 8)
+      sheet.insertColumns(9, 2);
 
-    Logger.log('Sheet missing new columns; upgrading...');
+      // Add headers at row 3 (or row 1 if old format)
+      sheet.getRange(headerRow, 9).setValue('Tenths of Hours');
+      sheet.getRange(headerRow, 10).setValue('Running Total');
 
-    // Insert two columns after Duration (column 8)
-    sheet.insertColumns(9, 2);
+      // Style the new headers to match existing headers
+      sheet.getRange(headerRow, 9, 1, 2)
+        .setFontWeight('bold')
+        .setBackground('#1c2030')
+        .setFontColor('#00c8a0');
 
-    // Add headers at row 3 (or row 1 if old format)
-    sheet.getRange(headerRow, 9).setValue('Tenths of Hours');
-    sheet.getRange(headerRow, 10).setValue('Running Total');
+      // Set column widths for the new columns
+      sheet.setColumnWidth(9, 90);
+      sheet.setColumnWidth(10, 90);
+    }
 
-    // Style the new headers to match existing headers
-    sheet.getRange(headerRow, 9, 1, 2)
-      .setFontWeight('bold')
-      .setBackground('#1c2030')
-      .setFontColor('#00c8a0');
-
-    // Set column widths for the new columns
-    sheet.setColumnWidth(9, 90);
-    sheet.setColumnWidth(10, 90);
-
-    // Add formulas to all data rows
+    // Always add/refresh formulas on columns 9 and 10 (even if columns already existed)
     const lastRow = sheet.getLastRow();
     const dataStartRow = headerRow === 1 ? 2 : 4; // Row 2 for old format, row 4 for new format
 
     if (lastRow >= dataStartRow) {
+      Logger.log('Adding formulas to rows ' + dataStartRow + ' to ' + lastRow);
       // Formula for Tenths of Hours (column 9): blank if Duration is blank, otherwise calculate with 15-min minimum
       const tenthsFormula = '=IF(H{ROW}="","",IF(MAX(H{ROW},15)<=6,0.1,IF(MAX(H{ROW},15)<=12,0.2,IF(MAX(H{ROW},15)<=18,0.3,IF(MAX(H{ROW},15)<=24,0.4,IF(MAX(H{ROW},15)<=30,0.5,IF(MAX(H{ROW},15)<=36,0.6,IF(MAX(H{ROW},15)<=42,0.7,IF(MAX(H{ROW},15)<=48,0.8,IF(MAX(H{ROW},15)<=54,0.9,1))))))))))';
 
@@ -711,7 +712,7 @@ function ensureNewColumns(sheet) {
       }
     }
 
-    Logger.log('New columns added with formulas');
+    Logger.log('Columns and formulas are up to date');
   } catch(e) {
     Logger.log('ensureNewColumns failed: ' + e.message);
   }
