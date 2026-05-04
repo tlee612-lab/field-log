@@ -362,23 +362,7 @@ function getOrCreateSheet(caseFolder) {
   return sheet;
 }
 
-// Billing chart: minutes → tenths of hours (OPDC standard)
-// breakpoints[i] = minimum minutes required for i tenths
-const BILLING_BREAKPOINTS = [0, 1, 7, 13, 19, 25, 31, 37, 43, 49, 55];
-
-function minutesToTenths(totalMinutes) {
-  const mins = parseInt(totalMinutes) || 0;
-  if (mins === 0) return 0;
-  const wholeHours = Math.floor(mins / 60);
-  const rem = mins % 60;
-  let tenths = 0;
-  if (rem > 0) {
-    for (let i = BILLING_BREAKPOINTS.length - 1; i >= 1; i--) {
-      if (rem >= BILLING_BREAKPOINTS[i]) { tenths = i * 0.1; break; }
-    }
-  }
-  return parseFloat((wholeHours + tenths).toFixed(1));
-}
+// NOTE: minutesToTenths() is defined earlier (line ~22) with 15-minute minimum for activity log entries
 
 // Returns hours used for a case by reading its Activity Log sheet
 function getCaseSummary(caseNum) {
