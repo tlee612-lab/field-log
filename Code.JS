@@ -607,6 +607,7 @@ function setupNewActivityLog(sheet) {
 
   sheet.setFrozenRows(3);
   applyActivityLogColumnWidths(sheet);
+  autoSortActivityLog(sheet);
   Logger.log('setupNewActivityLog: complete');
 }
 
@@ -632,6 +633,7 @@ function upgradeActivityLog(sheet) {
 
   sheet.setFrozenRows(3);
   applyActivityLogColumnWidths(sheet);
+  autoSortActivityLog(sheet);
 }
 
 /** Apply visual style to the totals bar in row 1 of Activity Log. */
@@ -719,6 +721,9 @@ function ensureNewColumns(sheet) {
       sheet.getRange(1, 4).setFormula(d1Formula);
       Logger.log('Updated Hours Used formula in D1');
     }
+
+    // Sort the sheet by Date (col 6) then Time (col 7)
+    autoSortActivityLog(sheet);
 
     Logger.log('Columns and formulas are up to date');
   } catch(e) {
