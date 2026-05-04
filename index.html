@@ -363,6 +363,7 @@
           <button class="ai-btn" style="max-width:140px" onclick="saveConfig()">Save Changes</button>
           <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end">
             <button class="ai-btn secondary" style="max-width:140px; font-size:10px" onclick="fetchRemoteCases(true)">Refresh Cases</button>
+            <button class="ai-btn secondary" style="max-width:140px; font-size:10px" onclick="upgradeAllSheets()">Upgrade Sheets</button>
             <button class="ai-btn secondary" style="max-width:140px; color:var(--warn); border-color:var(--warn); background:transparent; font-size:10px" onclick="clearAllEntries()">Clear Local Logs</button>
           </div>
           <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:12px; display:flex; align-items:center; gap:10px;">
@@ -1878,6 +1879,30 @@ function clearAllEntries() {
   localStorage.setItem('tli_entries', JSON.stringify(entries));
   renderLog(); updateSyncBtn();
   showToast('All local entries cleared');
+}
+
+async function upgradeAllSheets() {
+  const caseNum = document.getElementById('caseNum')?.value?.trim();
+  if (!caseNum) {
+    showToast('Select a case first', true);
+    return;
+  }
+  if (!cfg.webhookUrl) {
+    showToast('Webhook URL not configured', true);
+    return;
+  }
+  try {
+    const url = cfg.webhookUrl + '?action=upgradeSheet&case=' + encodeURIComponent(caseNum);
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      showToast('✓ Sheet upgraded: ' + caseNum);
+    } else {
+      showToast('Upgrade failed: ' + (data.message || 'unknown error'), true);
+    }
+  } catch(err) {
+    showToast('Upgrade failed: ' + err.message, true);
+  }
 }
 
 function showToast(msg, isError=false) {
