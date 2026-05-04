@@ -419,8 +419,8 @@ function getCaseSummary(caseNum) {
     // and Mileage from H1 (both in the totals bar)
     const d1 = sheet.getRange(1, 4).getValue(); // Column D, row 1
     const h1 = sheet.getRange(1, 8).getValue(); // Column H, row 1
-    const hoursUsed = parseFloat(d1) || 0;
-    const totalMileage = parseFloat(h1) || 0;
+    const hoursUsed = parseFloat((parseFloat(d1) || 0).toFixed(2));
+    const totalMileage = parseFloat((parseFloat(h1) || 0).toFixed(2));
 
     // For reference, also calculate total minutes from data rows
     // Col 5 = Activity Type, Col 8 = Duration (mins)
