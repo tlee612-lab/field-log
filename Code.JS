@@ -250,7 +250,8 @@ function logEntry(entry) {
 
   // Add formulas to the newly appended row (columns 9 and 10)
   try {
-    const tenthsFormula = '=IF(H' + newRowNum + '="","",IF(MAX(H' + newRowNum + ',15)<=6,0.1,IF(MAX(H' + newRowNum + ',15)<=12,0.2,IF(MAX(H' + newRowNum + ',15)<=18,0.3,IF(MAX(H' + newRowNum + ',15)<=24,0.4,IF(MAX(H' + newRowNum + ',15)<=30,0.5,IF(MAX(H' + newRowNum + ',15)<=36,0.6,IF(MAX(H' + newRowNum + ',15)<=42,0.7,IF(MAX(H' + newRowNum + ',15)<=48,0.8,IF(MAX(H' + newRowNum + ',15)<=54,0.9,1))))))))))';
+    // Tenths formula: whole_hours + fractional_hours_from_remainder_minutes (with 15-min minimum on remainder)
+    const tenthsFormula = '=IF(H' + newRowNum + '="","",INT(H' + newRowNum + '/60) + IF(MAX(MOD(H' + newRowNum + ',60),15)<=6,0.1,IF(MAX(MOD(H' + newRowNum + ',60),15)<=12,0.2,IF(MAX(MOD(H' + newRowNum + ',60),15)<=18,0.3,IF(MAX(MOD(H' + newRowNum + ',60),15)<=24,0.4,IF(MAX(MOD(H' + newRowNum + ',60),15)<=30,0.5,IF(MAX(MOD(H' + newRowNum + ',60),15)<=36,0.6,IF(MAX(MOD(H' + newRowNum + ',60),15)<=42,0.7,IF(MAX(MOD(H' + newRowNum + ',60),15)<=48,0.8,IF(MAX(MOD(H' + newRowNum + ',60),15)<=54,0.9,1))))))))))';
     const dataStartRow = 4; // New format always starts data at row 4
     const runningTotalFormula = '=IF(I' + newRowNum + '="","",SUMIF($B$' + dataStartRow + ':B' + newRowNum + ',B' + newRowNum + ',$I$' + dataStartRow + ':I' + newRowNum + '))';
     sheet.getRange(newRowNum, 9).setFormula(tenthsFormula);
@@ -699,8 +700,9 @@ function ensureNewColumns(sheet) {
 
     if (lastRow >= dataStartRow) {
       Logger.log('Adding formulas to rows ' + dataStartRow + ' to ' + lastRow);
-      // Formula for Tenths of Hours (column 9): blank if Duration is blank, otherwise calculate with 15-min minimum
-      const tenthsFormula = '=IF(H{ROW}="","",IF(MAX(H{ROW},15)<=6,0.1,IF(MAX(H{ROW},15)<=12,0.2,IF(MAX(H{ROW},15)<=18,0.3,IF(MAX(H{ROW},15)<=24,0.4,IF(MAX(H{ROW},15)<=30,0.5,IF(MAX(H{ROW},15)<=36,0.6,IF(MAX(H{ROW},15)<=42,0.7,IF(MAX(H{ROW},15)<=48,0.8,IF(MAX(H{ROW},15)<=54,0.9,1))))))))))';
+      // Formula for Tenths of Hours (column 9): handles multi-hour durations + 15-min minimum on remainder
+      // Calculates: whole_hours + fractional_hours_from_remainder_minutes
+      const tenthsFormula = '=IF(H{ROW}="","",INT(H{ROW}/60) + IF(MAX(MOD(H{ROW},60),15)<=6,0.1,IF(MAX(MOD(H{ROW},60),15)<=12,0.2,IF(MAX(MOD(H{ROW},60),15)<=18,0.3,IF(MAX(MOD(H{ROW},60),15)<=24,0.4,IF(MAX(MOD(H{ROW},60),15)<=30,0.5,IF(MAX(MOD(H{ROW},60),15)<=36,0.6,IF(MAX(MOD(H{ROW},60),15)<=42,0.7,IF(MAX(MOD(H{ROW},60),15)<=48,0.8,IF(MAX(MOD(H{ROW},60),15)<=54,0.9,1))))))))))';
 
       // Formula for Running Total (column 10): blank if Tenths is blank, otherwise sum by case
       const runningTotalFormula = '=IF(I{ROW}="","",SUMIF($B$' + dataStartRow + ':B{ROW},B{ROW},$I$' + dataStartRow + ':I{ROW}))';
