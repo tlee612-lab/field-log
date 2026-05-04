@@ -61,6 +61,7 @@ function doGet(e) {
     }
     if (action === 'getCases') return buildResponse(getCases());
     if (action === 'getCaseSummary') return buildResponse(getCaseSummary(e.parameter.case || ''));
+    if (action === 'upgradeSheet') return buildResponse(upgradeSheetAction(e.parameter.case || ''));
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
       const reqId = e.parameter.reqId || '';
@@ -424,6 +425,49 @@ function getCaseSummary(caseNum) {
       totalMins,
       totalMileage: parseFloat(totalMileage.toFixed(1))
     };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
+// ── Upgrade Sheet Action (manual upgrade from UI) ───────────────────────────
+
+/**
+ * Upgrade a case sheet with new columns if needed.
+ * Called from UI button in settings.
+ */
+function upgradeSheetAction(caseNum) {
+  if (!caseNum) return { status: 'error', message: 'case required' };
+  try {
+    const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+    const allFolders = autoLogFolder.getFolders();
+    let caseFolder = null;
+
+    while (allFolders.hasNext()) {
+      const f = allFolders.next();
+      const name = f.getName();
+      if (name === caseNum || name.startsWith(caseNum + ' - ')) { caseFolder = f; break; }
+    }
+
+    if (!caseFolder) return { status: 'error', message: 'case folder not found' };
+
+    // Find the sheet
+    const files = caseFolder.getFiles();
+    let sheet = null;
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+        sheet = SpreadsheetApp.openById(file.getId()).getSheetByName('Activity Log');
+        break;
+      }
+    }
+
+    if (!sheet) return { status: 'error', message: 'Activity Log sheet not found' };
+
+    // Upgrade the sheet
+    ensureNewColumns(sheet);
+
+    return { status: 'ok', message: 'Sheet upgraded successfully', case: caseNum };
   } catch(err) {
     return { status: 'error', message: err.message };
   }
