@@ -3,7 +3,7 @@
  * Version: 2026.05.04-Stable
  */
 
-const AUTO_LOG_FOLDER_ID = '1Q3BWEfnUoqoPYWFQ0eDeSXGRAjPybQov';
+const AUTO_LOG_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('AUTO_LOG_FOLDER_ID') || '1Q3BWEfnUoqoPYWFQ0eDeSXGRAjPybQov';
 const MASTER_LOG_NAME = 'Master Activity Log';
 
 const HEADERS = [
@@ -484,6 +484,15 @@ function getActivities(caseNum) {
 
     const data = sheet.getRange(2, 1, lastRow - 1, 16).getValues();
     const activities = [];
+    const tz = Session.getScriptTimeZone();
+    const fmtDate = (v) => {
+      if (v instanceof Date) return Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+      return String(v || '').trim();
+    };
+    const fmtTime = (v) => {
+      if (v instanceof Date) return Utilities.formatDate(v, tz, 'HH:mm');
+      return String(v || '').trim();
+    };
     for (const row of data) {
       const logged = String(row[0] || '').trim();
       if (!logged) continue;  // skip blank/separator rows
@@ -493,8 +502,8 @@ function getActivities(caseNum) {
         client: String(row[2] || '').trim(),
         clientFirst: String(row[3] || '').trim(),
         type: String(row[4] || '').trim(),
-        date: String(row[5] || '').trim(),
-        time: String(row[6] || '').trim(),
+        date: fmtDate(row[5]),
+        time: fmtTime(row[6]),
         duration: parseFloat(row[7]) || 0,
         tenths: parseFloat(row[8]) || 0,
         runningTotal: parseFloat(row[9]) || 0,
