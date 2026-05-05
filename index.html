@@ -1892,7 +1892,7 @@ async function submitEntry() {
   localStorage.setItem('tli_entries', JSON.stringify(entries));
   renderLog(); updateSyncBtn();
   // Always clear form fields after successful entry creation
-  ['actNotes','clientLast','clientFirst','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput','mileageDriver'].forEach(id => document.getElementById(id).value = '');
+  ['actNotes','clientLast','clientFirst','caseNum','actDate','actTime','actMileage','travelFrom','travelTo','actDuration','aiInput','mileageDriver'].forEach(id => document.getElementById(id).value = '');
   clearOopAddon();
   document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
   document.getElementById('aiPreview').classList.remove('visible');
