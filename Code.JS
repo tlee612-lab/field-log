@@ -61,6 +61,7 @@ function doGet(e) {
     }
     if (action === 'getCases') return buildResponse(getCases());
     if (action === 'getCaseSummary') return buildResponse(getCaseSummary(e.parameter.case || ''));
+    if (action === 'getActivities')  return buildResponse(getActivities(e.parameter.case || ''));
     if (action === 'upgradeSheet') return buildResponse(upgradeSheetAction(e.parameter.case || ''));
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
@@ -418,24 +419,95 @@ function getCaseSummary(caseNum) {
     // New format: rows 1-3 are totals/blank/headers — data starts at row 4.
     // Old format: row 1 = headers, data starts at row 2.
     // In both cases the Investigator Service regex filters out non-data rows safely.
-    const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+    // Read all 16 columns to access Mileage (col 12) correctly
+    const data = sheet.getRange(2, 1, lastRow - 1, 16).getValues();
     let totalMins = 0;
     let totalMileage = 0;
+    let hoursUsed = 0;
     for (const row of data) {
       const type = String(row[4] || '').trim();
       const dur  = parseFloat(row[7]) || 0;
-      const mil  = parseFloat(row[9]) || 0;
-      if (/^Investigator Service/i.test(type) && dur > 0) totalMins += dur;
+      const mil  = parseFloat(row[11]) || 0;  // col 12 = Mileage (0-indexed: row[11])
+      if (/^Investigator Service/i.test(type) && dur > 0) {
+        totalMins += dur;
+        hoursUsed += minutesToTenths(dur);  // Sum individual tenths, not aggregate
+      }
       if (mil > 0) totalMileage += mil;
     }
 
     return {
       status: 'ok',
       found: true,
-      hoursUsed: minutesToTenths(totalMins),
+      hoursUsed: parseFloat(hoursUsed.toFixed(1)),
       totalMins,
       totalMileage: parseFloat(totalMileage.toFixed(1))
     };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
+/**
+ * Returns the activity rows for a case as an array of objects.
+ * { status, found, activities: [{ logged, case, client, clientFirst, type,
+ *   date, time, duration, tenths, runningTotal, quantity, mileage,
+ *   from, to, investigator, notes }] }
+ * Skips blank/separator rows (rows with no logged timestamp).
+ */
+function getActivities(caseNum) {
+  if (!caseNum) return { status: 'error', message: 'case required' };
+  try {
+    const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+    const allFolders = autoLogFolder.getFolders();
+    let caseFolder = null;
+    while (allFolders.hasNext()) {
+      const f = allFolders.next();
+      const name = f.getName();
+      if (name === caseNum || name.startsWith(caseNum + ' - ')) { caseFolder = f; break; }
+    }
+    if (!caseFolder) return { status: 'ok', found: false, reason: 'folder_missing' };
+
+    const files = caseFolder.getFiles();
+    let sheet = null;
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+        const ss = SpreadsheetApp.openById(file.getId());
+        sheet = ss.getSheetByName('Activity Log') || ss.getActiveSheet();
+        break;
+      }
+    }
+    if (!sheet) return { status: 'ok', found: false, reason: 'sheet_missing' };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { status: 'ok', found: true, activities: [] };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 16).getValues();
+    const activities = [];
+    for (const row of data) {
+      const logged = String(row[0] || '').trim();
+      if (!logged) continue;  // skip blank/separator rows
+      activities.push({
+        logged,
+        case: String(row[1] || '').trim(),
+        client: String(row[2] || '').trim(),
+        clientFirst: String(row[3] || '').trim(),
+        type: String(row[4] || '').trim(),
+        date: String(row[5] || '').trim(),
+        time: String(row[6] || '').trim(),
+        duration: parseFloat(row[7]) || 0,
+        tenths: parseFloat(row[8]) || 0,
+        runningTotal: parseFloat(row[9]) || 0,
+        quantity: String(row[10] || '').trim(),
+        mileage: parseFloat(row[11]) || 0,
+        from: String(row[12] || '').trim(),
+        to: String(row[13] || '').trim(),
+        investigator: String(row[14] || '').trim(),
+        notes: String(row[15] || '').trim(),
+      });
+    }
+
+    return { status: 'ok', found: true, activities };
   } catch(err) {
     return { status: 'error', message: err.message };
   }
