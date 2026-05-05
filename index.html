@@ -1901,9 +1901,6 @@ async function submitEntry() {
   enableSubmitBtn();
   editingId = null;
   document.getElementById('submitBtn').textContent = 'LOG ACTIVITY →';
-  // Reset time to now but keep last-used date (not today)
-  document.getElementById('actTime').value = new Date().toTimeString().slice(0,5);
-  document.getElementById('actDate').value = localStorage.getItem('tli_last_date') || localDateStr(new Date());
   btn.innerHTML = 'LOG ACTIVITY →';
   btn.disabled = false;
 }
