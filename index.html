@@ -1868,18 +1868,22 @@ async function submitEntry() {
   btn.innerHTML = '<span class="spinner"></span>Logging...';
   btn.disabled = true;
   toLog.forEach(e => entries.push(e));
+  let syncSuccess = false;
   if (cfg.webhookUrl) {
     try {
       btn.innerHTML = `<span class="spinner"></span>${syncQuip()}`;
       await postToWebhook(toLog);
       toLog.forEach(e => { e.synced = true; });
       showToast(toLog.length > 1 ? `✓ ${toLog.length} entries logged to Drive` : '✓ Logged to Google Drive');
+      syncSuccess = true;
     } catch(err) {
       if (err.message.includes('mismatch') || err.message.includes('belongs to')) {
         showToast(err.message, true);
         toLog.forEach(() => entries.pop());
         localStorage.setItem('tli_entries', JSON.stringify(entries));
         renderLog(); updateSyncBtn();
+        enableSubmitBtn();
+        return;
       } else {
         showToast('Saved locally — Drive sync failed', true);
       }
@@ -1887,6 +1891,7 @@ async function submitEntry() {
   } else { showToast('✓ Logged locally — configure webhook to sync'); }
   localStorage.setItem('tli_entries', JSON.stringify(entries));
   renderLog(); updateSyncBtn();
+  // Always clear form fields after successful entry creation
   ['actNotes','clientLast','clientFirst','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput','mileageDriver'].forEach(id => document.getElementById(id).value = '');
   clearOopAddon();
   document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
