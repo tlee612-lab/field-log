@@ -1752,7 +1752,11 @@ function onTypeChange(val) {
   else sec.classList.remove('visible');
   if (cityRow) cityRow.style.display = needsTravel ? 'grid' : 'none';
   const durLabel = document.getElementById('durationLabel');
+  const durField = document.getElementById('actDuration').parentElement;
   const isOOPQuantity = val.startsWith('Out of Pocket') && val !== 'Out of Pocket - Mileage';
+  const isOOP = val.startsWith('Out of Pocket');
+  // Hide Duration field entirely for all Out of Pocket entries
+  durField.style.display = isOOP ? 'none' : '';
   durLabel.textContent = isOOPQuantity ? 'Quantity / Units' : 'Duration (mins)';
   // Show OOP add-on button only for Investigator Service types (not OOP, not Travel Time)
   const isInvService = val.startsWith('Investigator Service') && val !== 'Investigator Service - Travel Time';
