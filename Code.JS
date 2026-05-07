@@ -1,6 +1,6 @@
 /**
  * TLI Field Log - Server Side (Code.gs)
- * Version: 2026.05.04-Stable
+ * Version: 2026.05.07-Retainers
  */
 
 const AUTO_LOG_FOLDER_ID = '1Q3BWEfnUoqoPYWFQ0eDeSXGRAjPybQov';
@@ -171,6 +171,7 @@ function getCases() {
 
 function logEntry(entry) {
   const caseNum      = (entry.case         || '').trim();
+  const retainerNum  = (entry.retainer     || '').trim();
   const clientLast   = (entry.client       || '').trim();
   const clientFirst  = (entry.clientFirst  || '').trim();
   const type         = (entry.type         || '').trim();
@@ -185,23 +186,33 @@ function logEntry(entry) {
   const notes        = (entry.notes        || '').trim();
   const logged       = (entry.logged       || new Date().toISOString()).trim();
 
-  // Tenths and running total are now calculated by formulas in the sheet
-  // Append empty values for columns 9 and 10; formulas will populate them
-  // Billed column defaults to "No" (can be changed to "Yes" when entry is included in a billing batch)
-  const row = [logged, caseNum, clientLast, clientFirst, type, date, time,
+  // Determine if this is a case or retainer entry
+  const isRetainer = retainerNum && retainerNum.match(/^\d{2}RT/);
+  const identifier = isRetainer ? retainerNum : caseNum;
+
+  if (!identifier || !clientLast) throw new Error('case/retainer and client are required');
+
+  // If retainer doesn't have a number yet, auto-generate one
+  let actualRetainerNum = retainerNum;
+  if (!isRetainer && retainerNum && !retainerNum.match(/^\d{2}RT/)) {
+    actualRetainerNum = getNextRetainerNumber();
+  }
+
+  // Use actualRetainerNum for retainers, caseNum for cases
+  const usedIdentifier = isRetainer ? actualRetainerNum : caseNum;
+
+  // Build the row (column 2 contains case/retainer number)
+  const row = [logged, usedIdentifier, clientLast, clientFirst, type, date, time,
                duration, '', '', quantity, mileage, travelFrom, travelTo, investigator, notes, 'No'];
 
-  if (!caseNum || !clientLast) throw new Error('case and client are required');
-
-  // Always write to master log first — captures everything regardless of case folder issues
+  // Write to master log
   let filedTo = '';
   try {
     const masterSheet = getOrCreateMasterSheet();
-    // Blank separator row when the case changes — keeps the master log readable
     const mlr = masterSheet.getLastRow();
     if (mlr > 1) {
-      const prevCase = String(masterSheet.getRange(mlr, 2).getValue()).trim();
-      if (prevCase !== '' && prevCase !== caseNum) {
+      const prevId = String(masterSheet.getRange(mlr, 2).getValue()).trim();
+      if (prevId !== '' && prevId !== usedIdentifier) {
         masterSheet.getRange(mlr + 1, 1).setValue(' ');
       }
     }
@@ -211,33 +222,34 @@ function logEntry(entry) {
     Logger.log('Master log write failed: ' + masterErr.message);
   }
 
-  // Attempt case folder + sheet
-  Logger.log('Creating/finding folder for case: ' + caseNum);
-  const caseFolder = getOrCreateCaseFolder(caseNum, clientLast, clientFirst);
-  Logger.log('Folder ready: ' + caseFolder.getName());
+  // Create case/retainer folder
+  Logger.log('Creating/finding folder for ' + (isRetainer ? 'retainer' : 'case') + ': ' + usedIdentifier);
+  const folder = getOrCreateCaseFolder(usedIdentifier, clientLast, clientFirst);
+  Logger.log('Folder ready: ' + folder.getName());
 
-  const folderParts = caseFolder.getName().split(' - ');
+  // Verify client name matches
+  const folderParts = folder.getName().split(' - ');
   if (folderParts.length >= 2) {
     const existingLast = folderParts[1].split(',')[0].trim();
     const existingFirst = folderParts[1].includes(',') ? folderParts[1].split(',')[1].trim() : '';
     const lastMismatch = existingLast.toLowerCase() !== clientLast.toLowerCase();
     const firstMismatch = existingFirst && clientFirst && existingFirst.toLowerCase() !== clientFirst.toLowerCase();
     if (lastMismatch || firstMismatch) {
-      const errMsg = 'Name mismatch: ' + caseNum + ' belongs to ' + existingLast +
+      const errMsg = 'Name mismatch: ' + usedIdentifier + ' belongs to ' + existingLast +
         (existingFirst ? ', ' + existingFirst : '') + ' — not ' + clientLast +
         (clientFirst ? ', ' + clientFirst : '');
-      // Update master log row status to the error
-      updateMasterLogStatus(logged, caseNum, 'ERROR: ' + errMsg);
+      updateMasterLogStatus(logged, usedIdentifier, 'ERROR: ' + errMsg);
       throw new Error(errMsg);
     }
   }
 
+  // Get or create sheet
   Logger.log('Getting or creating sheet...');
-  const sheet = getOrCreateSheet(caseFolder);
+  const sheet = getOrCreateSheet(folder, isRetainer);
   Logger.log('Sheet ready, checking for missing columns...');
-  ensureNewColumns(sheet); // Add new columns if needed
-  Logger.log('Appending row...');
-  // Blank separator row when the submission batch changes — groups Travel Time + Mileage pairs together
+  ensureNewColumns(sheet);
+
+  // Append row
   const clr = sheet.getLastRow();
   if (clr > 1) {
     const prevLogged = String(sheet.getRange(clr, 1).getValue()).trim();
@@ -249,11 +261,10 @@ function logEntry(entry) {
   const newRowNum = sheet.getLastRow();
   Logger.log('Row appended at row ' + newRowNum);
 
-  // Add formulas to the newly appended row (columns 9 and 10)
+  // Add formulas
   try {
-    // Tenths formula: uses LOOKUP with MAX floor check
     const tenthsFormula = '=IF(H' + newRowNum + '="","",MAX(0.3,INT(H' + newRowNum + '/60)+LOOKUP(MOD(H' + newRowNum + ',60),{0,1,7,13,19,25,31,37,43,49,55},{0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1})))';
-    const dataStartRow = 4; // New format always starts data at row 4
+    const dataStartRow = 4;
     const runningTotalFormula = '=IF(I' + newRowNum + '="","",SUMIF($B$' + dataStartRow + ':B' + newRowNum + ',B' + newRowNum + ',$I$' + dataStartRow + ':I' + newRowNum + '))';
     sheet.getRange(newRowNum, 9).setFormula(tenthsFormula);
     sheet.getRange(newRowNum, 10).setFormula(runningTotalFormula);
@@ -262,14 +273,18 @@ function logEntry(entry) {
     Logger.log('Failed to add formulas: ' + formulaErr.message);
   }
 
-  // Auto-sort by Date (col 6) then Time (col 7)
+  // Auto-sort
   autoSortActivityLog(sheet);
 
-  // Update master log Filed To column with the actual folder name
-  filedTo = caseFolder.getName();
-  updateMasterLogStatus(logged, caseNum, filedTo);
+  // Update master log
+  filedTo = folder.getName();
+  updateMasterLogStatus(logged, usedIdentifier, filedTo);
 
-  return { case: caseNum, client: clientLast, folder: filedTo };
+  return {
+    [isRetainer ? 'retainer' : 'case']: usedIdentifier,
+    client: clientLast,
+    folder: filedTo
+  };
 }
 
 // Updates the 'Filed To' column on the most recent master log row matching logged+caseNum
@@ -346,7 +361,7 @@ function getOrCreateCaseFolder(caseNum, clientLast, clientFirst) {
   return autoLogFolder.createFolder(folderName);
 }
 
-function getOrCreateSheet(caseFolder) {
+function getOrCreateSheet(caseFolder, isRetainer) {
   Logger.log('Checking for existing sheet in folder: ' + caseFolder.getName());
   const files = caseFolder.getFiles();
   while (files.hasNext()) {
@@ -359,6 +374,7 @@ function getOrCreateSheet(caseFolder) {
       return ss.getSheetByName('Activity Log') || ss.getActiveSheet();
     }
   }
+
   Logger.log('No sheet found, creating new one...');
   const sheetName = caseFolder.getName();
   const ss = SpreadsheetApp.create(sheetName);
@@ -368,6 +384,8 @@ function getOrCreateSheet(caseFolder) {
   Logger.log('File added to folder');
   DriveApp.getRootFolder().removeFile(file);
   Logger.log('File removed from root');
+
+  // Create Activity Log tab
   const sheet = ss.getActiveSheet();
   sheet.setName('Activity Log');
   sheet.appendRow(HEADERS);
@@ -376,7 +394,14 @@ function getOrCreateSheet(caseFolder) {
   hr.setBackground('#1c2030');
   hr.setFontColor('#00c8a0');
   sheet.setFrozenRows(1);
-  [160,110,120,120,280,90,70,100,80,80,100,100,120,400].forEach((w,i) => sheet.setColumnWidth(i+1, w));
+  [160,110,120,120,280,90,70,100,90,90,80,80,100,100,120,400,80].forEach((w,i) => sheet.setColumnWidth(i+1, w));
+
+  // Create Retained or PAE Summary tab
+  if (isRetainer) {
+    const retainedSheet = ss.insertSheet('Retained');
+    setupRetainedSheet(retainedSheet, caseFolder.getName());
+  }
+
   Logger.log('Sheet setup complete');
   return sheet;
 }
@@ -765,6 +790,72 @@ function autoSortActivityLog(sheet) {
   } catch(e) {
     Logger.log('autoSortActivityLog failed: ' + e.message);
   }
+}
+
+// ── Get Next Retainer Number ───────────────────────────────────────────────
+
+function getNextRetainerNumber() {
+  const currentYear = new Date().getFullYear().toString().slice(-2);
+  const prefix = currentYear + 'RT';
+
+  const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+  const folders = autoLogFolder.getFolders();
+
+  let maxSeq = 0;
+  while (folders.hasNext()) {
+    const folder = folders.next();
+    const name = folder.getName();
+
+    // Match "26RT0001 - Client, Name" pattern
+    const match = name.match(/^(\d{2}RT)(\d{4})/);
+    if (match && match[1] === prefix) {
+      const seq = parseInt(match[2]);
+      maxSeq = Math.max(maxSeq, seq);
+    }
+  }
+
+  return prefix + String(maxSeq + 1).padStart(4, '0');
+}
+
+// ── Retained Sheet Setup (for retainers) ─────────────────────────────────
+
+function setupRetainedSheet(sheet, folderName) {
+  sheet.clearContents();
+
+  // Parse folder name: "26RT0001 - Client, First"
+  const parts = folderName.split(' - ');
+  const retainerNum = parts[0];
+  const clientPart = parts.slice(1).join(' - ');
+  const nameParts = clientPart.split(',');
+  const clientLast = nameParts[0].trim();
+  const clientFirst = nameParts.length > 1 ? nameParts[1].trim() : '';
+
+  // Info block
+  sheet.getRange('A1').setValue('Retainer #');
+  sheet.getRange('B1').setValue(retainerNum);
+  sheet.getRange('A2').setValue('Client');
+  sheet.getRange('B2').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
+  sheet.getRange('A3').setValue('Amount');
+  sheet.getRange('B3').setValue('');
+  sheet.getRange('A4').setValue('Effective Date');
+  sheet.getRange('B4').setValue('');
+  sheet.getRange('A5').setValue('Attorney');
+  sheet.getRange('B5').setValue('');
+  sheet.getRange('A6').setValue('Notes');
+  sheet.getRange('B6').setValue('');
+
+  // Style info block
+  const infoLabels = sheet.getRange('A1:A6');
+  infoLabels.setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
+  sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
+  sheet.getRange('B2:B6').setFontColor('#000000').setFontSize(10);
+  sheet.getRange('A1:B1').setBackground('#0d1117');
+
+  // Column widths
+  sheet.setColumnWidth(1, 120);
+  sheet.setColumnWidth(2, 300);
+
+  Logger.log('setupRetainedSheet: complete');
 }
 
 // ── PAE Summary tab ─────────────────────────────────────────────────────────

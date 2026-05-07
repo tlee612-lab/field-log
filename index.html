@@ -109,15 +109,19 @@
   <datalist id="caseList"></datalist>
   <datalist id="clientList"></datalist>
   <datalist id="investigatorList"></datalist>
-  <div style="display:flex;gap:8px;margin-bottom:16px">
-    <button id="modeAI" onclick="setMode('ai')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">🎙 AI Mode</button>
-    <button id="modeManual" onclick="setMode('manual')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✏ Manual</button>
+  <datalist id="retainerList"></datalist>
+  <datalist id="retainerClientList"></datalist>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button id="modeCase" onclick="setEntryMode('case')" style="flex:1;min-width:100px;padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Case</button>
+    <button id="modeRetainer" onclick="setEntryMode('retainer')" style="flex:1;min-width:100px;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">💰 Retainer</button>
+    <button id="modeAI" onclick="setMode('ai')" style="flex:1;min-width:100px;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">🎙 AI</button>
     <button id="modePae" onclick="openPaeModal()"
-            style="flex:1;padding:12px 14px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;white-space:nowrap"
+            style="flex:1;min-width:100px;padding:12px 14px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;white-space:nowrap"
             title="Import PAE PDF — fills case #, client, and authorized hours">📋 PAE</button>
     <input type="file" id="paeFileInput" accept="application/pdf" style="display:none" onchange="handlePaeFile(this.files[0]);this.value=''">
   </div>
-  <div class="section-label">Quick Entry</div>
+  <div id="caseEntrySection">
+  <div class="section-label">Case Entry</div>
   <div class="field-group" style="margin-bottom:8px">
     <label>Investigator</label>
     <input type="text" id="investigatorField" placeholder="Investigator name" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" list="investigatorList">
@@ -146,7 +150,45 @@
     <button type="button" onclick="createCaseFromPae()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
   </div>
   <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-family:var(--ui)"></div>
-  <div id="manualSection">
+  </div><!-- end caseEntrySection -->
+
+  <div id="retainerEntrySection" style="display:none">
+  <div class="section-label">Retainer Entry</div>
+  <div class="field-group" style="margin-bottom:8px">
+    <label>Investigator</label>
+    <input type="text" id="retainerInvestigator" placeholder="Investigator name" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" list="investigatorList">
+  </div>
+  <div class="quick-row" style="margin-bottom:8px">
+    <div class="field-group">
+      <label>Retainer #</label>
+      <input type="text" id="retainerNum" placeholder="e.g. 26RT0001" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" list="retainerList" oninput="onRetainerInput(this.value)">
+    </div>
+    <div class="field-group">
+      <label>Client Last Name</label>
+      <input type="text" id="retainerClientLast" placeholder="e.g. Smith" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" list="retainerClientList" oninput="onRetainerClientInput(this.value)">
+    </div>
+  </div>
+  <div class="quick-row" style="margin-bottom:8px">
+    <div class="field-group">
+      <label>Client First Name</label>
+      <input type="text" id="retainerClientFirst" placeholder="e.g. John" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="field-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
+      <button type="button" onclick="clearRetainerFields()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">✕ Clear</button>
+    </div>
+  </div>
+  <div class="quick-row" style="margin-bottom:8px">
+    <div class="field-group">
+      <label>Attorney</label>
+      <input type="text" id="retainerAttorney" placeholder="e.g. Jane Doe" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="field-group">
+      <label>Amount ($)</label>
+      <input type="number" id="retainerAmount" placeholder="e.g. 5000" step="0.01" min="0">
+    </div>
+  </div>
+  </div><!-- end retainerEntrySection -->
+  <div id="manualSection" style="display:none">
   <div class="field-group" style="margin-bottom:8px">
     <label>Activity Type</label>
     <select id="actType" onchange="onTypeChange(this.value)">
@@ -989,6 +1031,49 @@ function toggleUrlLock() {
   setUrlLock(!input.readOnly);
 }
 
+// Entry mode: Case vs Retainer
+function setEntryMode(mode) {
+  localStorage.setItem('tli_entry_mode', mode);
+  const isRetainer = mode === 'retainer';
+  document.getElementById('caseEntrySection').style.display = isRetainer ? 'none' : '';
+  document.getElementById('retainerEntrySection').style.display = isRetainer ? '' : 'none';
+  document.getElementById('manualSection').style.display = '';
+  document.getElementById('aiSection').style.display = 'none';
+
+  // Update button styles
+  const caseBtn = document.getElementById('modeCase');
+  const retainerBtn = document.getElementById('modeRetainer');
+  caseBtn.style.background = isRetainer ? 'var(--surface2)' : 'var(--accent)';
+  caseBtn.style.borderColor = isRetainer ? 'var(--border)' : 'var(--accent)';
+  caseBtn.style.color = isRetainer ? 'var(--muted)' : 'var(--bg)';
+  retainerBtn.style.background = isRetainer ? 'var(--accent)' : 'var(--surface2)';
+  retainerBtn.style.borderColor = isRetainer ? 'var(--accent)' : 'var(--border)';
+  retainerBtn.style.color = isRetainer ? 'var(--bg)' : 'var(--muted)';
+
+  // Reset manual/AI mode buttons
+  document.getElementById('modeAI').style.background = 'var(--surface2)';
+  document.getElementById('modeAI').style.borderColor = 'var(--border)';
+  document.getElementById('modeAI').style.color = 'var(--muted)';
+}
+setEntryMode(localStorage.getItem('tli_entry_mode') || 'case');
+
+function clearRetainerFields() {
+  ['retainerNum','retainerClientLast','retainerClientFirst','retainerAttorney','retainerAmount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('retainerNum').focus();
+}
+
+function onRetainerInput(value) {
+  // Similar to onCaseInput but for retainers
+  // Could add logic to lookup retainer details
+}
+
+function onRetainerClientInput(value) {
+  // Similar to onClientInput but for retainers
+}
+
 function setMode(mode) {
   localStorage.setItem('tli_mode', mode);
   const isAI = mode === 'ai';
@@ -1766,45 +1851,33 @@ function onTypeChange(val) {
 }
 
 async function submitEntry() {
+  const entryMode = localStorage.getItem('tli_entry_mode') || 'case';
+  const isRetainer = entryMode === 'retainer';
+
+  // Get fields based on mode
+  const identifier = isRetainer ?
+    document.getElementById('retainerNum').value.trim() :
+    document.getElementById('caseNum').value.trim();
+  const clientLast = isRetainer ?
+    cleanName(document.getElementById('retainerClientLast').value) :
+    cleanName(document.getElementById('clientLast').value);
+  const clientFirst = isRetainer ?
+    cleanName(document.getElementById('retainerClientFirst').value) :
+    cleanName(document.getElementById('clientFirst').value);
+  const investigator = isRetainer ?
+    document.getElementById('retainerInvestigator').value.trim() :
+    document.getElementById('investigatorField').value.trim();
+
   const typeVal = document.getElementById('actType').value;
   const needsTravel = ['Investigator Service - Travel Time', 'Out of Pocket - Mileage'].includes(typeVal);
   const isTravel = typeVal === 'Investigator Service - Travel Time';
   const isOOP = typeVal.startsWith('Out of Pocket') && typeVal !== 'Out of Pocket - Mileage';
-  // Update mode: replace existing entry instead of creating new
-  if (editingId) {
-    const idx = entries.findIndex(e => String(e.id) === editingId);
-    if (idx !== -1) {
-      entries[idx] = { ...entries[idx],
-        case: document.getElementById('caseNum').value.trim(),
-        client: cleanName(document.getElementById('clientLast').value),
-        clientFirst: cleanName(document.getElementById('clientFirst').value),
-        type: typeVal,
-        date: document.getElementById('actDate').value,
-        time: document.getElementById('actTime').value,
-        duration: isOOP ? '' : document.getElementById('actDuration').value,
-        quantity: isOOP ? document.getElementById('actDuration').value : '',
-        mileage: (needsTravel && !isTravel) ? document.getElementById('actMileage').value : '',
-        travelFrom: needsTravel ? document.getElementById('travelFrom').value.trim() : '',
-        travelTo: needsTravel ? document.getElementById('travelTo').value.trim() : '',
-        notes: document.getElementById('actNotes').value.trim(),
-        investigator: document.getElementById('investigatorField').value.trim(),
-        synced: false,
-        _missing: undefined
-      };
-      localStorage.setItem('tli_entries', JSON.stringify(entries));
-      editingId = null;
-      document.getElementById('submitBtn').textContent = 'LOG ACTIVITY →';
-      renderLog(); updateSyncBtn();
-      clearForm();
-      showToast('Entry updated — review and sync');
-      return;
-    }
-  }
+
   const base = {
     id: Date.now() + Math.random(),
-    case: document.getElementById('caseNum').value.trim(),
-    client: cleanName(document.getElementById('clientLast').value),
-    clientFirst: cleanName(document.getElementById('clientFirst').value),
+    [isRetainer ? 'retainer' : 'case']: identifier,
+    client: clientLast,
+    clientFirst: clientFirst,
     type: typeVal,
     date: document.getElementById('actDate').value,
     time: document.getElementById('actTime').value,
@@ -1814,31 +1887,21 @@ async function submitEntry() {
     travelFrom: needsTravel ? document.getElementById('travelFrom').value.trim() : '',
     travelTo: needsTravel ? document.getElementById('travelTo').value.trim() : '',
     notes: document.getElementById('actNotes').value.trim(),
-    investigator: document.getElementById('investigatorField').value.trim(),
+    investigator: investigator,
     logged: new Date().toISOString(),
     synced: false
   };
+
   const btn = document.getElementById('submitBtn');
 
-  if (!base.case || !base.client || !base.type || !base.notes) {
-    showToast('Case #, client last name, type, and notes required', true); return;
+  if (!identifier || !clientLast || !typeVal || !base.notes) {
+    showToast((isRetainer ? 'Retainer' : 'Case') + ' #, client last name, type, and notes required', true);
+    return;
   }
 
-  // Block if case number exists but name doesn't match
-  const existingCase = knownCases.find(p => p.case.toLowerCase() === base.case.toLowerCase());
-  if (existingCase) {
-    const lastMismatch = existingCase.client.toLowerCase() !== base.client.toLowerCase();
-    const firstMismatch = existingCase.clientFirst && base.clientFirst && existingCase.clientFirst.toLowerCase() !== base.clientFirst.toLowerCase();
-    if (lastMismatch || firstMismatch) {
-      const existingName = existingCase.clientFirst ? existingCase.client + ', ' + existingCase.clientFirst : existingCase.client;
-      showToast('⚠ ' + base.case + ' belongs to ' + existingName + ' — entry blocked', true);
-      return;
-    }
-  }
-
-  saveKnownCase(base.case, base.client, base.clientFirst);
-  if (base.investigator) localStorage.setItem('tli_last_investigator', base.investigator);
+  if (investigator) localStorage.setItem('tli_last_investigator', investigator);
   if (base.date) localStorage.setItem('tli_last_date', base.date);
+
   const toLog = [base];
   if (isTravel) {
     const driver = document.getElementById('mileageDriver').value.trim();
@@ -1846,36 +1909,21 @@ async function submitEntry() {
       mileage: document.getElementById('actMileage').value,
       travelFrom: document.getElementById('travelFrom').value.trim(),
       travelTo: document.getElementById('travelTo').value.trim(),
-      investigator: driver || base.investigator,
+      investigator: driver || investigator,
       notes: `Travel: ${document.getElementById('travelFrom').value.trim()} → ${document.getElementById('travelTo').value.trim()}${driver ? ' (Driver: ' + driver + ')' : ''}`
     });
   }
-  // OOP add-on: generate an entry for each filled OOP row
-  if (document.getElementById('oopAddon').style.display !== 'none') {
-    for (let i = 0; i < oopRowCount; i++) {
-      const typeEl = document.getElementById('oopType_' + i);
-      const qtyEl = document.getElementById('oopQty_' + i);
-      if (!typeEl) continue;
-      const oopType = typeEl.value.replace(/&amp;/g, '&');
-      const oopQty = qtyEl ? qtyEl.value : '';
-      if (!oopType) continue;
-      toLog.push({ ...base, id: Date.now() + Math.random(), type: oopType,
-        duration: '', mileage: '', quantity: oopQty, travelFrom: '', travelTo: '',
-        notes: oopType.replace('Out of Pocket - ', '') + (oopQty ? ' × ' + oopQty : '') + ' — ' + (base.notes || '').slice(0, 60)
-      });
-    }
-  }
+
   btn.innerHTML = '<span class="spinner"></span>Logging...';
   btn.disabled = true;
   toLog.forEach(e => entries.push(e));
-  let syncSuccess = false;
+
   if (cfg.webhookUrl) {
     try {
       btn.innerHTML = `<span class="spinner"></span>${syncQuip()}`;
       await postToWebhook(toLog);
       toLog.forEach(e => { e.synced = true; });
       showToast(toLog.length > 1 ? `✓ ${toLog.length} entries logged to Drive` : '✓ Logged to Google Drive');
-      syncSuccess = true;
     } catch(err) {
       if (err.message.includes('mismatch') || err.message.includes('belongs to')) {
         showToast(err.message, true);
@@ -1889,18 +1937,23 @@ async function submitEntry() {
       }
     }
   } else { showToast('✓ Logged locally — configure webhook to sync'); }
+
   localStorage.setItem('tli_entries', JSON.stringify(entries));
   renderLog(); updateSyncBtn();
-  // Always clear form fields after successful entry creation
-  ['actNotes','clientLast','clientFirst','caseNum','actDate','actTime','actMileage','travelFrom','travelTo','actDuration','aiInput','mileageDriver'].forEach(id => document.getElementById(id).value = '');
+
+  // Clear all form fields
+  ['actNotes','clientLast','clientFirst','caseNum','actDate','actTime','actMileage','travelFrom','travelTo','actDuration','aiInput','mileageDriver',
+   'retainerNum','retainerClientLast','retainerClientFirst','retainerAttorney','retainerAmount','retainerInvestigator'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
   clearOopAddon();
   document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
-  document.getElementById('aiPreview').classList.remove('visible');
+  document.getElementById('retainerInvestigator').value = localStorage.getItem('tli_last_investigator') || '';
   document.getElementById('actType').value = '';
   onTypeChange('');
   enableSubmitBtn();
-  editingId = null;
-  document.getElementById('submitBtn').textContent = 'LOG ACTIVITY →';
   btn.innerHTML = 'LOG ACTIVITY →';
   btn.disabled = false;
 }
