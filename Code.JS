@@ -9,7 +9,7 @@ const MASTER_LOG_NAME = 'Master Activity Log';
 const HEADERS = [
   'Logged At', 'Case Number', 'Client Last Name', 'Client First Name', 'Activity Type',
   'Date', 'Time', 'Duration (mins)', 'Tenths of Hours', 'Running Total', 'Quantity', 'Mileage', 'From', 'To',
-  'Investigator', 'Notes'
+  'Investigator', 'Notes', 'Billed'
 ];
 
 const MASTER_HEADERS = [
@@ -187,8 +187,9 @@ function logEntry(entry) {
 
   // Tenths and running total are now calculated by formulas in the sheet
   // Append empty values for columns 9 and 10; formulas will populate them
+  // Billed column is empty by default (will be marked when entry is included in a billing batch)
   const row = [logged, caseNum, clientLast, clientFirst, type, date, time,
-               duration, '', '', quantity, mileage, travelFrom, travelTo, investigator, notes];
+               duration, '', '', quantity, mileage, travelFrom, travelTo, investigator, notes, ''];
 
   if (!caseNum || !clientLast) throw new Error('case and client are required');
 
@@ -657,7 +658,7 @@ function styleActivityTotalsRow(sheet) {
 
 /** Set column widths for Activity Log. */
 function applyActivityLogColumnWidths(sheet) {
-  [160, 110, 120, 120, 280, 90, 70, 100, 90, 90, 80, 80, 100, 100, 120, 400]
+  [160, 110, 120, 120, 280, 90, 70, 100, 90, 90, 80, 80, 100, 100, 120, 400, 80]
     .forEach((w, i) => sheet.setColumnWidth(i + 1, w));
 }
 
@@ -675,9 +676,10 @@ function ensureNewColumns(sheet) {
     const headerVals = sheet.getRange(headerRow, 1, 1, sheet.getLastColumn()).getValues()[0];
     const headerStr = headerVals.join('|');
 
-    // Check if both new columns exist
+    // Check if new columns exist
     const hasTenths = headerStr.includes('Tenths of Hours');
     const hasRunningTotal = headerStr.includes('Running Total');
+    const hasBilled = headerStr.includes('Billed');
     let needsInsert = !hasTenths || !hasRunningTotal;
 
     if (needsInsert) {
@@ -724,6 +726,18 @@ function ensureNewColumns(sheet) {
       const d1Formula = '=IFERROR(SUMIF(E4:E9999,"Investigator Service*",I4:I9999),0)';
       sheet.getRange(1, 4).setFormula(d1Formula);
       Logger.log('Updated Hours Used formula in D1');
+    }
+
+    // Add Billed column if missing
+    if (!hasBilled) {
+      const billedCol = sheet.getLastColumn() + 1;
+      sheet.getRange(headerRow, billedCol).setValue('Billed');
+      sheet.getRange(headerRow, billedCol)
+        .setFontWeight('bold')
+        .setBackground('#1c2030')
+        .setFontColor('#00c8a0');
+      sheet.setColumnWidth(billedCol, 80);
+      Logger.log('Added Billed column at column ' + billedCol);
     }
 
     // Sort the sheet by Date (col 6) then Time (col 7)
