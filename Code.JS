@@ -187,9 +187,9 @@ function logEntry(entry) {
 
   // Tenths and running total are now calculated by formulas in the sheet
   // Append empty values for columns 9 and 10; formulas will populate them
-  // Billed column is empty by default (will be marked when entry is included in a billing batch)
+  // Billed column defaults to "No" (can be changed to "Yes" when entry is included in a billing batch)
   const row = [logged, caseNum, clientLast, clientFirst, type, date, time,
-               duration, '', '', quantity, mileage, travelFrom, travelTo, investigator, notes, ''];
+               duration, '', '', quantity, mileage, travelFrom, travelTo, investigator, notes, 'No'];
 
   if (!caseNum || !clientLast) throw new Error('case and client are required');
 
@@ -728,7 +728,7 @@ function ensureNewColumns(sheet) {
       Logger.log('Updated Hours Used formula in D1');
     }
 
-    // Add Billed column if missing
+    // Add Billed column if missing (only adds header, never modifies existing data)
     if (!hasBilled) {
       const billedCol = sheet.getLastColumn() + 1;
       sheet.getRange(headerRow, billedCol).setValue('Billed');
@@ -738,6 +738,7 @@ function ensureNewColumns(sheet) {
         .setFontColor('#00c8a0');
       sheet.setColumnWidth(billedCol, 80);
       Logger.log('Added Billed column at column ' + billedCol);
+      // Note: existing "Yes"/"No" values in rows are preserved; only the header is added
     }
 
     // Sort the sheet by Date (col 6) then Time (col 7)
