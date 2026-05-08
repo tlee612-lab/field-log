@@ -299,7 +299,7 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span style="font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2)">OOP Expenses</span>
       <div style="display:flex;gap:8px;align-items:center">
-        <button type="button" onclick="addOopRow()" style="background:transparent;border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:20px;cursor:pointer">+ Add</button>
+        <button type="button" id="oopAddRowBtn" onclick="addOopRow()" style="background:transparent;border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:20px;cursor:pointer">+ Add</button>
         <button type="button" onclick="toggleOopAddon()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
       </div>
     </div>
@@ -1149,17 +1149,24 @@ function setEntryMode(mode) {
   // Update button styles
   const caseBtn = document.getElementById('modeCase');
   const retainerBtn = document.getElementById('modeRetainer');
-  caseBtn.style.background = isRetainer ? 'var(--surface2)' : 'var(--accent)';
-  caseBtn.style.borderColor = isRetainer ? 'var(--border)' : 'var(--accent)';
-  caseBtn.style.color = isRetainer ? 'var(--muted)' : 'var(--bg)';
-  retainerBtn.style.background = isRetainer ? 'var(--accent)' : 'var(--surface2)';
-  retainerBtn.style.borderColor = isRetainer ? 'var(--accent)' : 'var(--border)';
-  retainerBtn.style.color = isRetainer ? 'var(--bg)' : 'var(--muted)';
+  if (caseBtn) {
+    caseBtn.style.background = isRetainer ? 'var(--surface2)' : 'var(--accent)';
+    caseBtn.style.borderColor = isRetainer ? 'var(--border)' : 'var(--accent)';
+    caseBtn.style.color = isRetainer ? 'var(--muted)' : 'var(--bg)';
+  }
+  if (retainerBtn) {
+    retainerBtn.style.background = isRetainer ? 'var(--accent)' : 'var(--surface2)';
+    retainerBtn.style.borderColor = isRetainer ? 'var(--accent)' : 'var(--border)';
+    retainerBtn.style.color = isRetainer ? 'var(--bg)' : 'var(--muted)';
+  }
 
   // Reset manual/AI mode buttons
-  document.getElementById('modeAI').style.background = 'var(--surface2)';
-  document.getElementById('modeAI').style.borderColor = 'var(--border)';
-  document.getElementById('modeAI').style.color = 'var(--muted)';
+  const aiBtn = document.getElementById('modeAI');
+  if (aiBtn) {
+    aiBtn.style.background = 'var(--surface2)';
+    aiBtn.style.borderColor = 'var(--border)';
+    aiBtn.style.color = 'var(--muted)';
+  }
 }
 setEntryMode(localStorage.getItem('tli_entry_mode') || 'case');
 
@@ -1183,16 +1190,22 @@ function onRetainerClientInput(value) {
 function setMode(mode) {
   localStorage.setItem('tli_mode', mode);
   const isAI = mode === 'ai';
-  document.getElementById('aiSection').style.display = isAI ? '' : 'none';
-  document.getElementById('manualSection').style.display = isAI ? 'none' : '';
+  const aiSection = document.getElementById('aiSection');
+  const manualSection = document.getElementById('manualSection');
+  if (aiSection) aiSection.style.display = isAI ? '' : 'none';
+  if (manualSection) manualSection.style.display = isAI ? 'none' : '';
   const aiBtn = document.getElementById('modeAI');
   const manualBtn = document.getElementById('modeManual');
-  aiBtn.style.background = isAI ? 'var(--accent)' : 'var(--surface2)';
-  aiBtn.style.borderColor = isAI ? 'var(--accent)' : 'var(--border)';
-  aiBtn.style.color = isAI ? 'var(--bg)' : 'var(--muted)';
-  manualBtn.style.background = isAI ? 'var(--surface2)' : 'var(--accent2)';
-  manualBtn.style.borderColor = isAI ? 'var(--border)' : 'var(--accent2)';
-  manualBtn.style.color = isAI ? 'var(--muted)' : 'var(--bg)';
+  if (aiBtn) {
+    aiBtn.style.background = isAI ? 'var(--accent)' : 'var(--surface2)';
+    aiBtn.style.borderColor = isAI ? 'var(--accent)' : 'var(--border)';
+    aiBtn.style.color = isAI ? 'var(--bg)' : 'var(--muted)';
+  }
+  if (manualBtn) {
+    manualBtn.style.background = isAI ? 'var(--surface2)' : 'var(--accent2)';
+    manualBtn.style.borderColor = isAI ? 'var(--border)' : 'var(--accent2)';
+    manualBtn.style.color = isAI ? 'var(--muted)' : 'var(--bg)';
+  }
 }
 setMode(localStorage.getItem('tli_mode') || 'ai');
 
@@ -1962,9 +1975,16 @@ function clearOopAddon() {
 
 function toggleOopAddon() {
   const addon = document.getElementById('oopAddon');
-  const visible = addon.style.display !== 'none';
-  if (visible) { clearOopAddon(); document.getElementById('addOopBtnWrap').style.display = ''; }
-  else { addon.style.display = ''; addOopRow(); }
+  if (!addon) return;
+  const visible = getComputedStyle(addon).display !== 'none';
+  if (visible) {
+    clearOopAddon();
+    const wrap = document.getElementById('addOopBtnWrap');
+    if (wrap) wrap.style.display = '';
+  } else {
+    addon.style.display = 'block';
+    addOopRow();
+  }
 }
 
 function onTypeChange(val) {
