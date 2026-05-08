@@ -614,18 +614,24 @@ function parsePaeText(text) {
   const county = flat.match(/\bCounty[:\s]+([A-Za-z]+)/i);
   if (county) result.county = county[1].trim();
 
-  // Client name — "Client: First Last"
-  const clientRaw = flat.match(/\bClient[:\s]+([A-Za-z][A-Za-z\s\-'\.]{2,50}?)(?=\s*(?:Case\s*#|County|Attorney|Authorization|$))/i);
+  // Client name — "Client: First Last" or "Client: Last, First"
+  const clientRaw = flat.match(/\bClient[:\s]+([A-Za-z][A-Za-z\s\-'\.]{2,60}?)(?=\s+(?:Case|County|Attorney|Authorization|Effective|Expiration|Approved|Maximum|Total|$))/i);
   if (clientRaw) {
     const raw = clientRaw[1].replace(/\s+/g, ' ').trim();
-    const commaMatch = raw.match(/^([A-Za-z\-']+),\s*([A-Za-z\-']+)/);
+    // Try comma-separated format first: "Last, First"
+    const commaMatch = raw.match(/^([A-Za-z\-']+)\s*,\s*([A-Za-z\-']+)/);
     if (commaMatch) {
       result.clientLast = commaMatch[1].trim();
       result.clientFirst = commaMatch[2].trim();
     } else {
+      // Space-separated: "First Last" — assume last word is last name
       const parts = raw.split(/\s+/);
-      result.clientFirst = parts[0] || '';
-      result.clientLast = parts[parts.length - 1] || '';
+      if (parts.length >= 2) {
+        result.clientFirst = parts[0];
+        result.clientLast = parts[parts.length - 1];
+      } else if (parts.length === 1) {
+        result.clientLast = parts[0];
+      }
     }
   }
 
