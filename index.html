@@ -816,16 +816,23 @@ function closePaeModal() {
 async function handlePaeFile(file) {
   console.log('HANDLE PAE FILE called, file:', file?.name);
   if (!file || file.type !== 'application/pdf') {
+    console.log('Invalid file type:', file?.type);
     showToast('Please drop a PDF file', true); return;
   }
   const btn = document.getElementById('modePae');
   btn.textContent = '⏳ Reading...';
   btn.disabled = true;
   try {
+    console.log('Extracting PDF text...');
     const text = await extractPdfText(file);
+    console.log('PDF text extracted, length:', text.length);
+    console.log('Raw text sample:', text.substring(0, 500));
+    console.log('Parsing PAE...');
     const parsed = parsePaeText(text);
     console.log('PAE PARSED DATA:', parsed);
-    console.log('Extracted text sample:', text.substring(0, 500));
+    console.log('Client Last:', parsed.clientLast);
+    console.log('Client First:', parsed.clientFirst);
+    console.log('Case Number:', parsed.caseNumber);
     let filled = [];
     if (parsed.caseNumber) {
       document.getElementById('caseNum').value = parsed.caseNumber;
@@ -884,9 +891,12 @@ async function handlePaeFile(file) {
       const debugMsg = parsed._debugDates ? ` | ${parsed._debugDates}` : '';
       showToast('✓ PAE imported' + (_sessionPaes.length > 1 ? ` (${_sessionPaes.length} this session)` : '') + debugMsg);
     } else {
+      console.warn('No fields were filled - parsed data:', parsed);
       showToast('Could not read case info from PDF', true);
     }
   } catch(err) {
+    console.error('PAE ERROR:', err);
+    console.error('Stack:', err.stack);
     showToast('PDF read failed: ' + err.message, true);
   } finally {
     btn.textContent = '📋 PAE';
