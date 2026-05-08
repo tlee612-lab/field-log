@@ -2147,6 +2147,10 @@ async function submitEntry() {
     if (el) el.value = '';
   });
 
+  // Restore last date after clearing form
+  const lastDate = localStorage.getItem('tli_last_date');
+  if (lastDate) document.getElementById('actDate').value = lastDate;
+
   clearOopAddon();
   document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
   document.getElementById('retainerInvestigator').value = localStorage.getItem('tli_last_investigator') || '';
