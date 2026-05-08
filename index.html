@@ -819,14 +819,37 @@ async function handlePaeFile(file) {
     console.log('Case Number:', parsed.caseNumber);
     let filled = [];
     if (parsed.caseNumber) {
-      document.getElementById('caseNum').value = parsed.caseNumber;
+      const caseNumEl = document.getElementById('caseNum');
+      console.log('caseNum element:', caseNumEl);
+      if (caseNumEl) {
+        caseNumEl.value = parsed.caseNumber;
+        console.log('Set caseNum to:', caseNumEl.value);
+      } else {
+        console.warn('caseNum element not found!');
+      }
       filled.push('Case #: ' + parsed.caseNumber);
     }
     if (parsed.clientLast) {
-      document.getElementById('clientLast').value = parsed.clientLast;
+      const clientLastEl = document.getElementById('clientLast');
+      console.log('clientLast element:', clientLastEl);
+      if (clientLastEl) {
+        clientLastEl.value = parsed.clientLast;
+        console.log('Set clientLast to:', clientLastEl.value);
+      } else {
+        console.warn('clientLast element not found!');
+      }
       filled.push('Client: ' + parsed.clientLast + (parsed.clientFirst ? ', ' + parsed.clientFirst : ''));
     }
-    if (parsed.clientFirst) document.getElementById('clientFirst').value = parsed.clientFirst;
+    if (parsed.clientFirst) {
+      const clientFirstEl = document.getElementById('clientFirst');
+      console.log('clientFirst element:', clientFirstEl);
+      if (clientFirstEl) {
+        clientFirstEl.value = parsed.clientFirst;
+        console.log('Set clientFirst to:', clientFirstEl.value);
+      } else {
+        console.warn('clientFirst element not found!');
+      }
+    }
 
     const infoEl = document.getElementById('paeInfo');
     const createEl = document.getElementById('paeCreateBtn');
