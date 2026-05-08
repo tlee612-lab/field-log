@@ -2037,10 +2037,49 @@ async function submitEntry() {
     return;
   }
 
-  if (investigator) localStorage.setItem('tli_last_investigator', investigator);
-  if (base.date) localStorage.setItem('tli_last_date', base.date);
+  if (typeVal.startsWith('Out of Pocket')) {
+    if (typeVal === 'Out of Pocket - Mileage' && !document.getElementById('actMileage').value.trim()) {
+      showToast('Mileage is required for Out of Pocket - Mileage', true);
+      return;
+    }
+    if (typeVal !== 'Out of Pocket - Mileage' && !document.getElementById('actDuration').value.trim()) {
+      showToast('Quantity is required for Out of Pocket expenses', true);
+      return;
+    }
+  }
+
+  const oopAddonRows = Array.from(document.querySelectorAll('#oopRows > div'));
+  const oopAddonEntries = [];
+  for (const row of oopAddonRows) {
+    const typeField = row.querySelector('select');
+    const qtyField = row.querySelector('input[type="number"]');
+    const oopType = typeField?.value || '';
+    const oopQty = qtyField?.value.trim() || '';
+    if (!oopType && !oopQty) continue;
+    if (!oopType) {
+      showToast('Please select a type for each OOP expense row', true);
+      return;
+    }
+    if (!oopQty) {
+      showToast('Please enter a quantity for each OOP expense row', true);
+      return;
+    }
+    oopAddonEntries.push({
+      ...base,
+      id: Date.now() + Math.random(),
+      type: oopType,
+      duration: '',
+      quantity: oopQty,
+      mileage: '',
+      travelFrom: '',
+      travelTo: '',
+      notes: base.notes || `${oopQty} ${oopType}`
+    });
+  }
 
   const toLog = [base];
+  if (oopAddonEntries.length) toLog.push(...oopAddonEntries);
+
   if (isTravel) {
     const driver = document.getElementById('mileageDriver').value.trim();
     toLog.push({ ...base, id: Date.now() + Math.random(), type: 'Out of Pocket - Mileage', duration: '',
@@ -2051,6 +2090,9 @@ async function submitEntry() {
       notes: `Travel: ${document.getElementById('travelFrom').value.trim()} → ${document.getElementById('travelTo').value.trim()}${driver ? ' (Driver: ' + driver + ')' : ''}`
     });
   }
+
+  if (investigator) localStorage.setItem('tli_last_investigator', investigator);
+  if (base.date) localStorage.setItem('tli_last_date', base.date);
 
   btn.innerHTML = '<span class="spinner"></span>Logging...';
   btn.disabled = true;
