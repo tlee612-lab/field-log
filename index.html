@@ -824,6 +824,8 @@ async function handlePaeFile(file) {
   try {
     const text = await extractPdfText(file);
     const parsed = parsePaeText(text);
+    console.log('PAE PARSED DATA:', parsed);
+    console.log('Extracted text sample:', text.substring(0, 500));
     let filled = [];
     if (parsed.caseNumber) {
       document.getElementById('caseNum').value = parsed.caseNumber;
