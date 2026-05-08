@@ -615,17 +615,27 @@ function parsePaeText(text) {
   if (county) result.county = county[1].trim();
 
   // Client name — "Client: First Last" or "Client: Last, First"
-  const clientRaw = flat.match(/\bClient[:\s]+([A-Za-z][A-Za-z\s\-'\.]{2,60}?)(?=\s+(?:Case|County|Attorney|Authorization|Effective|Expiration|Approved|Maximum|Total|$))/i);
+  // More flexible regex: match "Client:" followed by name, capture until we hit specific keywords or end
+  let clientRaw = flat.match(/\bClient\s*[:\s]+\s*([A-Z][A-Za-z\s\-'\.]{2,80}?)(?=\s+(?:Case|County|Attorney|Authorization|Effective|Expiration|Approved|Maximum|Total|Investigator|\bThe\b|$))/i);
+
+  // Fallback: if above doesn't match, try capturing until next line or keyword more loosely
+  if (!clientRaw) {
+    clientRaw = flat.match(/\bClient\s*[:\s]+\s*([A-Z][A-Za-z\s\-'\.]{2,80}?)(?=\s{2,}[A-Z]|$)/i);
+  }
+
   if (clientRaw) {
     const raw = clientRaw[1].replace(/\s+/g, ' ').trim();
+    // Remove any trailing words that look like field labels
+    const cleaned = raw.replace(/\s+(Case|County|Attorney|Authorization|Effective|Expiration|Approved|Maximum|Total|Investigator).*$/i, '').trim();
+
     // Try comma-separated format first: "Last, First"
-    const commaMatch = raw.match(/^([A-Za-z\-']+)\s*,\s*([A-Za-z\-']+)/);
+    const commaMatch = cleaned.match(/^([A-Za-z\-']+)\s*,\s*([A-Za-z\-']+)/);
     if (commaMatch) {
       result.clientLast = commaMatch[1].trim();
       result.clientFirst = commaMatch[2].trim();
     } else {
       // Space-separated: "First Last" — assume last word is last name
-      const parts = raw.split(/\s+/);
+      const parts = cleaned.split(/\s+/);
       if (parts.length >= 2) {
         result.clientFirst = parts[0];
         result.clientLast = parts[parts.length - 1];
