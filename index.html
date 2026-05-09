@@ -1216,10 +1216,16 @@ function updateHeaderName() {
 updateHeaderName();
 
 function refreshDataLists() {
-  document.getElementById('caseList').innerHTML = knownCases.map(p => {
+  console.log('refreshDataLists called with', knownCases.length, 'cases');
+  const caseListEl = document.getElementById('caseList');
+  console.log('caseList element:', caseListEl);
+  const html = knownCases.map(p => {
     const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
     return `<option value="${p.case}">${p.case} · ${fullName}</option>`;
   }).join('');
+  console.log('Generated HTML length:', html.length);
+  caseListEl.innerHTML = html;
+  console.log('caseList innerHTML updated, options count:', caseListEl.children.length);
   document.getElementById('clientList').innerHTML = knownCases.map(p => {
     const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
     return `<option value="${p.client}" data-case="${p.case}">${fullName} · ${p.case}</option>`;
