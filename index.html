@@ -1274,6 +1274,7 @@ function onClientInput(val) {
   if (val.includes('|')) {
     const [caseNum, clientName] = val.split('|');
     document.getElementById('caseNum').value = caseNum;
+    document.getElementById('clientLast').value = clientName;
     const match = knownCases.find(p => p.case === caseNum);
     if (match && match.clientFirst) document.getElementById('clientFirst').value = match.clientFirst;
   } else {
