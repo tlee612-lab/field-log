@@ -1233,7 +1233,7 @@ async function fetchRemoteCases(verbose = false) {
   if (!cfg.webhookUrl) { if (verbose) showToast('No webhook URL configured', true); return; }
   try {
     const res = await fetch(cfg.webhookUrl + '?action=getCases');
-    if (!res.ok) return;
+    if (!res.ok) { if (verbose) showToast('Webhook error: ' + res.status, true); return; }
     const data = await res.json();
     if (data.status === 'ok' && Array.isArray(data.cases)) {
       knownCases = data.cases;
