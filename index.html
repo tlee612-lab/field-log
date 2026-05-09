@@ -1222,7 +1222,7 @@ function refreshDataLists() {
   }).join('');
   document.getElementById('clientList').innerHTML = knownCases.map(p => {
     const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
-    return `<option value="${p.case}|${p.client}">${fullName} · ${p.case}</option>`;
+    return `<option value="${p.case} ${p.client}">${fullName} · ${p.case}</option>`;
   }).join('');
   const investigators = [...new Set(entries.map(e => e.investigator).filter(Boolean))];
   document.getElementById('investigatorList').innerHTML = investigators.map(n => `<option value="${n}">`).join('');
@@ -1270,9 +1270,12 @@ function onCaseInput(val) {
 }
 
 function onClientInput(val) {
-  // Handle datalist selection format: "case|client"
-  if (val.includes('|')) {
-    const [caseNum, clientName] = val.split('|');
+  // Handle datalist selection format: "case client" (e.g., "25CR63350 Durone")
+  const parts = val.trim().split(/\s+/);
+  if (parts.length >= 2 && parts[0].match(/^\d{2}[A-Z]{2}/)) {
+    // Looks like a case number at the start
+    const caseNum = parts[0];
+    const clientName = parts.slice(1).join(' ');
     document.getElementById('caseNum').value = caseNum;
     document.getElementById('clientLast').value = clientName;
     const match = knownCases.find(p => p.case === caseNum);
