@@ -1216,16 +1216,10 @@ function updateHeaderName() {
 updateHeaderName();
 
 function refreshDataLists() {
-  console.log('refreshDataLists called with', knownCases.length, 'cases');
-  const caseListEl = document.getElementById('caseList');
-  console.log('caseList element:', caseListEl);
-  const html = knownCases.map(p => {
+  document.getElementById('caseList').innerHTML = knownCases.map(p => {
     const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
     return `<option value="${p.case}">${p.case} · ${fullName}</option>`;
   }).join('');
-  console.log('Generated HTML length:', html.length);
-  caseListEl.innerHTML = html;
-  console.log('caseList innerHTML updated, options count:', caseListEl.children.length);
   document.getElementById('clientList').innerHTML = knownCases.map(p => {
     const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
     return `<option value="${p.client}" data-case="${p.case}">${fullName} · ${p.case}</option>`;
@@ -1233,51 +1227,26 @@ function refreshDataLists() {
   const investigators = [...new Set(entries.map(e => e.investigator).filter(Boolean))];
   document.getElementById('investigatorList').innerHTML = investigators.map(n => `<option value="${n}">`).join('');
 }
-// Load cases from localStorage first (instant display)
-console.log('Initial load: knownCases has', knownCases.length, 'cases');
 refreshDataLists();
 
 async function fetchRemoteCases(verbose = false) {
-  if (!cfg.webhookUrl) {
-    console.warn('No webhook URL configured');
-    if (verbose) showToast('No webhook URL configured', true);
-    return;
-  }
+  if (!cfg.webhookUrl) { if (verbose) showToast('No webhook URL configured', true); return; }
   try {
-    console.log('Fetching cases from:', cfg.webhookUrl);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    const res = await fetch(cfg.webhookUrl + '?action=getCases', { signal: controller.signal });
-    clearTimeout(timeoutId);
-    console.log('Fetch response status:', res.status);
-    if (!res.ok) {
-      console.warn('Fetch failed with status:', res.status);
-      return;
-    }
+    const res = await fetch(cfg.webhookUrl + '?action=getCases');
+    if (!res.ok) return;
     const data = await res.json();
-    console.log('Cases fetched:', data);
-    console.log('Known cases count before update:', knownCases.length);
     if (data.status === 'ok' && Array.isArray(data.cases)) {
-      // Replace entire case list with fresh data from Google Drive (removes deleted cases)
       knownCases = data.cases;
-      console.log('Updated knownCases to:', knownCases.length, 'cases');
       localStorage.setItem('tli_cases', JSON.stringify(knownCases));
       refreshDataLists();
-      console.log('DataLists refreshed');
       if (data.lastInvestigator && !localStorage.getItem('tli_last_investigator')) {
         localStorage.setItem('tli_last_investigator', data.lastInvestigator);
         updateHeaderName();
         if (!document.getElementById('investigatorField').value) document.getElementById('investigatorField').value = data.lastInvestigator;
       }
       if (verbose) showToast('✓ ' + data.cases.length + ' cases loaded from Drive');
-    } else {
-      console.warn('Invalid response format:', data);
-      if (verbose) showToast('No cases returned from Drive', true);
-    }
-  } catch(e) {
-    console.error('Fetch error:', e);
-    if (verbose) showToast('Failed: ' + e.message, true);
-  }
+    } else { if (verbose) showToast('No cases returned from Drive', true); }
+  } catch(e) { if (verbose) showToast('Failed: ' + e.message, true); }
 }
 fetchRemoteCases();
 
