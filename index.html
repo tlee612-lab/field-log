@@ -1222,7 +1222,7 @@ function refreshDataLists() {
   }).join('');
   document.getElementById('clientList').innerHTML = knownCases.map(p => {
     const fullName = p.clientFirst ? p.client + ', ' + p.clientFirst : p.client;
-    return `<option value="${p.client}" data-case="${p.case}">${fullName} · ${p.case}</option>`;
+    return `<option value="${p.case}|${p.client}">${fullName} · ${p.case}</option>`;
   }).join('');
   const investigators = [...new Set(entries.map(e => e.investigator).filter(Boolean))];
   document.getElementById('investigatorList').innerHTML = investigators.map(n => `<option value="${n}">`).join('');
@@ -1270,10 +1270,19 @@ function onCaseInput(val) {
 }
 
 function onClientInput(val) {
-  const match = knownCases.find(p => p.client.toLowerCase() === val.toLowerCase());
-  if (match) {
-    document.getElementById('caseNum').value = match.case;
-    if (match.clientFirst) document.getElementById('clientFirst').value = match.clientFirst;
+  // Handle datalist selection format: "case|client"
+  if (val.includes('|')) {
+    const [caseNum, clientName] = val.split('|');
+    document.getElementById('caseNum').value = caseNum;
+    const match = knownCases.find(p => p.case === caseNum);
+    if (match && match.clientFirst) document.getElementById('clientFirst').value = match.clientFirst;
+  } else {
+    // Handle manual typing: just client name
+    const match = knownCases.find(p => p.client.toLowerCase() === val.toLowerCase());
+    if (match) {
+      document.getElementById('caseNum').value = match.case;
+      if (match.clientFirst) document.getElementById('clientFirst').value = match.clientFirst;
+    }
   }
 }
 
