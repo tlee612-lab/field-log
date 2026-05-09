@@ -1146,12 +1146,12 @@ function setEntryMode(mode) {
   document.getElementById('aiSection').style.display = 'none';
 
   // Update button styles
-  const caseBtn = document.getElementById('modeCase');
-  const retainerBtn = document.getElementById('modeRetainer');
-  if (caseBtn) {
-    caseBtn.style.background = isRetainer ? 'var(--surface2)' : 'var(--accent)';
-    caseBtn.style.borderColor = isRetainer ? 'var(--border)' : 'var(--accent)';
-    caseBtn.style.color = isRetainer ? 'var(--muted)' : 'var(--bg)';
+  const manualBtn = document.getElementById('modeManual');
+  const retainerBtn = document.getElementById('createRetainerBtn');
+  if (manualBtn) {
+    manualBtn.style.background = isRetainer ? 'var(--surface2)' : 'var(--accent)';
+    manualBtn.style.borderColor = isRetainer ? 'var(--border)' : 'var(--accent)';
+    manualBtn.style.color = isRetainer ? 'var(--muted)' : 'var(--bg)';
   }
   if (retainerBtn) {
     retainerBtn.style.background = isRetainer ? 'var(--accent)' : 'var(--surface2)';
