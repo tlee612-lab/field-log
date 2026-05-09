@@ -1017,6 +1017,20 @@ let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]').map(p => 
 localStorage.setItem('tli_cases', JSON.stringify(knownCases)); // persist cleaned names
 let recognition;
 
+// Prevent Chrome autofill interference with datalist autocomplete
+setTimeout(() => {
+  ['caseNum', 'clientLast', 'clientFirst', 'retainerNum', 'investigatorField'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => { /* prevent autofill */ });
+      // Clear any autofilled values that Chrome might have added
+      if (el.value && el.value.length > 0) {
+        setTimeout(() => { el.value = ''; }, 50);
+      }
+    }
+  });
+}, 200);
+
 document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
 if (document.getElementById('anthropicKey')) { document.getElementById('anthropicKey').value = cfg.anthropicKey || ''; updateKeyCount('anthropicKey','anthropicKeyCount'); }
 if (document.getElementById('geminiKey'))    { document.getElementById('geminiKey').value    = cfg.geminiKey    || ''; updateKeyCount('geminiKey','geminiKeyCount'); }
