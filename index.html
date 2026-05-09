@@ -1233,6 +1233,8 @@ function refreshDataLists() {
   const investigators = [...new Set(entries.map(e => e.investigator).filter(Boolean))];
   document.getElementById('investigatorList').innerHTML = investigators.map(n => `<option value="${n}">`).join('');
 }
+// Load cases from localStorage first (instant display)
+console.log('Initial load: knownCases has', knownCases.length, 'cases');
 refreshDataLists();
 
 async function fetchRemoteCases(verbose = false) {
@@ -1243,7 +1245,10 @@ async function fetchRemoteCases(verbose = false) {
   }
   try {
     console.log('Fetching cases from:', cfg.webhookUrl);
-    const res = await fetch(cfg.webhookUrl + '?action=getCases');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const res = await fetch(cfg.webhookUrl + '?action=getCases', { signal: controller.signal });
+    clearTimeout(timeoutId);
     console.log('Fetch response status:', res.status);
     if (!res.ok) {
       console.warn('Fetch failed with status:', res.status);
