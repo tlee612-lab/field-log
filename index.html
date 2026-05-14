@@ -1594,6 +1594,25 @@ async function aiParse(skipWarning = false) {
   btn.disabled = true;
   document.getElementById('aiPreview').classList.remove('visible');
   const validTypes = Array.from(document.getElementById('actType').options).map(opt => opt.value).filter(val => val).map(val => `"${val}"`).join(", ");
+  // Issue #86 — OpenAI's json_object response mode forces the model
+  // to return a single object, but the system prompt above asks for
+  // a JSON ARRAY. Without the wrap instruction, the model silently
+  // emitted one malformed entry. Mirrors the fix in BT's
+  // src/services/activityParser.js — append a wrap instruction on
+  // the OpenAI branch only, unwrap defensively on parse. Accepted
+  // wrapper keys ('entries', 'items', 'data', 'results',
+  // 'activities') cover the canonical key plus plausible drifts.
+  const OPENAI_JSON_WRAP_INSTRUCTION =
+    '\n\nIMPORTANT: Return a single JSON object with one key "entries" whose value is the array, like {"entries": [...]}. This is required by OpenAI\'s JSON response mode.';
+  function unwrapPossibleObjectArray(parsed) {
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') {
+      for (const key of ['entries', 'items', 'data', 'results', 'activities']) {
+        if (Array.isArray(parsed[key])) return parsed[key];
+      }
+    }
+    return [parsed]; // last-resort: treat as single entry
+  }
   // PROMPT CHANGELOG
   // 2026-04-30 — Added explicit instruction to extract case numbers from raw text using case number format
   // 2026-04-24 — Fixed example type: "Investigator Service - Surveillance" → "Investigator Service - Tactical Field Operations & Scene Documentation"
@@ -1620,13 +1639,15 @@ async function aiParse(skipWarning = false) {
       if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error('Gemini returned empty response.');
       parsed = JSON.parse(data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
     } else if (cfg.aiProvider === 'openai') {
+      const openaiSystemPrompt = systemPrompt + OPENAI_JSON_WRAP_INSTRUCTION;
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKey}` },
-        body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: raw }], response_format: { type: "json_object" } })
+        body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'system', content: openaiSystemPrompt }, { role: 'user', content: raw }], response_format: { type: "json_object" } })
       });
       if (!res.ok) { let e = `OpenAI Error: ${res.status}`; try { const d = await res.json(); e = d.error?.message || e; } catch(x) {} throw new Error(e); }
       const data = await res.json();
-      parsed = JSON.parse(data.choices[0].message.content);
+      const raw0 = JSON.parse(data.choices[0].message.content);
+      parsed = unwrapPossibleObjectArray(raw0);
     } else {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
