@@ -143,7 +143,7 @@
   </div>
   <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:var(--accent)"></div>
   <div id="paeCreateBtn" style="display:none;margin-bottom:8px">
-    <button type="button" onclick="createCaseFromPae()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
+    <button type="button" onclick="createCaseFromPae()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case</button>
   </div>
   <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-family:var(--ui)"></div>
   <div id="manualSection">
@@ -298,9 +298,12 @@
         </div>
         <div id="cfg-sync" class="config-pane active">
           <div class="config-row">
-            <label>Webhook</label>
-            <input type="text" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
+            <label>BT Host</label>
+            <input type="text" id="btHostUrl" placeholder="https://your-bandittek-host.com" autocomplete="off">
             <button id="urlLockBtn" onclick="toggleUrlLock()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:0 0 auto">🔒 Locked</button>
+          </div>
+          <div style="margin-top:6px;color:var(--muted);font-size:11px">
+            Your BanditTek server's base URL (without trailing slash).
           </div>
           <div style="margin-top:12px">
             <button class="ai-btn secondary" style="max-width:100px" onclick="testWebhook()">Test</button>
@@ -363,7 +366,6 @@
           <button class="ai-btn" style="max-width:140px" onclick="saveConfig()">Save Changes</button>
           <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end">
             <button class="ai-btn secondary" style="max-width:140px; font-size:10px" onclick="fetchRemoteCases(true)">Refresh Cases</button>
-            <button class="ai-btn secondary" style="max-width:140px; font-size:10px" onclick="upgradeAllSheets()">Upgrade Sheets</button>
             <button class="ai-btn secondary" style="max-width:140px; color:var(--warn); border-color:var(--warn); background:transparent; font-size:10px" onclick="clearAllEntries()">Clear Local Logs</button>
           </div>
           <div style="border-top:1px solid var(--border); margin-top:12px; padding-top:12px; display:flex; align-items:center; gap:10px;">
@@ -765,20 +767,20 @@ async function handlePaeFile(file) {
 }
 
 async function createCaseFromPae() {
-  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+  if (!cfg.btHostUrl) { showToast('No BT host configured', true); return; }
 
-  const caseNum     = (document.getElementById('caseNum').value    || '').trim();
+  const caseNumber  = (document.getElementById('caseNum').value    || '').trim();
   const clientLast  = (document.getElementById('clientLast').value || '').trim();
   const clientFirst = (document.getElementById('clientFirst').value|| '').trim();
 
-  if (!caseNum || !clientLast) {
+  if (!caseNumber || !clientLast) {
     showToast('Case # and client name required', true);
     return;
   }
 
   // Send only PAEs from the current modal session
   const paes = _sessionPaes.filter(p =>
-    !p.caseNumber || p.caseNumber.toLowerCase() === caseNum.toLowerCase()
+    !p.caseNumber || p.caseNumber.toLowerCase() === caseNumber.toLowerCase()
   );
 
   const btn = document.querySelector('#paeCreateBtn button');
@@ -786,47 +788,47 @@ async function createCaseFromPae() {
   btn.textContent = '⏳ Creating…';
 
   try {
-    const payload = JSON.stringify({
-      action: 'createCase',
-      caseNum,
-      clientLast,
-      clientFirst,
-      paes
+    const res = await fetch(`${cfg.btHostUrl}/api/field-log/cases`, {
+      method:  'POST',
+      mode:    'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ caseNumber, clientLast, clientFirst, paes }),
     });
+    const data = await res.json().catch(() => null);
 
-    // POST with text/plain body (no preflight).
-    // Try cors mode first so we can read the response; fall back to no-cors if blocked.
-    let result = null;
-    try {
-      const res = await fetch(cfg.webhookUrl, {
-        method: 'POST',
-        mode: 'cors',
-        body: payload
-      });
-      result = await res.json();
-    } catch (corsErr) {
-      console.warn('createCase cors fetch failed, falling back to no-cors:', corsErr.message);
-      await fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: payload });
-      // no-cors gives no response — assume success
-      result = { status: 'ok', created: null, upgraded: null, paeCount: paes.length };
-    }
-
-    if (result && result.status === 'ok') {
-      let msg = result.created   ? '✓ Case sheet created'
-              : result.upgraded  ? '✓ Case sheet upgraded'
-              : '✓ Case sheet updated';
-      if (result.paeCount > 0) msg += ` — ${result.paeCount} PAE${result.paeCount > 1 ? 's' : ''} added`;
+    if (res.status === 200 && data && data.success) {
+      const added = Number(data.paeAdded || 0);
+      const skipped = Number(data.paeSkipped || 0);
+      let msg = data.isNew ? '✓ Case created' : '✓ Case updated';
+      // Four sub-states for the PAE addendum. Honesty matters:
+      // re-pushing a PAE that's already on file should not say
+      // "PAE added". Skipped count surfaces so the user knows
+      // their scan landed but wasn't duplicated.
+      if (added > 0 && skipped > 0) {
+        msg += ` — ${added} new PAE${added > 1 ? 's' : ''} (${skipped} already on file)`;
+      } else if (added > 0) {
+        msg += ` — ${added} new PAE${added > 1 ? 's' : ''}`;
+      } else if (skipped > 0) {
+        msg += ` — ${skipped} PAE${skipped > 1 ? 's' : ''} already on file`;
+      }
       showToast(msg);
       document.getElementById('paeCreateBtn').style.display = 'none';
-      if (caseNum.length >= 4) showCaseHours(caseNum);
+      // Refresh the dropdown so the new case appears immediately in
+      // future onCaseInput/onClientInput lookups + the hours bar can
+      // overlay server-truth hoursUsed from the slim list.
+      fetchRemoteCases();
+      if (caseNumber.length >= 4) showCaseHours(caseNumber);
+    } else if (res.status === 409) {
+      showToast('Case number exists for different client', true);
     } else {
-      showToast('Error: ' + (result ? result.message : 'no response'), true);
+      const reason = data && data.error ? data.error : `HTTP ${res.status}`;
+      showToast(`Create failed: ${reason}`, true);
     }
   } catch (err) {
-    showToast('Create case failed: ' + err.message, true);
+    showToast(`Create failed: ${err && err.message ? err.message : err}`, true);
   } finally {
     btn.disabled    = false;
-    btn.textContent = '📋 Create Case in Drive';
+    btn.textContent = '📋 Create Case';
   }
 }
 
@@ -865,36 +867,52 @@ async function showCaseHours(caseNum) {
   // Show local data immediately
   renderBar(localUsed, authHours, 'local');
 
-  // Fetch from sheet for accurate total
-  if (cfg.webhookUrl) {
-    try {
-      const url = cfg.webhookUrl + '?action=getCaseSummary&case=' + encodeURIComponent(caseNum);
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status === 'ok' && data.found) {
-        renderBar(data.hoursUsed, authHours, 'sheet');
-      }
-    } catch(e) { /* keep local display */ }
+  // Overlay server-truth hoursUsed if the dropdown refresh has
+  // populated it. No round-trip here — the value travels with the
+  // case in the slim list (GET /api/field-log/cases), so the overlay
+  // is synchronous from cached state. Without a refresh, only local
+  // data is shown (which is still correct for this device's logs).
+  const known = knownCases.find(p => p.case && p.case.toLowerCase() === caseNum.toLowerCase());
+  if (known && typeof known.hoursUsed === 'number') {
+    renderBar(known.hoursUsed, authHours, 'server');
   }
 }
 // ────────────────────────────────────────────────────────────────────────────
 // Load config with fallback chain: localStorage → sessionStorage → IndexedDB
-let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"webhookUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
+let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"btHostUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
 if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
 
-// Try sessionStorage if localStorage webhook is empty
-if (!cfg.webhookUrl) {
-  const sessionWebhook = sessionStorage.getItem('tli_webhookUrl');
-  if (sessionWebhook) cfg.webhookUrl = sessionWebhook;
+// One-shot migration from the GAS-era webhookUrl key to the BT-era
+// btHostUrl key. Field-log #107 retires the GAS path entirely; users
+// with existing tli_cfg from before the rewire need their host URL
+// carried over without losing state. Copy webhookUrl → btHostUrl on
+// first load (if btHostUrl is unset), then delete the legacy key.
+if (cfg.webhookUrl !== undefined) {
+  if (!cfg.btHostUrl && cfg.webhookUrl) cfg.btHostUrl = cfg.webhookUrl;
+  delete cfg.webhookUrl;
+  localStorage.setItem('tli_cfg', JSON.stringify(cfg));
 }
 
-// Try IndexedDB as final fallback
+// Try sessionStorage if localStorage host URL is empty
+if (!cfg.btHostUrl) {
+  // New key first; fall back to the legacy key for migration.
+  const sessionUrl = sessionStorage.getItem('tli_btHostUrl') || sessionStorage.getItem('tli_webhookUrl');
+  if (sessionUrl) {
+    cfg.btHostUrl = sessionUrl;
+    // Move the value to the new key, drop the old one.
+    sessionStorage.setItem('tli_btHostUrl', sessionUrl);
+    sessionStorage.removeItem('tli_webhookUrl');
+  }
+}
+
+// Try IndexedDB as final fallback (same migration pattern)
 (async () => {
-  if (!cfg.webhookUrl) {
-    const idbWebhook = await loadFromIndexedDB('webhookUrl');
-    if (idbWebhook) {
-      cfg.webhookUrl = idbWebhook;
-      document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
+  if (!cfg.btHostUrl) {
+    const idbUrl = (await loadFromIndexedDB('btHostUrl')) || (await loadFromIndexedDB('webhookUrl'));
+    if (idbUrl) {
+      cfg.btHostUrl = idbUrl;
+      await saveToIndexedDB('btHostUrl', idbUrl);
+      document.getElementById('btHostUrl').value = cfg.btHostUrl || '';
     }
   }
 })();
@@ -906,7 +924,7 @@ let knownCases = JSON.parse(localStorage.getItem('tli_cases') || '[]').map(p => 
 localStorage.setItem('tli_cases', JSON.stringify(knownCases)); // persist cleaned names
 let recognition;
 
-document.getElementById('webhookUrl').value = cfg.webhookUrl || '';
+document.getElementById('btHostUrl').value = cfg.btHostUrl || '';
 if (document.getElementById('anthropicKey')) { document.getElementById('anthropicKey').value = cfg.anthropicKey || ''; updateKeyCount('anthropicKey','anthropicKeyCount'); }
 if (document.getElementById('geminiKey'))    { document.getElementById('geminiKey').value    = cfg.geminiKey    || ''; updateKeyCount('geminiKey','geminiKeyCount'); }
 if (document.getElementById('openaiKey'))    { document.getElementById('openaiKey').value    = cfg.openaiKey    || ''; updateKeyCount('openaiKey','openaiKeyCount'); }
@@ -946,10 +964,10 @@ function setCfgTab(tabId, btn) {
 setAiProviderTab(cfg.aiProvider, document.getElementById('ai-sub-tab-' + cfg.aiProvider));
 
 document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
-setUrlLock(!!cfg.webhookUrl);
+setUrlLock(!!cfg.btHostUrl);
 
 function setUrlLock(locked) {
-  const input = document.getElementById('webhookUrl');
+  const input = document.getElementById('btHostUrl');
   const btn = document.getElementById('urlLockBtn');
   input.readOnly = locked;
   input.style.opacity = locked ? '0.5' : '1';
@@ -985,7 +1003,7 @@ function togglePassword(id) {
 }
 
 function toggleUrlLock() {
-  const input = document.getElementById('webhookUrl');
+  const input = document.getElementById('btHostUrl');
   setUrlLock(!input.readOnly);
 }
 
@@ -1027,28 +1045,37 @@ function refreshDataLists() {
 refreshDataLists();
 
 async function fetchRemoteCases(verbose = false) {
-  if (!cfg.webhookUrl) { if (verbose) showToast('No webhook URL configured', true); return; }
+  if (!cfg.btHostUrl) { if (verbose) showToast('No BT host configured', true); return; }
   try {
-    const res = await fetch(cfg.webhookUrl + '?action=getCases');
-    if (!res.ok) return;
+    const res = await fetch(`${cfg.btHostUrl}/api/field-log/cases`);
+    if (!res.ok) { if (verbose) showToast(`Refresh failed (HTTP ${res.status})`, true); return; }
     const data = await res.json();
-    console.log('Cases fetched:', data);
-    if (data.status === 'ok' && Array.isArray(data.cases)) {
-      let added = 0;
-      data.cases.forEach(p => {
-        if (!knownCases.find(k => k.case.toLowerCase() === p.case.toLowerCase())) {
-          knownCases.push(p); added++;
-        }
-      });
-      if (added) { localStorage.setItem('tli_cases', JSON.stringify(knownCases)); refreshDataLists(); }
-      if (data.lastInvestigator && !localStorage.getItem('tli_last_investigator')) {
-        localStorage.setItem('tli_last_investigator', data.lastInvestigator);
-        updateHeaderName();
-        if (!document.getElementById('investigatorField').value) document.getElementById('investigatorField').value = data.lastInvestigator;
-      }
-      if (verbose) showToast('✓ ' + data.cases.length + ' cases loaded from Drive');
-    } else { if (verbose) showToast('No cases returned from Drive', true); }
-  } catch(e) { if (verbose) showToast('Failed: ' + e.message, true); }
+    if (!data.success || !Array.isArray(data.cases)) {
+      if (verbose) showToast('Refresh failed — unexpected response', true);
+      return;
+    }
+    // Adapt BT's slim shape to field-log's dropdown shape. BT
+    // returns { caseNumber, client:{first,middle,last}, status,
+    // hoursUsed }; the local dropdown reads { case, client (last
+    // name), clientFirst, hoursUsed, status }.
+    const fresh = data.cases.map(c => ({
+      case:        c.caseNumber,
+      client:      (c.client && c.client.last)  || '',
+      clientFirst: (c.client && c.client.first) || '',
+      status:      c.status || '',
+      hoursUsed:   typeof c.hoursUsed === 'number' ? c.hoursUsed : 0,
+    }));
+    // Merge: keep cases this device has logged but BT doesn't know
+    // about (offline / not-yet-pushed), refresh the rest from BT.
+    // BT-known cases overwrite local copies (server-truth hoursUsed
+    // and status take precedence).
+    const knownByNum = new Map(knownCases.map(k => [(k.case || '').toLowerCase(), k]));
+    fresh.forEach(c => knownByNum.set((c.case || '').toLowerCase(), c));
+    knownCases = [...knownByNum.values()];
+    localStorage.setItem('tli_cases', JSON.stringify(knownCases));
+    refreshDataLists();
+    if (verbose) showToast(`✓ ${fresh.length} cases loaded from BT`);
+  } catch(e) { if (verbose) showToast(`Refresh failed: ${e.message}`, true); }
 }
 fetchRemoteCases();
 
@@ -1099,34 +1126,51 @@ function saveKnownCase(caseNum, client, clientFirst) {
 }
 
 async function saveConfig() {
-  cfg.webhookUrl = document.getElementById('webhookUrl').value.trim();
+  cfg.btHostUrl = document.getElementById('btHostUrl').value.trim();
   cfg.anthropicKey = sanitizeKey(document.getElementById('anthropicKey').value);
   cfg.geminiKey = sanitizeKey(document.getElementById('geminiKey').value);
   cfg.openaiKey = sanitizeKey(document.getElementById('openaiKey').value);
   cfg.aiProvider = document.getElementById('aiProvider').value;
   cfg.devMode = document.getElementById('devMode').checked;
 
+  // Defensive: scrub any lingering legacy key so re-saves can't
+  // resurrect the old shape after the one-shot migration on boot.
+  delete cfg.webhookUrl;
+
   // Save to all three storage methods
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
-  sessionStorage.setItem('tli_webhookUrl', cfg.webhookUrl);
-  await saveToIndexedDB('webhookUrl', cfg.webhookUrl);
+  sessionStorage.setItem('tli_btHostUrl', cfg.btHostUrl);
+  sessionStorage.removeItem('tli_webhookUrl');
+  await saveToIndexedDB('btHostUrl', cfg.btHostUrl);
 
-  if (cfg.webhookUrl) setUrlLock(true);
+  if (cfg.btHostUrl) setUrlLock(true);
   setAiKeyLock(true);
   showToast('Config saved');
 }
 
 async function testWebhook() {
-  if (!cfg.webhookUrl) { showToast('Paste webhook URL first', true); return; }
+  if (!cfg.btHostUrl) { showToast('Paste BT host URL first', true); return; }
+  // Defensive URL normalization. The placeholder/helper text asks for
+  // "no trailing slash" but users paste from browser address bars
+  // where trailing slashes are routine. Strip them on read; otherwise
+  // the next path segment doubles up and Express 404s.
+  const base = String(cfg.btHostUrl).trim().replace(/\/+$/, '');
   try {
-    const res = await fetch(cfg.webhookUrl + '?action=ping');
+    const res = await fetch(`${base}/api/health`);
     const data = await res.json();
-    showToast(data.status === 'ok' ? '✓ Webhook connected' : 'Webhook error', data.status !== 'ok');
+    if (res.ok && data && data.status === 'ok') {
+      showToast(`✓ Connected to ${data.service || 'BT'}`);
+    } else {
+      showToast(`Connection issue (HTTP ${res.status})`, true);
+    }
   } catch(err) {
-    try {
-      await fetch(cfg.webhookUrl, { method: 'GET', mode: 'no-cors' });
-      showToast('✓ Webhook reachable — check Sheets to confirm');
-    } catch(e) { showToast('Connection failed', true); }
+    // Surface the actual error so URL/CORS/network issues are
+    // distinguishable. Browser TypeErrors from fetch (invalid URL,
+    // mixed content, blocked by CORS, refused) all land here with
+    // different messages.
+    console.error('[testWebhook] fetch failed:', err);
+    const detail = err && err.message ? err.message : String(err);
+    showToast(`Connection failed: ${detail}`, true);
   }
   setUrlLock(true);
 }
@@ -1311,35 +1355,49 @@ function deleteEntry(id) {
 function updateSyncBtn() {
   const btn = document.getElementById('syncBtn');
   const pending = entries.filter(e => e.synced === false);
-  if (cfg.webhookUrl && pending.length) { btn.style.display = ''; btn.textContent = '↑ Sync All (' + pending.length + ')'; }
+  if (cfg.btHostUrl && pending.length) { btn.style.display = ''; btn.textContent = '↑ Sync All (' + pending.length + ')'; }
   else btn.style.display = 'none';
 }
 
 async function syncEntry(id) {
   const entry = entries.find(e => String(e.id) === String(id));
   if (!entry) return;
-  try {
-    await postToWebhook([entry]);
-    entry.synced = true;
-    localStorage.setItem('tli_entries', JSON.stringify(entries));
-    renderLog();
-    updateSyncBtn();
+  if (!entry.case || !entry.case.trim()) { showToast('Entry has no case number — fix before syncing', true); return; }
+  const results = await postEntriesToBt([entry]);
+  const { synced, failed, networkErrors } = applySyncResult(results);
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog();
+  updateSyncBtn();
+  if (synced === 1) {
     showToast('✓ Entry synced');
-  } catch(err) { showToast('Sync failed — check connection', true); }
+  } else if (networkErrors > 0) {
+    showToast('Sync failed — check connection', true);
+  } else {
+    const r = results[0];
+    const reason = r && r.data && r.data.error ? r.data.error : (r && r.status === 404 ? 'Case not found in BT' : 'Sync failed');
+    showToast(reason, true);
+  }
 }
 
 async function resyncEntry(id) {
   const entry = entries.find(e => String(e.id) === String(id));
   if (!entry) return;
-  if (!cfg.webhookUrl) { showToast('No webhook configured', true); return; }
-  if (!confirm('⚠ Resync may create a duplicate row if the original sync succeeded.\n\nOnly continue if the entry is missing from the sheet.')) return;
-  try {
-    await postToWebhook([entry]);
-    entry.synced = true;
-    localStorage.setItem('tli_entries', JSON.stringify(entries));
-    renderLog();
-    showToast('✓ Entry resynced to Drive');
-  } catch(err) { showToast('Resync failed — check connection', true); }
+  if (!cfg.btHostUrl) { showToast('No BT host configured', true); return; }
+  if (!entry.case || !entry.case.trim()) { showToast('Entry has no case number — fix before syncing', true); return; }
+  if (!confirm('⚠ Resync uses the same deterministic ID, so BT will dedupe automatically.\n\nProceed only if the entry is missing in BT.')) return;
+  const results = await postEntriesToBt([entry]);
+  const { synced, failed, networkErrors } = applySyncResult(results);
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog();
+  if (synced === 1) {
+    showToast('✓ Entry resynced to BT');
+  } else if (networkErrors > 0) {
+    showToast('Resync failed — check connection', true);
+  } else {
+    const r = results[0];
+    const reason = r && r.data && r.data.error ? r.data.error : 'Resync failed';
+    showToast(reason, true);
+  }
 }
 
 async function syncPending() {
@@ -1348,13 +1406,21 @@ async function syncPending() {
   const btn = document.getElementById('syncBtn');
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span>${syncQuip()}`;
-  try {
-    await postToWebhook(pending);
-    pending.forEach(e => e.synced = true);
-    localStorage.setItem('tli_entries', JSON.stringify(entries));
-    renderLog(); updateSyncBtn();
-    showToast('✓ ' + pending.length + ' entries synced');
-  } catch(err) { showToast('Sync failed — check connection', true); btn.disabled = false; updateSyncBtn(); }
+  const results = await postEntriesToBt(pending);
+  const { synced, failed, networkErrors } = applySyncResult(results);
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog(); updateSyncBtn();
+  btn.disabled = false;
+  const errCases = results.filter(r => r.status !== 200).length;
+  if (synced > 0 && failed === 0 && networkErrors === 0) {
+    showToast(`✓ ${synced} entries synced` + (results.length > 1 ? ` (${results.length} cases)` : ''));
+  } else if (synced > 0) {
+    showToast(`✓ ${synced} synced, ${failed + networkErrors} failed${errCases ? ` across ${errCases} case(s)` : ''}`, true);
+  } else if (networkErrors > 0) {
+    showToast('Sync failed — check connection', true);
+  } else {
+    showToast(`Sync failed (${errCases} case error${errCases > 1 ? 's' : ''})`, true);
+  }
 }
 
 renderLog();
@@ -1867,23 +1933,27 @@ async function submitEntry() {
   btn.innerHTML = '<span class="spinner"></span>Logging...';
   btn.disabled = true;
   toLog.forEach(e => entries.push(e));
-  if (cfg.webhookUrl) {
-    try {
-      btn.innerHTML = `<span class="spinner"></span>${syncQuip()}`;
-      await postToWebhook(toLog);
-      toLog.forEach(e => { e.synced = true; });
-      showToast(toLog.length > 1 ? `✓ ${toLog.length} entries logged to Drive` : '✓ Logged to Google Drive');
-    } catch(err) {
-      if (err.message.includes('mismatch') || err.message.includes('belongs to')) {
-        showToast(err.message, true);
-        toLog.forEach(() => entries.pop());
-        localStorage.setItem('tli_entries', JSON.stringify(entries));
-        renderLog(); updateSyncBtn();
-      } else {
-        showToast('Saved locally — Drive sync failed', true);
-      }
+  if (cfg.btHostUrl) {
+    btn.innerHTML = `<span class="spinner"></span>${syncQuip()}`;
+    const results = await postEntriesToBt(toLog);
+    // LOG ACTIVITY always submits a single case (toLog inherits the
+    // form's caseNum on every row, including OOP add-on rows), so
+    // results is single-element. The case-mismatch toast path from
+    // the GAS era is gone — BT enforces case binding server-side and
+    // any mismatch surfaces as 404 with a clean error message.
+    const r = results[0];
+    if (r && r.status === 200 && r.data && r.data.success) {
+      applySyncResult(results);
+      showToast(toLog.length > 1 ? `✓ ${toLog.length} entries logged to BT` : '✓ Logged to BT');
+    } else if (r && r.status === 404) {
+      showToast(`Case not in BT: ${r.caseNumber} — create it first or fix the case number`, true);
+    } else if (r && r.status === 0) {
+      showToast('Saved locally — BT sync failed (check connection)', true);
+    } else {
+      const reason = r && r.data && r.data.error ? r.data.error : 'BT sync failed';
+      showToast(`Saved locally — ${reason}`, true);
     }
-  } else { showToast('✓ Logged locally — configure webhook to sync'); }
+  } else { showToast('✓ Logged locally — configure BT host to sync'); }
   localStorage.setItem('tli_entries', JSON.stringify(entries));
   renderLog(); updateSyncBtn();
   ['actNotes','clientLast','clientFirst','caseNum','actMileage','travelFrom','travelTo','actDuration','aiInput','mileageDriver'].forEach(id => document.getElementById(id).value = '');
@@ -1902,26 +1972,126 @@ async function submitEntry() {
   btn.disabled = false;
 }
 
-async function postToWebhook(entriesToPost) {
-  const reqId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-  // POST with text/plain body — no URL length limit, works with no-cors
-  await fetch(cfg.webhookUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({ reqId, data: entriesToPost })
-  });
+// postEntriesToBt — bulk activity sync against BanditTek (slice #107).
+//
+// Replaces the GAS-era postToWebhook. Five shape changes from the old
+// path:
+//
+//   1. Endpoint: POSTs to {btHostUrl}/api/field-log/activities (BT's
+//      per-record ingest endpoint, #92) instead of the GAS webhook
+//      base URL with a no-cors envelope.
+//   2. Request shape: { caseNumber, activities } per call instead of
+//      { reqId, data: [...] }. BT requires one case per call;
+//      idempotency lives server-side via deterministic activity-id
+//      seeds, so the reqId envelope is moot.
+//   3. Per-row field renames: travelFrom → from, travelTo → to.
+//      `logged` is added (ISO capture timestamp; derived from the
+//      entry's id-as-timestamp or Date.now() fallback).
+//   4. CORS: mode:'cors' (not 'no-cors') — BT's wide-open
+//      app.use(cors()) accepts everything, and reading the response
+//      is the whole point of the rewire.
+//   5. Multi-case grouping: callers may pass entries spanning
+//      multiple cases (notably syncAll). We group by case here and
+//      POST once per group; the return value is an array of
+//      per-case results.
+//
+// Returns: [{ caseNumber, status, data?, error?, entries }] — one
+//   element per case group. `entries` is the subset of input that
+//   landed in this call (preserved so callers can map BT's
+//   errors[].index back to local entries).
+//
+// Throws: never. Network failures surface as a result-element with
+//   status:0 and error:<message>; HTTP errors surface as the BT
+//   status code + the parsed body. Caller decides what to display.
+async function postEntriesToBt(entriesToPost) {
+  // Group by case. Entries without a case number can't be POSTed
+  // (BT requires the binding); they're dropped from this call and
+  // will remain in entries[] with synced=false for the user to
+  // attend to.
+  const byCase = new Map();
+  for (const e of entriesToPost) {
+    const caseNum = (e.case || '').trim();
+    if (!caseNum) continue;
+    if (!byCase.has(caseNum)) byCase.set(caseNum, []);
+    byCase.get(caseNum).push(e);
+  }
+
+  const results = [];
+  for (const [caseNumber, entries] of byCase) {
+    const activities = entries.map(e => ({
+      logged:       e.logged || (typeof e.id === 'number' ? new Date(e.id).toISOString() : new Date().toISOString()),
+      type:         e.type,
+      date:         e.date,
+      time:         e.time,
+      investigator: e.investigator,
+      notes:        e.notes,
+      from:         e.travelFrom,
+      to:           e.travelTo,
+      duration:     e.duration,
+      mileage:      e.mileage,
+      quantity:     e.quantity,
+    }));
+    try {
+      const res = await fetch(`${cfg.btHostUrl}/api/field-log/activities`, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caseNumber, activities }),
+      });
+      let data = null;
+      try { data = await res.json(); } catch (_) { /* non-JSON body */ }
+      results.push({ caseNumber, status: res.status, data, entries });
+    } catch (err) {
+      results.push({ caseNumber, status: 0, error: err && err.message ? err.message : String(err), entries });
+    }
+  }
+  return results;
+}
+
+// applySyncResult — mark entry.synced based on BT's per-call response.
+// For a 200 result with data.success: every entry in the call is
+// considered synced UNLESS its index appears in data.errors[].index.
+// Skipped duplicates count as synced (BT already has the row).
+// Non-200 results leave the entries' synced state untouched.
+function applySyncResult(results) {
+  let synced = 0, failed = 0, networkErrors = 0;
+  for (const r of results) {
+    if (r.status === 200 && r.data && r.data.success) {
+      const errIndices = new Set((r.data.errors || []).map(e => e.index));
+      r.entries.forEach((entry, i) => {
+        if (!errIndices.has(i)) {
+          entry.synced = true;
+          synced += 1;
+        } else {
+          failed += 1;
+        }
+      });
+    } else if (r.status === 0) {
+      networkErrors += r.entries.length;
+    } else {
+      failed += r.entries.length;
+    }
+  }
+  return { synced, failed, networkErrors };
 }
 
 async function syncAll() {
-  if (!cfg.webhookUrl) { showToast('Paste webhook URL first', true); return; }
+  if (!cfg.btHostUrl) { showToast('Paste BT host URL first', true); return; }
   if (!entries.length) { showToast('No local entries to sync', true); return; }
-  try {
-    await postToWebhook(entries);
-    entries.forEach(e => e.synced = true);
-    localStorage.setItem('tli_entries', JSON.stringify(entries));
-    renderLog(); updateSyncBtn();
-    showToast('✓ All ' + entries.length + ' entries synced');
-  } catch(err) { showToast('Sync failed — check connection', true); }
+  const results = await postEntriesToBt(entries);
+  const { synced, failed, networkErrors } = applySyncResult(results);
+  localStorage.setItem('tli_entries', JSON.stringify(entries));
+  renderLog(); updateSyncBtn();
+  const errCases = results.filter(r => r.status !== 200).length;
+  if (synced > 0 && failed === 0 && networkErrors === 0) {
+    showToast(`✓ ${synced} entries synced` + (results.length > 1 ? ` (${results.length} cases)` : ''));
+  } else if (synced > 0) {
+    showToast(`✓ ${synced} synced, ${failed + networkErrors} failed${errCases ? ` across ${errCases} case(s)` : ''}`, true);
+  } else if (networkErrors > 0) {
+    showToast('Sync failed — check connection', true);
+  } else {
+    showToast(`Sync failed (${errCases} case error${errCases > 1 ? 's' : ''})`, true);
+  }
 }
 
 function clearSynced() {
@@ -1937,30 +2107,6 @@ function clearAllEntries() {
   localStorage.setItem('tli_entries', JSON.stringify(entries));
   renderLog(); updateSyncBtn();
   showToast('All local entries cleared');
-}
-
-async function upgradeAllSheets() {
-  const caseNum = document.getElementById('caseNum')?.value?.trim();
-  if (!caseNum) {
-    showToast('Select a case first', true);
-    return;
-  }
-  if (!cfg.webhookUrl) {
-    showToast('Webhook URL not configured', true);
-    return;
-  }
-  try {
-    const url = cfg.webhookUrl + '?action=upgradeSheet&case=' + encodeURIComponent(caseNum);
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if (data.status === 'ok') {
-      showToast('✓ Sheet upgraded: ' + caseNum);
-    } else {
-      showToast('Upgrade failed: ' + (data.message || 'unknown error'), true);
-    }
-  } catch(err) {
-    showToast('Upgrade failed: ' + err.message, true);
-  }
 }
 
 function showToast(msg, isError=false) {
