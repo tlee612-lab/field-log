@@ -607,23 +607,27 @@ function parsePaeText(text) {
   if (auth) result.authNumber = auth[1].trim();
 
   // Case number
-  const cn = flat.match(/\bCase\s*#[:\s]+([A-Z0-9\-]{4,20})/i)
-          || flat.match(/\bCase\s*(?:No\.?|Number)[:\s]+([A-Z0-9\-]*[0-9][A-Z0-9\-]*)/i);
+  const cn = flat.match(/\bCase\s*#\s*:?\s*([A-Z0-9][A-Z0-9\-]{3,19})/i)
+          || flat.match(/\bCase\s*(?:No\.?|Number)\s*:?\s*([A-Z0-9][A-Z0-9\-]{3,19})/i);
   if (cn) result.caseNumber = cn[1].trim();
 
   // County
   const county = flat.match(/\bCounty[:\s]+([A-Za-z]+)/i);
   if (county) result.county = county[1].trim();
 
-  // Client name — "Client: First Last"
-  const clientRaw = flat.match(/\bClient[:\s]+([A-Za-z][A-Za-z\s\-'\.]{2,50}?)(?=\s*(?:Case|County|Attorney|Authorization|Total|Authorized|$))/i);
+  // Client name — allow commas for suffixes like "Jr", "Sr", "III"
+  const clientRaw = flat.match(/\bClient[:\s]+([A-Za-z][A-Za-z\s\-',\.]{2,60}?)(?=\s*(?:Case|County|Attorney|Authorization|Total|Authorized|$))/i);
   if (clientRaw) {
-    const raw = clientRaw[1].replace(/\s+/g, ' ').trim();
+    // Strip trailing suffixes (Jr, Sr, II, III, IV, V) before parsing
+    let raw = clientRaw[1].replace(/\s+/g, ' ').trim();
+    raw = raw.replace(/,?\s*\b(Jr\.?|Sr\.?|II|III|IV|V)\s*$/i, '').trim();
     const commaMatch = raw.match(/^([A-Za-z\-']+),\s*([A-Za-z\-']+)/);
     if (commaMatch) {
+      // "Last, First" format
       result.clientLast = commaMatch[1].trim();
       result.clientFirst = commaMatch[2].trim();
     } else {
+      // "First Last" format
       const parts = raw.split(/\s+/);
       result.clientFirst = parts[0] || '';
       result.clientLast = parts[parts.length - 1] || '';
@@ -863,8 +867,7 @@ async function handlePaeFile(file) {
         if (doneBtn) doneBtn.style.display = 'block';
         if (hintEl) hintEl.textContent = 'Drop another PAE or tap Done';
       }
-      const debugMsg = parsed._debugDates ? ` | ${parsed._debugDates}` : '';
-      showToast('✓ PAE imported' + (_sessionPaes.length > 1 ? ` (${_sessionPaes.length} this session)` : '') + debugMsg);
+      showToast('✓ PAE imported' + (_sessionPaes.length > 1 ? ` (${_sessionPaes.length} this session)` : ''));
     } else {
       showToast('Could not read case info from PDF', true);
     }
