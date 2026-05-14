@@ -1,5 +1,5 @@
 /**
- * TLI Field Log - Server Side (Code.gs)
+ * OPS Track - Server Side (Code.gs)
  * Version: 2026.05.07-Retainers
  */
 
@@ -57,7 +57,7 @@ function doGet(e) {
   try {
     const action = e.parameter.action || '';
     if (action === 'ping' || (!action && !e.parameter.data)) {
-      return buildResponse({ status: 'ok', message: 'TLI Field Log webhook is live' });
+      return buildResponse({ status: 'ok', message: 'OPS Track webhook is live' });
     }
     if (action === 'getCases') return buildResponse(getCases());
     if (action === 'getCaseSummary') return buildResponse(getCaseSummary(e.parameter.case || ''));
@@ -74,7 +74,7 @@ function doGet(e) {
       for (const entry of entries) results.push(logEntry(entry));
       return buildResponse({ status: 'ok', results });
     }
-    return buildResponse({ status: 'ok', message: 'TLI Field Log webhook is live' });
+    return buildResponse({ status: 'ok', message: 'OPS Track webhook is live' });
   } catch (err) {
     return buildResponse({ status: 'error', message: err.message });
   }

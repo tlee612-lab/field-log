@@ -1,4 +1,4 @@
-# TLI Field Log
+# OPS Track
 
 A mobile-first field logging app for licensed private investigators. Captures billable activity entries via voice dictation or manual form entry, processes them with AI, and syncs to Google Sheets via a Google Apps Script webhook.
 
@@ -11,7 +11,7 @@ Each investigator runs their own backend. Setup takes about 10 minutes.
 ### Step 1 — Create your Google Drive folder
 
 1. Open [Google Drive](https://drive.google.com)
-2. Create a new folder — name it something like **TLI Auto Log**
+2. Create a new folder — name it something like **OPS Track Auto Log**
 3. Open the folder and copy the folder ID from the URL:
    ```
    https://drive.google.com/drive/folders/THIS_PART_IS_YOUR_FOLDER_ID
@@ -29,7 +29,7 @@ Each investigator runs their own backend. Setup takes about 10 minutes.
    ```javascript
    const AUTO_LOG_FOLDER_ID = 'YOUR_FOLDER_ID_HERE';
    ```
-5. Click **Save** (Ctrl+S), name the project something like **TLI Field Log**
+5. Click **Save** (Ctrl+S), name the project something like **OPS Track**
 6. Click **Deploy → New deployment**
    - Type: **Web app**
    - Execute as: **Me**
@@ -73,7 +73,7 @@ When a new version of `Code.JS` is released, **you must update it manually** in 
 
 ### To update your backend:
 
-1. Go to [Google Apps Script](https://script.google.com) and open your **TLI Field Log** project
+1. Go to [Google Apps Script](https://script.google.com) and open your **OPS Track** project
 2. Download the latest `Code.JS` from [this repo](https://github.com/tlee612-lab/field-log/blob/main/Code.JS)
 3. Delete all code in your Apps Script editor
 4. Paste the new `Code.JS` code

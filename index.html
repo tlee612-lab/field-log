@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>TLI Field Log</title>
+<title>OPS Track</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -110,7 +110,7 @@
 <body>
 <header>
   <div>
-    <div class="logo">TLI <span>Field Log</span></div>
+    <div class="logo">OPS <span>Track</span></div>
     <div id="headerName" style="font-family:var(--ui);font-size:11px;letter-spacing:1px;color:var(--muted);margin-top:2px"></div>
   </div>
   <div class="status-dot" id="statusDot"></div>
@@ -230,6 +230,7 @@
       <option>Out of Pocket - Circuit Court Copies</option>
       <option>Out of Pocket - Discovery Fees</option>
       <option>Out of Pocket - Process Service (Third-Party)</option>
+      <option>Out of Pocket - Printed for File</option>
       <option>Out of Pocket - Photocopies (B&amp;W)</option>
       <option>Out of Pocket - Photocopies (Color)</option>
       <option>Out of Pocket - Photos (3x5 or 4x6)</option>
@@ -1206,7 +1207,7 @@ function setMode(mode) {
     manualBtn.style.color = isAI ? 'var(--muted)' : 'var(--bg)';
   }
 }
-setMode(localStorage.getItem('tli_mode') || 'ai');
+setMode('manual');
 
 function updateHeaderName() {
   const el = document.getElementById('headerName');
@@ -1936,6 +1937,7 @@ const OOP_OPTIONS = [
   'Out of Pocket - Circuit Court Copies',
   'Out of Pocket - Discovery Fees',
   'Out of Pocket - Process Service (Third-Party)',
+  'Out of Pocket - Printed for File',
   'Out of Pocket - Photocopies (B&amp;W)',
   'Out of Pocket - Photocopies (Color)',
   'Out of Pocket - Photos (3x5 or 4x6)',
@@ -1955,9 +1957,12 @@ function addOopRow() {
   const n = oopRowCount++;
   const row = document.createElement('div');
   row.id = 'oopRow_' + n;
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 28px;gap:6px;align-items:center;margin-bottom:6px';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 28px;gap:6px;align-items:start;margin-bottom:6px';
   row.innerHTML = `
-    <select id="oopType_${n}" style="width:100%">${oopOptionsHtml()}</select>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <select id="oopType_${n}" style="width:100%">${oopOptionsHtml()}</select>
+      <input type="text" id="oopNotes_${n}" placeholder="Notes (optional)" style="width:100%;font-size:12px">
+    </div>
     <input type="number" id="oopQty_${n}" placeholder="Qty" step="1" min="0" style="width:100%">
     <button type="button" onclick="removeOopRow(${n})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
   `;
@@ -2003,8 +2008,8 @@ function onTypeChange(val) {
   const durField = document.getElementById('actDuration').parentElement;
   const isOOPQuantity = val.startsWith('Out of Pocket') && val !== 'Out of Pocket - Mileage';
   const isOOP = val.startsWith('Out of Pocket');
-  // Hide Duration field entirely for all Out of Pocket entries
-  durField.style.display = isOOP ? 'none' : '';
+  // Hide Duration/Quantity field only for Mileage (uses mileage field instead); show for all other OOP types
+  durField.style.display = (isOOP && !isOOPQuantity) ? 'none' : '';
   durLabel.textContent = isOOPQuantity ? 'Quantity / Units' : 'Duration (mins)';
   // Show OOP add-on button only for Investigator Service types (not OOP, not Travel Time)
   const isInvService = val.startsWith('Investigator Service') && val !== 'Investigator Service - Travel Time';
@@ -2078,8 +2083,10 @@ async function submitEntry() {
   for (const row of oopAddonRows) {
     const typeField = row.querySelector('select');
     const qtyField = row.querySelector('input[type="number"]');
+    const notesField = row.querySelector('input[type="text"]');
     const oopType = typeField?.value || '';
     const oopQty = qtyField?.value.trim() || '';
+    const oopNotes = notesField?.value.trim() || '';
     if (!oopType && !oopQty) continue;
     if (!oopType) {
       showToast('Please select a type for each OOP expense row', true);
@@ -2098,7 +2105,7 @@ async function submitEntry() {
       mileage: '',
       travelFrom: '',
       travelTo: '',
-      notes: base.notes || `${oopQty} ${oopType}`
+      notes: oopNotes || `${oopQty} ${oopType.replace(/^Out of Pocket - /, '')}`
     });
   }
 
