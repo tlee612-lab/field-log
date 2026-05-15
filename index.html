@@ -2734,13 +2734,64 @@ let banditAvatarState = 'idle'; // 'idle' | 'thinking' | 'speaking'
 // transcript. Default to compact so the chat doesn't dominate the
 // screen on every open.
 let banditCompact = true;
+// Slice 3 — anomaly summary state. Drives the burrow alert overlay
+// + the magnifying avatar swap when "investigator mode" applies.
+// Polled every 60s from /api/bandit/anomalies-summary; busted on chat
+// close (acks inside the chat may have changed the count).
+let banditAnomalyCount = 0;
+let banditAnomalyPollTimer = null;
 
 function updateBanditBurrowVisibility() {
   const burrow = document.getElementById('bandit-burrow');
   if (!burrow) return;
   const hasHost = !!(cfg.btHostUrl && cfg.btHostUrl.trim());
   const hasUid = !!(cfg.btUid && cfg.btUid.trim());
-  burrow.style.display = (hasHost && hasUid) ? '' : 'none';
+  const shouldShow = hasHost && hasUid;
+  burrow.style.display = shouldShow ? '' : 'none';
+  // Slice 3 — start/stop anomaly polling alongside visibility.
+  if (shouldShow) startBanditAnomalyPolling();
+  else stopBanditAnomalyPolling();
+}
+
+// Slice 3 — anomaly summary polling. Cadence 60s; paused on
+// document hidden; re-fetches on chat close.
+async function fetchBanditAnomalySummary() {
+  if (!cfg.btHostUrl || !cfg.btUid) return;
+  try {
+    const base = String(cfg.btHostUrl).trim().replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/bandit/anomalies-summary?uid=${encodeURIComponent(cfg.btUid)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (typeof data.count === 'number') {
+      banditAnomalyCount = data.count;
+      updateBanditAlertOverlay();
+    }
+  } catch (_err) { /* soft-fail */ }
+}
+
+function startBanditAnomalyPolling() {
+  if (banditAnomalyPollTimer) return;
+  fetchBanditAnomalySummary();
+  banditAnomalyPollTimer = setInterval(() => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    fetchBanditAnomalySummary();
+  }, 60_000);
+}
+
+function stopBanditAnomalyPolling() {
+  if (banditAnomalyPollTimer) {
+    clearInterval(banditAnomalyPollTimer);
+    banditAnomalyPollTimer = null;
+  }
+}
+
+function updateBanditAlertOverlay() {
+  const overlay = document.getElementById('bandit-alert-overlay');
+  if (!overlay) return;
+  const sheet = document.getElementById('bandit-sheet');
+  const open = !!(sheet && sheet.classList.contains('open'));
+  // Show overlay only when chat is closed AND anomalies exist.
+  overlay.style.display = (!open && banditAnomalyCount > 0) ? '' : 'none';
 }
 
 function setBanditBurrowImage(_open) {
@@ -2755,8 +2806,14 @@ function setBanditBurrowImage(_open) {
 function updateBanditAvatar() {
   const img = document.getElementById('bandit-sheet-avatar');
   if (!img) return;
+  // Slice 3 — investigator mode swap. When user has unacked
+  // anomalies AND the conversation has at least one turn, the idle
+  // pose becomes the magnifying pose. thinking/speaking keep their
+  // own sprites (action-state reads more clearly than mode-state).
+  const investigatorMode = banditAnomalyCount > 0 && banditMessages.length >= 1;
   const src = banditAvatarState === 'thinking' ? 'public/bandit/bandit-thinking.webp'
             : banditAvatarState === 'speaking' ? 'public/bandit/bandit-speaking.webp'
+            : investigatorMode ? 'public/bandit/bandit-magnifying.webp'
             : 'public/bandit/bandit-idle.webp';
   img.src = src;
 }
@@ -2828,6 +2885,7 @@ function openBanditSheet() {
   setBanditBurrowImage(true);
   banditAvatarState = 'idle';
   updateBanditAvatar();
+  updateBanditAlertOverlay();
   renderBanditMessages();
   setTimeout(() => {
     const input = document.getElementById('bandit-input');
@@ -2846,6 +2904,10 @@ function closeBanditSheet() {
   banditMessages = [];
   banditAvatarState = 'idle';
   updateBanditAvatar();
+  // Slice 3 — refresh on close: acks inside the chat may have changed
+  // the count; the overlay re-evaluates against fresh data.
+  fetchBanditAnomalySummary();
+  updateBanditAlertOverlay();
 }
 
 function toggleBanditSheet() {
@@ -2911,6 +2973,11 @@ async function sendBanditMessage() {
     }
     if (sendBtn) sendBtn.disabled = false;
     renderBanditMessages();
+    // Slice 3 — re-fetch anomaly summary after each turn. Bandit may
+    // have acked items via [[ack:...]] sentinels, which the server
+    // detected + recorded; the local count needs to catch up so the
+    // overlay/avatar reflect the new state.
+    fetchBanditAnomalySummary();
   }
 }
 
@@ -2965,8 +3032,13 @@ if (document.readyState === 'loading') {
      updateBanditBurrowVisibility (called on boot + saveConfig).
      Both elements live outside any mode-tab DOM so they persist
      across mode switches. -->
-<button id="bandit-burrow" type="button" aria-label="Open Bandit chat" title="Bandit" style="display:none">
+<button id="bandit-burrow" type="button" aria-label="Open Bandit chat" title="Bandit" style="display:none;position:fixed;overflow:visible">
   <img id="bandit-burrow-img" src="public/bandit/burrow-fieldlog.png" alt="">
+  <!-- Slice 3 — alert overlay (Bandit poking out alert) when
+       unacknowledged anomalies exist. updateBanditAlertOverlay toggles
+       display based on banditAnomalyCount + chat-open state. -->
+  <img id="bandit-alert-overlay" src="public/bandit/bandit-alert.webp" alt=""
+       style="display:none;position:absolute;left:30%;top:-15%;width:55%;height:55%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.4))">
 </button>
 <div id="bandit-sheet-backdrop"></div>
 <div id="bandit-sheet" role="dialog" aria-modal="true" aria-label="Bandit chat">
