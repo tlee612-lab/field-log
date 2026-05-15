@@ -115,6 +115,7 @@
   <div style="display:flex;gap:8px;margin-bottom:16px">
     <button id="modeAI" onclick="setMode('ai')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">🎙 AI Mode</button>
     <button id="modeManual" onclick="setMode('manual')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✏ Manual</button>
+    <button id="modeExpense" onclick="setMode('expense')" style="flex:1;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">💸 Expense</button>
     <button id="modePae" onclick="openPaeModal()"
             style="flex:1;padding:12px 14px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;white-space:nowrap"
             title="Import PAE PDF — fills case #, client, and authorized hours">📋 PAE</button>
@@ -248,6 +249,59 @@
   </div>
   <button class="submit-btn" id="submitBtn" onclick="submitEntry()">LOG ACTIVITY →</button>
   </div><!-- end manualSection -->
+  <div id="expenseSection" style="display:none">
+    <p class="hint" style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:12px">Firm overhead. <strong>Not for OPDC-billable work</strong> — use Manual for case-billable activities.</p>
+    <div class="quick-row" style="margin-bottom:8px">
+      <div class="field-group">
+        <label>Amount ($)</label>
+        <input type="number" id="expAmount" placeholder="e.g. 45.50" step="0.01" min="0" inputmode="decimal">
+      </div>
+      <div class="field-group">
+        <label>Date</label>
+        <input type="date" id="expDate">
+      </div>
+    </div>
+    <div class="field-group" style="margin-bottom:8px">
+      <label>Category</label>
+      <select id="expCategory">
+        <option value="">— Pick a category —</option>
+        <option value="Bank &amp; merchant fees">Bank &amp; merchant fees</option>
+        <option value="Continuing education">Continuing education</option>
+        <option value="Contractors &amp; process servers">Contractors &amp; process servers</option>
+        <option value="Equipment &amp; supplies">[PI] Equipment &amp; supplies</option>
+        <option value="Home office (if user enables)">Home office (if user enables)</option>
+        <option value="Insurance (E&amp;O, business liability)">[PI] Insurance (E&amp;O, business liability)</option>
+        <option value="Legal &amp; professional services (your CPA, attorney)">Legal &amp; professional services (your CPA, attorney)</option>
+        <option value="Licenses &amp; dues (DPSST, NCISS, state PI license)">[PI] Licenses &amp; dues (DPSST, NCISS, state PI license)</option>
+        <option value="Meals (business, 50% deductible)">Meals (business, 50% deductible)</option>
+        <option value="Office expenses (phone, internet, software, paper)">Office expenses (phone, internet, software, paper)</option>
+        <option value="Other">Other</option>
+        <option value="Personal — not deductible">Personal — not deductible</option>
+        <option value="Rent (office space if separate)">Rent (office space if separate)</option>
+        <option value="Repairs &amp; maintenance (equipment)">Repairs &amp; maintenance (equipment)</option>
+        <option value="Travel &amp; lodging (non-mileage)">Travel &amp; lodging (non-mileage)</option>
+        <option value="Vehicle (gas, repairs, insurance)">Vehicle (gas, repairs, insurance)</option>
+        <option value="Vehicle (mileage)">Vehicle (mileage)</option>
+      </select>
+    </div>
+    <div class="field-group" style="margin-bottom:8px">
+      <label>Case <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(optional — leave blank for firm overhead)</span></label>
+      <select id="expCase">
+        <option value="">— No case (firm overhead) —</option>
+      </select>
+    </div>
+    <div class="field-group" style="margin-bottom:8px">
+      <label>Notes <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <textarea id="expNotes" rows="2" placeholder="Optional context"></textarea>
+    </div>
+    <button class="submit-btn" id="expSubmitBtn" onclick="submitExpenseEntry()">LOG EXPENSE →</button>
+    <div class="section-label" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
+      <span>Recent Expenses (Local)</span>
+      <button id="expenseSyncBtn" onclick="syncAllExpenses()" class="ai-btn secondary" style="display:none;font-size:10px;padding:5px 12px">↑ Sync All</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">This device only. Push to BanditTek with Sync.</p>
+    <div id="expenseLog"></div>
+  </div><!-- end expenseSection -->
   <div id="aiSection">
   <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>AI Assist — Dictate / Summarize</span>
@@ -1011,18 +1065,44 @@ function toggleUrlLock() {
 }
 
 function setMode(mode) {
+  if (mode !== 'ai' && mode !== 'manual' && mode !== 'expense') mode = 'ai';
   localStorage.setItem('tli_mode', mode);
   const isAI = mode === 'ai';
+  const isManual = mode === 'manual';
+  const isExpense = mode === 'expense';
   document.getElementById('aiSection').style.display = isAI ? '' : 'none';
-  document.getElementById('manualSection').style.display = isAI ? 'none' : '';
+  document.getElementById('manualSection').style.display = isManual ? '' : 'none';
+  document.getElementById('expenseSection').style.display = isExpense ? '' : 'none';
   const aiBtn = document.getElementById('modeAI');
   const manualBtn = document.getElementById('modeManual');
-  aiBtn.style.background = isAI ? 'var(--accent)' : 'var(--surface2)';
-  aiBtn.style.borderColor = isAI ? 'var(--accent)' : 'var(--border)';
-  aiBtn.style.color = isAI ? 'var(--bg)' : 'var(--muted)';
-  manualBtn.style.background = isAI ? 'var(--surface2)' : 'var(--accent2)';
-  manualBtn.style.borderColor = isAI ? 'var(--border)' : 'var(--accent2)';
-  manualBtn.style.color = isAI ? 'var(--muted)' : 'var(--bg)';
+  const expenseBtn = document.getElementById('modeExpense');
+  const styleFor = (active) => ({
+    background: active ? 'var(--accent2)' : 'var(--surface2)',
+    border: active ? 'var(--accent2)' : 'var(--border)',
+    color: active ? 'var(--bg)' : 'var(--muted)',
+  });
+  // AI keeps its original accent color when active to preserve the
+  // existing visual identity; Manual and Expense use accent2.
+  const aiStyle = { background: isAI ? 'var(--accent)' : 'var(--surface2)', border: isAI ? 'var(--accent)' : 'var(--border)', color: isAI ? 'var(--bg)' : 'var(--muted)' };
+  aiBtn.style.background = aiStyle.background;
+  aiBtn.style.borderColor = aiStyle.border;
+  aiBtn.style.color = aiStyle.color;
+  const manualStyle = styleFor(isManual);
+  manualBtn.style.background = manualStyle.background;
+  manualBtn.style.borderColor = manualStyle.border;
+  manualBtn.style.color = manualStyle.color;
+  const expenseStyle = styleFor(isExpense);
+  expenseBtn.style.background = expenseStyle.background;
+  expenseBtn.style.borderColor = expenseStyle.border;
+  expenseBtn.style.color = expenseStyle.color;
+  // Set today's date in the expense form when entering Expense mode
+  // (idempotent — only overwrites if blank).
+  if (isExpense) {
+    const expDateEl = document.getElementById('expDate');
+    if (expDateEl && !expDateEl.value) {
+      expDateEl.value = localDateStr();
+    }
+  }
 }
 setMode(localStorage.getItem('tli_mode') || 'ai');
 
@@ -1044,6 +1124,9 @@ function refreshDataLists() {
   }).join('');
   const investigators = [...new Set(entries.map(e => e.investigator).filter(Boolean))];
   document.getElementById('investigatorList').innerHTML = investigators.map(n => `<option value="${n}">`).join('');
+  // Mirror the case list into the expense form's case <select>
+  // (Slice 9b). populateExpenseCases is idempotent.
+  if (typeof populateExpenseCases === 'function') populateExpenseCases();
 }
 refreshDataLists();
 
@@ -1428,6 +1511,217 @@ async function syncPending() {
 
 renderLog();
 updateSyncBtn();
+
+// ── Expense entry (Slice 9b) ───────────────────────────────────
+// Parallel to the activity queue: separate localStorage key,
+// separate sync function, separate render. Keeps the activity flow
+// untouched. Expenses POST to /api/field-log/expenses one at a
+// time (no per-case grouping — expenses can be firm overhead with
+// no case at all).
+let expenseEntries = JSON.parse(localStorage.getItem('tli_expense_entries') || '[]');
+
+function saveExpenseEntries() {
+  localStorage.setItem('tli_expense_entries', JSON.stringify(expenseEntries));
+}
+
+function renderExpenseLog() {
+  const el = document.getElementById('expenseLog');
+  if (!el) return;
+  if (!expenseEntries.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No expenses logged yet</p>';
+    updateExpenseSyncBtn();
+    return;
+  }
+  const toShow = [...expenseEntries].sort((a, b) => (b.logged || '').localeCompare(a.logged || ''));
+  el.innerHTML = toShow.map(e => `
+    <div class="log-item">
+      <div class="log-meta">
+        <div class="log-case">$${Number(e.amount || 0).toFixed(2)} · ${e.category || '—'}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="log-time">${e.date || ''}</div>
+          <button onclick="deleteExpenseEntry('${e.id}')" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 2px;line-height:1" title="Delete entry">✕</button>
+        </div>
+      </div>
+      ${e.caseLabel ? `<div class="log-type">Case: ${e.caseLabel}</div>` : '<div class="log-type" style="color:var(--muted)">Firm overhead</div>'}
+      ${e.notes ? `<div class="log-notes">${e.notes.slice(0,120)}${e.notes.length>120?'…':''}</div>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <div>${e.synced === false ? '<div class="log-unsynced">⚠ Not synced</div>' : ''}</div>
+        ${e.synced === false ? `<button onclick="syncExpenseEntry('${e.id}')" style="background:var(--surface);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:20px">↑ Sync</button>` : ''}
+      </div>
+      ${e.lastError ? `<div style="font-size:10px;color:var(--warn);margin-top:4px">Error: ${e.lastError}</div>` : ''}
+    </div>
+  `).join('');
+  updateExpenseSyncBtn();
+}
+
+function updateExpenseSyncBtn() {
+  const btn = document.getElementById('expenseSyncBtn');
+  if (!btn) return;
+  const pending = expenseEntries.filter(e => e.synced === false).length;
+  btn.style.display = pending > 0 ? '' : 'none';
+  btn.textContent = `↑ Sync ${pending} expense${pending === 1 ? '' : 's'}`;
+}
+
+function deleteExpenseEntry(id) {
+  expenseEntries = expenseEntries.filter(e => String(e.id) !== String(id));
+  saveExpenseEntries();
+  renderExpenseLog();
+}
+
+function populateExpenseCases() {
+  // Mirror knownCases into the expense form's case <select>. Preserves
+  // the current selection if it's still valid; otherwise resets to the
+  // "no case" sentinel. Pattern-matches refreshDataLists' caseList
+  // population.
+  const select = document.getElementById('expCase');
+  if (!select) return;
+  const cases = Array.isArray(knownCases) ? knownCases : [];
+  const currentValue = select.value;
+  // Rebuild options: keep the leading "no case" sentinel + one per
+  // known case, sorted by caseNumber for predictable ordering.
+  const sentinel = '<option value="">— No case (firm overhead) —</option>';
+  const rows = [...cases]
+    .filter(c => c && c.case)
+    .sort((a, b) => String(a.case).localeCompare(String(b.case)))
+    .map(c => {
+      const fullName = c.clientFirst ? `${c.client}, ${c.clientFirst}` : (c.client || '');
+      const label = fullName ? `${c.case} · ${fullName}` : c.case;
+      return `<option value="${c.case}">${label}</option>`;
+    })
+    .join('');
+  select.innerHTML = sentinel + rows;
+  // Restore selection if the previous value is still in the list.
+  if (currentValue && Array.from(select.options).some(o => o.value === currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+function submitExpenseEntry() {
+  const amountEl = document.getElementById('expAmount');
+  const categoryEl = document.getElementById('expCategory');
+  const dateEl = document.getElementById('expDate');
+  const caseEl = document.getElementById('expCase');
+  const notesEl = document.getElementById('expNotes');
+  const amount = parseFloat(amountEl.value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showToast('Amount must be a positive number', true);
+    return;
+  }
+  if (!categoryEl.value) {
+    showToast('Pick a category', true);
+    return;
+  }
+  if (!dateEl.value) {
+    showToast('Date is required', true);
+    return;
+  }
+  const investigator = (localStorage.getItem('tli_last_investigator') || '').trim()
+    || (document.getElementById('investigatorField') && document.getElementById('investigatorField').value.trim());
+  if (!investigator) {
+    showToast('Set investigator name in the Manual section first', true);
+    return;
+  }
+  const entry = {
+    id: Date.now() + Math.floor(Math.random() * 1000),
+    logged: new Date().toISOString(),
+    amount,
+    category: categoryEl.value,
+    date: dateEl.value,
+    caseLabel: caseEl.value || null,  // caseNumber string; BT server resolves to caseId
+    notes: (notesEl.value || '').trim() || null,
+    investigator,
+    synced: false,
+  };
+  expenseEntries.push(entry);
+  saveExpenseEntries();
+  // Reset form (keep category to allow rapid same-category entry)
+  amountEl.value = '';
+  notesEl.value = '';
+  renderExpenseLog();
+  showToast('Expense saved locally');
+}
+
+async function postExpenseToBt(entry) {
+  // Send caseNumber (string) — BT-side endpoint resolves to caseId
+  // server-side. field-log's knownCases only carries case numbers,
+  // not internal DB ids; this matches how POST /api/field-log/
+  // activities operates.
+  const body = {
+    amount: entry.amount,
+    category: entry.category,
+    date: entry.date,
+    caseNumber: entry.caseLabel || null,
+    notes: entry.notes || null,
+    investigator: entry.investigator,
+  };
+  const res = await fetch(`${cfg.btHostUrl}/api/field-log/expenses`, {
+    method: 'POST',
+    mode: 'cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  let data = null;
+  try { data = await res.json(); } catch (_) { /* non-JSON body */ }
+  return { status: res.status, data };
+}
+
+async function syncExpenseEntry(id) {
+  const entry = expenseEntries.find(e => String(e.id) === String(id));
+  if (!entry) return;
+  try {
+    const { status, data } = await postExpenseToBt(entry);
+    if (status === 200 && data && data.success) {
+      entry.synced = true;
+      entry.lastError = null;
+      saveExpenseEntries();
+      renderExpenseLog();
+      showToast('Expense synced');
+    } else {
+      entry.lastError = (data && data.error) || `HTTP ${status}`;
+      saveExpenseEntries();
+      renderExpenseLog();
+      showToast(`Sync failed: ${entry.lastError}`, true);
+    }
+  } catch (err) {
+    entry.lastError = (err && err.message) || String(err);
+    saveExpenseEntries();
+    renderExpenseLog();
+    showToast(`Sync failed: ${entry.lastError}`, true);
+  }
+}
+
+async function syncAllExpenses() {
+  const pending = expenseEntries.filter(e => e.synced === false);
+  if (!pending.length) return;
+  const btn = document.getElementById('expenseSyncBtn');
+  if (btn) btn.disabled = true;
+  let synced = 0;
+  let failed = 0;
+  for (const entry of pending) {
+    try {
+      const { status, data } = await postExpenseToBt(entry);
+      if (status === 200 && data && data.success) {
+        entry.synced = true;
+        entry.lastError = null;
+        synced++;
+      } else {
+        entry.lastError = (data && data.error) || `HTTP ${status}`;
+        failed++;
+      }
+    } catch (err) {
+      entry.lastError = (err && err.message) || String(err);
+      failed++;
+    }
+  }
+  saveExpenseEntries();
+  renderExpenseLog();
+  if (btn) btn.disabled = false;
+  if (synced && !failed) showToast(`✓ ${synced} expense${synced === 1 ? '' : 's'} synced`);
+  else if (synced) showToast(`✓ ${synced} synced, ${failed} failed`, true);
+  else showToast(`Sync failed (${failed})`, true);
+}
+
+renderExpenseLog();
 
 // Returns today's date in YYYY-MM-DD using LOCAL timezone (not UTC)
 function localDateStr(d) {
