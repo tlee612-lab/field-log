@@ -14,11 +14,12 @@ Each investigator points the app at their firm's BanditTek server. Setup takes a
 2. Tap the **⚙ Settings** button
 3. Under **Cloud Sync**, paste your BanditTek host URL (e.g. `https://your-bandittek-host.com` — no trailing slash) and tap **Save**
 4. Tap **Test** — you should see ✓ Connected to bandit-tek
-5. Under **AI Assist**, pick your AI provider and enter your API key:
+5. (Optional, for Bandit chat) In BanditTek, open **⚙ Settings → MY USER UID** and tap **Copy**. Back in field-log, paste it into **Cloud Sync → BT User UID** and tap **Test Bandit** — you should see ✓ Bandit endpoint reachable. The 🦝 burrow appears bottom-right.
+6. Under **AI Assist**, pick your AI provider and enter your API key:
    - **Anthropic (Claude)** — get key at [console.anthropic.com](https://console.anthropic.com)
    - **Google Gemini** — get key at [aistudio.google.com](https://aistudio.google.com)
    - **OpenAI (ChatGPT)** — get key at [platform.openai.com](https://platform.openai.com)
-6. Tap **Save Changes**
+7. Tap **Save Changes**
 
 ### First entry test
 
@@ -134,7 +135,7 @@ https://tlee612-lab.github.io/field-log/
 If you want full control over your own version (your own URL, your own updates, no dependency on the main repo):
 
 1. Create a new repo on your GitHub account (e.g. `field-log`)
-2. Copy `index.html` into it
+2. Copy `index.html` **and the `public/` directory** into it (the Bandit character art lives in `public/bandit/`)
 3. Go to repo **Settings → Pages → Branch: main → Save**
 4. Your app will be live at `https://YOUR-USERNAME.github.io/field-log/`
 5. Point Settings → BT Host at your firm's BanditTek server URL

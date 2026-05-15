@@ -95,6 +95,201 @@
     #micBtn { order: -1; flex: 1 0 100%; font-size: 18px; padding: 16px; letter-spacing: 2px; border-radius: 8px; }
     #aiParseBtn { flex: 1; }
   }
+
+  /* ── Bandit (Slice 1b) ─────────────────────────────────────────
+     Burrow affordance + bottom-sheet chat. Visible on every
+     surface (mode tabs + Settings) because it's outside the
+     tab content via position:fixed. Hidden via inline style
+     toggle when cfg.btHostUrl or cfg.btUid is empty. */
+  #bandit-burrow {
+    position: fixed;
+    right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    width: 240px;
+    height: 240px;
+    z-index: 900;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+  }
+  #bandit-burrow img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    user-select: none;
+    pointer-events: none;
+  }
+  #bandit-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 949;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  /* Backdrop only renders in expanded mode. Compact is a floating popup
+     above the burrow with no page-dim. */
+  #bandit-sheet-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #bandit-sheet {
+    position: fixed;
+    background: var(--surface);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.2);
+    z-index: 950;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* Expanded — full-width bottom-sheet, 70dvh. */
+  #bandit-sheet.expanded {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 70dvh;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    transform: translateY(100%);
+  }
+  #bandit-sheet.expanded.open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Compact — small popup anchored above the burrow, single-exchange view. */
+  #bandit-sheet.compact {
+    right: 16px;
+    /* Sits above the 240px burrow + 16px gap from viewport bottom. */
+    bottom: calc(240px + max(16px, env(safe-area-inset-bottom, 16px)) + 12px);
+    width: min(340px, calc(100vw - 32px));
+    max-height: 360px;
+    border-radius: 16px;
+    transform: translateY(20px) scale(0.96);
+  }
+  #bandit-sheet.compact.open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #bandit-sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #bandit-sheet-avatar {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  #bandit-sheet-title {
+    flex: 1;
+    font-family: var(--ui);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+  #bandit-sheet-expand,
+  #bandit-sheet-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  #bandit-sheet-expand { font-size: 14px; }
+  #bandit-sheet-close { font-size: 22px; }
+  #bandit-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #bandit-messages .msg {
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  #bandit-messages .msg.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: var(--bg);
+  }
+  #bandit-messages .msg.assistant {
+    align-self: flex-start;
+    background: var(--surface2);
+    color: var(--text);
+  }
+  #bandit-messages .msg.empty {
+    align-self: center;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px 12px;
+  }
+  #bandit-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    align-items: flex-end;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 10px));
+  }
+  #bandit-input {
+    flex: 1;
+    resize: none;
+    min-height: 38px;
+    max-height: 112px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  #bandit-send {
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    font-family: var(--ui);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-size: 12px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #bandit-send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #bandit-sheet, #bandit-sheet-backdrop { transition: none; }
+  }
 </style>
 </head>
 <body>
@@ -364,11 +559,22 @@
           <div style="margin-top:6px;color:var(--muted);font-size:11px">
             Your BanditTek server's base URL (without trailing slash).
           </div>
-          <div style="margin-top:12px">
+          <div class="config-row" style="margin-top:14px">
+            <label>BT User UID</label>
+            <input type="text" id="btUid" placeholder="Paste your BT user UID" autocomplete="off" spellcheck="false">
+          </div>
+          <div style="margin-top:6px;color:var(--muted);font-size:11px">
+            Required for Bandit chat. Copy from BanditTek → Settings → MY USER UID.
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="ai-btn secondary" style="max-width:100px" onclick="testWebhook()">Test</button>
+            <button class="ai-btn secondary" style="max-width:140px" onclick="testBandit()">Test Bandit</button>
           </div>
         </div>
         <div id="cfg-ai" class="config-pane">
+          <div style="padding:10px 12px;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:11px;line-height:1.5">
+            Bandit chat uses your BanditTek account's AI provider — configure it in BanditTek → Settings → AI Provider. The keys below are for field-log's local activity dictation parser (separate purpose).
+          </div>
           <div class="ai-sub-tabs">
             <button id="ai-sub-tab-anthropic" class="ai-sub-tab" onclick="setAiProviderTab('anthropic', this)">Claude</button>
             <button id="ai-sub-tab-gemini" class="ai-sub-tab" onclick="setAiProviderTab('gemini', this)">Gemini</button>
@@ -938,7 +1144,7 @@ async function showCaseHours(caseNum) {
 }
 // ────────────────────────────────────────────────────────────────────────────
 // Load config with fallback chain: localStorage → sessionStorage → IndexedDB
-let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"btHostUrl":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
+let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"btHostUrl":"","btUid":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
 if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
 
 // One-shot migration from the GAS-era webhookUrl key to the BT-era
@@ -963,6 +1169,11 @@ if (!cfg.btHostUrl) {
     sessionStorage.removeItem('tli_webhookUrl');
   }
 }
+// Slice 1b — same sessionStorage fallback for the BT user uid.
+if (!cfg.btUid) {
+  const sessionUid = sessionStorage.getItem('tli_btUid');
+  if (sessionUid) cfg.btUid = sessionUid;
+}
 
 // Try IndexedDB as final fallback (same migration pattern)
 (async () => {
@@ -972,6 +1183,14 @@ if (!cfg.btHostUrl) {
       cfg.btHostUrl = idbUrl;
       await saveToIndexedDB('btHostUrl', idbUrl);
       document.getElementById('btHostUrl').value = cfg.btHostUrl || '';
+    }
+  }
+  if (!cfg.btUid) {
+    const idbUid = await loadFromIndexedDB('btUid');
+    if (idbUid) {
+      cfg.btUid = idbUid;
+      const uidEl = document.getElementById('btUid');
+      if (uidEl) uidEl.value = cfg.btUid || '';
     }
   }
 })();
@@ -984,6 +1203,7 @@ localStorage.setItem('tli_cases', JSON.stringify(knownCases)); // persist cleane
 let recognition;
 
 document.getElementById('btHostUrl').value = cfg.btHostUrl || '';
+if (document.getElementById('btUid')) document.getElementById('btUid').value = cfg.btUid || '';
 if (document.getElementById('anthropicKey')) { document.getElementById('anthropicKey').value = cfg.anthropicKey || ''; updateKeyCount('anthropicKey','anthropicKeyCount'); }
 if (document.getElementById('geminiKey'))    { document.getElementById('geminiKey').value    = cfg.geminiKey    || ''; updateKeyCount('geminiKey','geminiKeyCount'); }
 if (document.getElementById('openaiKey'))    { document.getElementById('openaiKey').value    = cfg.openaiKey    || ''; updateKeyCount('openaiKey','openaiKeyCount'); }
@@ -1224,6 +1444,11 @@ function saveKnownCase(caseNum, client, clientFirst) {
 
 async function saveConfig() {
   cfg.btHostUrl = document.getElementById('btHostUrl').value.trim();
+  // Slice 1b — BT user UID (Bandit chat identity). Same trim pattern; the
+  // input may not exist on older shipped instances, so guard with optional
+  // chaining + fallback.
+  const btUidEl = document.getElementById('btUid');
+  if (btUidEl) cfg.btUid = btUidEl.value.trim();
   cfg.anthropicKey = sanitizeKey(document.getElementById('anthropicKey').value);
   cfg.geminiKey = sanitizeKey(document.getElementById('geminiKey').value);
   cfg.openaiKey = sanitizeKey(document.getElementById('openaiKey').value);
@@ -1237,12 +1462,18 @@ async function saveConfig() {
   // Save to all three storage methods
   localStorage.setItem('tli_cfg', JSON.stringify(cfg));
   sessionStorage.setItem('tli_btHostUrl', cfg.btHostUrl);
+  sessionStorage.setItem('tli_btUid', cfg.btUid || '');
   sessionStorage.removeItem('tli_webhookUrl');
   await saveToIndexedDB('btHostUrl', cfg.btHostUrl);
+  await saveToIndexedDB('btUid', cfg.btUid || '');
 
   if (cfg.btHostUrl) setUrlLock(true);
   setAiKeyLock(true);
   showToast('Config saved');
+  // Burrow visibility depends on cfg.btHostUrl + cfg.btUid; re-evaluate
+  // on every save so the user sees the burrow appear (or disappear)
+  // immediately after configuring credentials.
+  if (typeof updateBanditBurrowVisibility === 'function') updateBanditBurrowVisibility();
 }
 
 async function testWebhook() {
@@ -1270,6 +1501,47 @@ async function testWebhook() {
     showToast(`Connection failed: ${detail}`, true);
   }
   setUrlLock(true);
+}
+
+// Slice 1b — Bandit endpoint reachability probe. POSTs a known-invalid
+// key to /api/bandit/test, which exercises the same plumbing as a real
+// chat request without needing the user's actual key. The endpoint
+// will reject the test key as auth (401) — that response means the
+// endpoint exists, the server is up, and CORS is sane. Network/URL
+// errors fall into the catch and report the underlying browser message.
+async function testBandit() {
+  // Read from live inputs first so the user can Test without having to
+  // Save first. Falls back to cfg so re-tests after Save still work.
+  const hostEl = document.getElementById('btHostUrl');
+  const hostValue = (hostEl && hostEl.value.trim()) || cfg.btHostUrl || '';
+  const uidEl = document.getElementById('btUid');
+  const uidValue = (uidEl && uidEl.value.trim()) || cfg.btUid || '';
+  if (!hostValue) { showToast('Paste BT host URL first', true); return; }
+  if (!uidValue) { showToast('Paste BT User UID first', true); return; }
+  const base = String(hostValue).trim().replace(/\/+$/, '');
+  try {
+    const res = await fetch(`${base}/api/bandit/test`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: 'anthropic', apiKey: 'test-availability' }),
+    });
+    if (res.status === 401) {
+      showToast('✓ Bandit endpoint reachable. Make sure your BanditTek AI key is configured.');
+    } else if (res.ok) {
+      // Unlikely with the placeholder key, but harmless: server saw
+      // the request and didn't blow up.
+      showToast('✓ Bandit endpoint reachable.');
+    } else {
+      let detail = '';
+      try { const data = await res.json(); detail = data && data.error ? ` (${data.error})` : ''; } catch (_) {}
+      showToast(`Bandit endpoint returned HTTP ${res.status}${detail}`, true);
+    }
+  } catch(err) {
+    console.error('[testBandit] fetch failed:', err);
+    const detail = err && err.message ? err.message : String(err);
+    showToast(`Can't reach BanditTek: ${detail}`, true);
+  }
 }
 
 // Strip invisible/non-ASCII characters mobile browsers inject into password fields
@@ -2446,6 +2718,269 @@ function showToast(msg, isError=false) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 5000);
 }
+
+// ── Bandit (Slice 1b) ──────────────────────────────────────────
+// State + wiring for the burrow affordance and bottom-sheet chat.
+// BT is the intelligence layer; this is a thin mobile surface that
+// POSTs the full transcript to ${cfg.btHostUrl}/api/bandit/chat
+// each turn. Conversation lives in-memory only (resets on drawer
+// close). Avatar state machine: idle → thinking → speaking → idle,
+// matching BT's BanditChat.
+let banditMessages = [];
+let banditSending = false;
+let banditAvatarState = 'idle'; // 'idle' | 'thinking' | 'speaking'
+// Compact = small popup above the burrow showing only the most-recent
+// exchange. Expanded = full-width bottom-sheet showing the running
+// transcript. Default to compact so the chat doesn't dominate the
+// screen on every open.
+let banditCompact = true;
+
+function updateBanditBurrowVisibility() {
+  const burrow = document.getElementById('bandit-burrow');
+  if (!burrow) return;
+  const hasHost = !!(cfg.btHostUrl && cfg.btHostUrl.trim());
+  const hasUid = !!(cfg.btUid && cfg.btUid.trim());
+  burrow.style.display = (hasHost && hasUid) ? '' : 'none';
+}
+
+function setBanditBurrowImage(_open) {
+  // Field-log uses a single burrow image for both states (empty hole;
+  // no Bandit-peeking variant commissioned for this surface yet). The
+  // open/closed cue comes from the sheet sliding over the burrow.
+  const img = document.getElementById('bandit-burrow-img');
+  if (!img) return;
+  img.src = 'public/bandit/burrow-fieldlog.png';
+}
+
+function updateBanditAvatar() {
+  const img = document.getElementById('bandit-sheet-avatar');
+  if (!img) return;
+  const src = banditAvatarState === 'thinking' ? 'public/bandit/bandit-thinking.webp'
+            : banditAvatarState === 'speaking' ? 'public/bandit/bandit-speaking.webp'
+            : 'public/bandit/bandit-idle.webp';
+  img.src = src;
+}
+
+function renderBanditMessages() {
+  const list = document.getElementById('bandit-messages');
+  if (!list) return;
+  if (banditMessages.length === 0) {
+    list.innerHTML = '<div class="msg empty">Ask me anything &mdash; case context, billing rules, how to dictate an activity. I&rsquo;m new here, so we&rsquo;ll figure it out together.</div>';
+    return;
+  }
+  // Compact mode shows only the current turn — the most recent user
+  // message and everything after it (which is just the assistant's reply,
+  // once it arrives). Anchoring on "most recent user" prevents the prior
+  // exchange's assistant reply from briefly appearing next to a new
+  // outgoing question. Full state stays in banditMessages either way,
+  // so expanding mid-conversation reveals prior turns.
+  let visible = banditMessages;
+  if (banditCompact) {
+    let startIdx = banditMessages.length - 1;
+    while (startIdx > 0 && banditMessages[startIdx].role !== 'user') startIdx--;
+    visible = banditMessages.slice(startIdx);
+  }
+  list.innerHTML = '';
+  for (const m of visible) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+    div.textContent = m.content;
+    list.appendChild(div);
+  }
+  // Auto-scroll to newest. Use rAF so layout settles before scroll.
+  requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+}
+
+function applyBanditMode() {
+  const sheet = document.getElementById('bandit-sheet');
+  const backdrop = document.getElementById('bandit-sheet-backdrop');
+  const expandBtn = document.getElementById('bandit-sheet-expand');
+  if (!sheet) return;
+  sheet.classList.toggle('compact', banditCompact);
+  sheet.classList.toggle('expanded', !banditCompact);
+  // Backdrop only dims the page in expanded mode. In compact, the popup
+  // floats above the page without blocking it.
+  if (backdrop) {
+    if (!banditCompact && sheet.classList.contains('open')) backdrop.classList.add('open');
+    else backdrop.classList.remove('open');
+  }
+  if (expandBtn) {
+    expandBtn.textContent = banditCompact ? '⤢ Expand' : '⤡ Collapse';
+    expandBtn.setAttribute('aria-label', banditCompact ? 'Expand chat' : 'Collapse chat');
+  }
+}
+
+function toggleBanditCompact() {
+  banditCompact = !banditCompact;
+  applyBanditMode();
+  renderBanditMessages();
+}
+
+function openBanditSheet() {
+  const sheet = document.getElementById('bandit-sheet');
+  if (!sheet) return;
+  // Default each open to compact — prevents the chat from dominating
+  // the screen unless the user explicitly expands.
+  banditCompact = true;
+  applyBanditMode();
+  sheet.classList.add('open');
+  // applyBanditMode handles backdrop visibility based on mode.
+  setBanditBurrowImage(true);
+  banditAvatarState = 'idle';
+  updateBanditAvatar();
+  renderBanditMessages();
+  setTimeout(() => {
+    const input = document.getElementById('bandit-input');
+    if (input) input.focus();
+  }, 100);
+}
+
+function closeBanditSheet() {
+  const backdrop = document.getElementById('bandit-sheet-backdrop');
+  const sheet = document.getElementById('bandit-sheet');
+  if (!backdrop || !sheet) return;
+  backdrop.classList.remove('open');
+  sheet.classList.remove('open');
+  setBanditBurrowImage(false);
+  // Reset transcript per BT-side pattern (fresh start each open).
+  banditMessages = [];
+  banditAvatarState = 'idle';
+  updateBanditAvatar();
+}
+
+function toggleBanditSheet() {
+  const sheet = document.getElementById('bandit-sheet');
+  if (!sheet) return;
+  if (sheet.classList.contains('open')) closeBanditSheet();
+  else openBanditSheet();
+}
+
+async function sendBanditMessage() {
+  if (banditSending) return;
+  const input = document.getElementById('bandit-input');
+  if (!input) return;
+  const text = (input.value || '').trim();
+  if (!text) return;
+  input.value = '';
+  autoresizeBanditInput();
+  banditMessages.push({ role: 'user', content: text });
+  banditSending = true;
+  banditAvatarState = 'thinking';
+  updateBanditAvatar();
+  renderBanditMessages();
+  const sendBtn = document.getElementById('bandit-send');
+  if (sendBtn) sendBtn.disabled = true;
+
+  try {
+    const base = String(cfg.btHostUrl || '').trim().replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/bandit/chat`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: banditMessages, uid: cfg.btUid }),
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) { /* non-JSON body */ }
+    if (!res.ok || !data.response) {
+      const errMsg = (data && data.error)
+        ? data.error
+        : "I'm having trouble reaching my source. Try me again in a minute.";
+      banditMessages.push({ role: 'assistant', content: errMsg });
+    } else {
+      banditAvatarState = 'speaking';
+      updateBanditAvatar();
+      banditMessages.push({ role: 'assistant', content: data.response });
+      setTimeout(() => {
+        if (banditAvatarState === 'speaking') {
+          banditAvatarState = 'idle';
+          updateBanditAvatar();
+        }
+      }, 1500);
+    }
+  } catch (err) {
+    console.error('[bandit] fetch failed:', err);
+    banditMessages.push({
+      role: 'assistant',
+      content: "Looks like we're out of signal range. Try me again when you're back online.",
+    });
+  } finally {
+    banditSending = false;
+    if (banditAvatarState === 'thinking') {
+      banditAvatarState = 'idle';
+      updateBanditAvatar();
+    }
+    if (sendBtn) sendBtn.disabled = false;
+    renderBanditMessages();
+  }
+}
+
+function autoresizeBanditInput() {
+  const input = document.getElementById('bandit-input');
+  if (!input) return;
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 112) + 'px';
+}
+
+// Wire up listeners once the burrow + sheet DOM exists. The HTML lives
+// after this script's closing tag (parsed last), so we defer to
+// DOMContentLoaded — at script-execution time, the burrow node doesn't
+// exist yet and getElementById would return null.
+function initBandit() {
+  const burrow = document.getElementById('bandit-burrow');
+  if (burrow) burrow.addEventListener('click', toggleBanditSheet);
+  const closeBtn = document.getElementById('bandit-sheet-close');
+  if (closeBtn) closeBtn.addEventListener('click', closeBanditSheet);
+  const expandBtn = document.getElementById('bandit-sheet-expand');
+  if (expandBtn) expandBtn.addEventListener('click', toggleBanditCompact);
+  const backdrop = document.getElementById('bandit-sheet-backdrop');
+  if (backdrop) backdrop.addEventListener('click', closeBanditSheet);
+  const sendBtn = document.getElementById('bandit-send');
+  if (sendBtn) sendBtn.addEventListener('click', sendBanditMessage);
+  const input = document.getElementById('bandit-input');
+  if (input) {
+    input.addEventListener('input', autoresizeBanditInput);
+    input.addEventListener('keydown', (e) => {
+      // Enter to send; Shift+Enter for newline (matches common chat UX).
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBanditMessage();
+      }
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const sheet = document.getElementById('bandit-sheet');
+    if (sheet && sheet.classList.contains('open')) closeBanditSheet();
+  });
+  updateBanditBurrowVisibility();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initBandit);
+} else {
+  initBandit();
+}
 </script>
+<!-- ── Bandit (Slice 1b) ────────────────────────────────────────
+     Burrow + bottom-sheet chat. Burrow visibility is controlled by
+     updateBanditBurrowVisibility (called on boot + saveConfig).
+     Both elements live outside any mode-tab DOM so they persist
+     across mode switches. -->
+<button id="bandit-burrow" type="button" aria-label="Open Bandit chat" title="Bandit" style="display:none">
+  <img id="bandit-burrow-img" src="public/bandit/burrow-fieldlog.png" alt="">
+</button>
+<div id="bandit-sheet-backdrop"></div>
+<div id="bandit-sheet" role="dialog" aria-modal="true" aria-label="Bandit chat">
+  <div id="bandit-sheet-header">
+    <img id="bandit-sheet-avatar" src="public/bandit/bandit-idle.webp" alt="">
+    <div id="bandit-sheet-title">Bandit</div>
+    <button id="bandit-sheet-expand" type="button" aria-label="Expand chat">⤢ Expand</button>
+    <button id="bandit-sheet-close" type="button" aria-label="Close Bandit chat">×</button>
+  </div>
+  <div id="bandit-messages"></div>
+  <div id="bandit-input-row">
+    <textarea id="bandit-input" rows="1" placeholder="Ask Bandit…" autocomplete="off"></textarea>
+    <button id="bandit-send" type="button">Send</button>
+  </div>
+</div>
 </body>
 </html>
