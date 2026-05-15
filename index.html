@@ -126,6 +126,7 @@
     <label>Investigator</label>
     <input type="text" id="investigatorField" placeholder="Investigator name" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" list="investigatorList">
   </div>
+  <div id="caseContextRows"><!-- Slice 9b followup: hidden in Expense mode (Expense panel has its own Case dropdown; two-input ambiguity caused users to land in overhead) -->
   <div class="quick-row" style="margin-bottom:8px">
     <div class="field-group">
       <label>Case #</label>
@@ -150,6 +151,7 @@
     <button type="button" onclick="createCaseFromPae()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case</button>
   </div>
   <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-family:var(--ui)"></div>
+  </div><!-- end caseContextRows -->
   <div id="manualSection">
   <div class="field-group" style="margin-bottom:8px">
     <label>Activity Type</label>
@@ -268,11 +270,11 @@
         <option value="Bank &amp; merchant fees">Bank &amp; merchant fees</option>
         <option value="Continuing education">Continuing education</option>
         <option value="Contractors &amp; process servers">Contractors &amp; process servers</option>
-        <option value="Equipment &amp; supplies">[PI] Equipment &amp; supplies</option>
+        <option value="Equipment &amp; supplies">Equipment &amp; supplies [PI]</option>
         <option value="Home office (if user enables)">Home office (if user enables)</option>
-        <option value="Insurance (E&amp;O, business liability)">[PI] Insurance (E&amp;O, business liability)</option>
+        <option value="Insurance (E&amp;O, business liability)">Insurance (E&amp;O, business liability) [PI]</option>
         <option value="Legal &amp; professional services (your CPA, attorney)">Legal &amp; professional services (your CPA, attorney)</option>
-        <option value="Licenses &amp; dues (DPSST, NCISS, state PI license)">[PI] Licenses &amp; dues (DPSST, NCISS, state PI license)</option>
+        <option value="Licenses &amp; dues (DPSST, NCISS, state PI license)">Licenses &amp; dues (DPSST, NCISS, state PI license) [PI]</option>
         <option value="Meals (business, 50% deductible)">Meals (business, 50% deductible)</option>
         <option value="Office expenses (phone, internet, software, paper)">Office expenses (phone, internet, software, paper)</option>
         <option value="Other">Other</option>
@@ -1103,6 +1105,15 @@ function setMode(mode) {
       expDateEl.value = localDateStr();
     }
   }
+  // Hide the upper case-context rows (Case #, Client Last/First, PAE
+  // info, hours bar) in Expense mode — the Expense panel has its own
+  // Case dropdown and the two-input ambiguity was causing users to
+  // land in firm overhead when they thought they'd picked a case via
+  // the upper rows. Investigator field stays visible (relevant to all
+  // modes). State is NOT cleared — switching back to AI/Manual
+  // restores whatever case/client values were entered.
+  const caseCtx = document.getElementById('caseContextRows');
+  if (caseCtx) caseCtx.style.display = isExpense ? 'none' : '';
 }
 setMode(localStorage.getItem('tli_mode') || 'ai');
 
