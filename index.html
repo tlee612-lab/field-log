@@ -214,10 +214,54 @@
   #bandit-messages {
     flex: 1;
     overflow-y: auto;
+    /* Slice 4 — keep scroll bounded inside the sheet; prevents iOS
+       rubber-band from bubbling to the page when scrolling past the
+       top/bottom of the message list. */
+    overscroll-behavior: contain;
     padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  #bandit-messages .brief-chip {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 0;
+    padding: 6px 12px;
+    border-radius: 14px;
+    background: var(--surface2);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  /* Slice 4 — avatar cross-fade. Sprite swaps fade through opacity 0
+     for a soft transition instead of an instant src snap. */
+  #bandit-sheet-avatar {
+    transition: opacity 180ms ease;
+  }
+  /* Slice 4 — scurry overlay on the burrow. Renders the active scurry
+     frame on top of the burrow image during open/close transitions. */
+  #bandit-scurry {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+  }
+  #bandit-scurry.active {
+    display: block;
+    pointer-events: auto; /* tap-to-skip */
+  }
+  #bandit-scurry img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    user-select: none;
   }
   #bandit-messages .msg {
     max-width: 85%;
@@ -288,7 +332,10 @@
     cursor: not-allowed;
   }
   @media (prefers-reduced-motion: reduce) {
-    #bandit-sheet, #bandit-sheet-backdrop { transition: none; }
+    #bandit-sheet, #bandit-sheet-backdrop, #bandit-sheet-avatar { transition: none; }
+    /* Scurry collapses to instant under reduced-motion (skipped entirely
+       by the JS path; this is belt-and-suspenders for the CSS layer). */
+    #bandit-scurry { display: none !important; }
   }
 </style>
 </head>
@@ -2803,6 +2850,19 @@ function setBanditBurrowImage(_open) {
   img.src = 'public/bandit/burrow-fieldlog.png';
 }
 
+// Slice 4 — sprite cross-fade. Pulse the avatar opacity to 0 then back
+// to 1 around src changes so the swap fades through zero instead of
+// snapping. Respects prefers-reduced-motion via the CSS class layer.
+function pulseAvatarFade(img) {
+  if (!img) return;
+  if (typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return;
+  }
+  img.style.opacity = '0';
+  setTimeout(() => { img.style.opacity = '1'; }, 30);
+}
+
 function updateBanditAvatar() {
   const img = document.getElementById('bandit-sheet-avatar');
   if (!img) return;
@@ -2815,7 +2875,88 @@ function updateBanditAvatar() {
             : banditAvatarState === 'speaking' ? 'public/bandit/bandit-speaking.webp'
             : investigatorMode ? 'public/bandit/bandit-magnifying.webp'
             : 'public/bandit/bandit-idle.webp';
+  if (img.src && img.src.endsWith(src.replace(/^public\//, '')) || img.getAttribute('src') === src) {
+    return; // no actual change; don't trigger a fade pulse
+  }
+  pulseAvatarFade(img);
   img.src = src;
+}
+
+// ── Slice 4: scurry sequence ──────────────────────────────────
+// Cycles the 4 scurry WebP frames at SCURRY_FRAME_MS each. direction
+// 'out' plays 1→4 (Bandit emerges from the burrow); 'back' plays 4→1
+// (Bandit retreats). Promise resolves after the final-frame hold.
+// Skipped under prefers-reduced-motion (resolves immediately).
+const SCURRY_FRAME_MS = 80;
+const SCURRY_HOLD_MS = 80;
+const SCURRY_FRAME_COUNT = 4;
+let banditScurryTimer = null;
+
+function reducedMotionActive() {
+  return typeof window !== 'undefined' && window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function playBanditScurry(direction) {
+  return new Promise((resolve) => {
+    const container = document.getElementById('bandit-scurry');
+    const img = document.getElementById('bandit-scurry-img');
+    if (!container || !img || reducedMotionActive()) {
+      resolve();
+      return;
+    }
+    const startFrame = direction === 'out' ? 1 : SCURRY_FRAME_COUNT;
+    const endFrame = direction === 'out' ? SCURRY_FRAME_COUNT : 1;
+    const step = direction === 'out' ? 1 : -1;
+    let current = startFrame;
+    img.src = `public/bandit/bandit-scurry-${current}.webp`;
+    container.classList.add('active');
+    if (banditScurryTimer) clearInterval(banditScurryTimer);
+    banditScurryTimer = setInterval(() => {
+      current += step;
+      if (current === endFrame) {
+        clearInterval(banditScurryTimer);
+        banditScurryTimer = null;
+        img.src = `public/bandit/bandit-scurry-${current}.webp`;
+        setTimeout(() => {
+          container.classList.remove('active');
+          resolve();
+        }, SCURRY_HOLD_MS);
+        return;
+      }
+      img.src = `public/bandit/bandit-scurry-${current}.webp`;
+    }, SCURRY_FRAME_MS);
+    // tap-to-skip on the container
+    container.onclick = () => {
+      if (banditScurryTimer) { clearInterval(banditScurryTimer); banditScurryTimer = null; }
+      container.classList.remove('active');
+      container.onclick = null;
+      resolve();
+    };
+  });
+}
+
+// ── Slice 4: visualViewport keyboard-aware sheet sizing ───────
+// iOS Safari (and some Android) shrink the visual viewport when the
+// soft keyboard opens but leave position:fixed elements anchored to
+// the original layout viewport. Without this handler the chat input
+// can end up hidden behind the keyboard.
+function applyBanditVisualViewportHeight() {
+  const sheet = document.getElementById('bandit-sheet');
+  if (!sheet || !sheet.classList.contains('open')) return;
+  if (!sheet.classList.contains('expanded')) return; // compact mode is fixed-size
+  if (!window.visualViewport) return;
+  const vh = window.visualViewport.height;
+  // Reserve 40px so the sheet doesn't quite touch the top, and cap at
+  // 85% so even with NO keyboard there's still page context above.
+  const target = Math.min(vh * 0.85, vh - 40);
+  sheet.style.height = `${target}px`;
+}
+
+function clearBanditVisualViewportHeight() {
+  const sheet = document.getElementById('bandit-sheet');
+  if (!sheet) return;
+  sheet.style.height = ''; // revert to CSS height: 70dvh
 }
 
 function renderBanditMessages() {
@@ -2873,9 +3014,12 @@ function toggleBanditCompact() {
   renderBanditMessages();
 }
 
-function openBanditSheet() {
+async function openBanditSheet() {
   const sheet = document.getElementById('bandit-sheet');
   if (!sheet) return;
+  // Slice 4 — play scurry-out before sliding the sheet in. Under
+  // prefers-reduced-motion this resolves immediately.
+  await playBanditScurry('out');
   // Default each open to compact — prevents the chat from dominating
   // the screen unless the user explicitly expands.
   banditCompact = true;
@@ -2887,18 +3031,24 @@ function openBanditSheet() {
   updateBanditAvatar();
   updateBanditAlertOverlay();
   renderBanditMessages();
+  applyBanditVisualViewportHeight();
   setTimeout(() => {
     const input = document.getElementById('bandit-input');
     if (input) input.focus();
   }, 100);
 }
 
-function closeBanditSheet() {
+async function closeBanditSheet() {
   const backdrop = document.getElementById('bandit-sheet-backdrop');
   const sheet = document.getElementById('bandit-sheet');
   if (!backdrop || !sheet) return;
   backdrop.classList.remove('open');
   sheet.classList.remove('open');
+  clearBanditVisualViewportHeight();
+  // Slice 4 — wait for the sheet to slide out, then play scurry-back.
+  // 240ms covers the CSS transform: 0.25s ease.
+  await new Promise((r) => setTimeout(r, 240));
+  await playBanditScurry('back');
   setBanditBurrowImage(false);
   // Reset transcript per BT-side pattern (fresh start each open).
   banditMessages = [];
@@ -3019,6 +3169,18 @@ function initBandit() {
     const sheet = document.getElementById('bandit-sheet');
     if (sheet && sheet.classList.contains('open')) closeBanditSheet();
   });
+  // Slice 4 — visualViewport keyboard handler. Keeps the sheet sized
+  // to the keyboard-visible viewport on iOS Safari / Android Chrome.
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', applyBanditVisualViewportHeight);
+    window.visualViewport.addEventListener('scroll', applyBanditVisualViewportHeight);
+  }
+  // Slice 4 — preload scurry frames on first burrow visibility so the
+  // open-flow doesn't stutter on the first frame fetch.
+  ['1','2','3','4'].forEach((n) => {
+    const i = new Image();
+    i.src = `public/bandit/bandit-scurry-${n}.webp`;
+  });
   updateBanditBurrowVisibility();
 }
 if (document.readyState === 'loading') {
@@ -3039,6 +3201,9 @@ if (document.readyState === 'loading') {
        display based on banditAnomalyCount + chat-open state. -->
   <img id="bandit-alert-overlay" src="public/bandit/bandit-alert.webp" alt=""
        style="display:none;position:absolute;left:30%;top:-15%;width:55%;height:55%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.4))">
+  <!-- Slice 4 — scurry frame overlay. playBanditScurry() toggles
+       .active and cycles the 4 webp frames during drawer open/close. -->
+  <div id="bandit-scurry"><img id="bandit-scurry-img" src="public/bandit/bandit-scurry-1.webp" alt=""></div>
 </button>
 <div id="bandit-sheet-backdrop"></div>
 <div id="bandit-sheet" role="dialog" aria-modal="true" aria-label="Bandit chat">
