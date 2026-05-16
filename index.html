@@ -346,6 +346,7 @@
     <div class="ai-actions">
       <button class="ai-btn" id="aiParseBtn" onclick="stopMicIfActive(); aiParse()">⚡ Process Notes</button>
       <button class="ai-btn secondary" id="micBtn" onclick="toggleMic()">🎙 Mic</button>
+      <button class="ai-btn secondary" onclick="openAssist()">🎯 Assist</button>
       <button class="ai-btn secondary" onclick="document.getElementById('aiInput').value=''">Clear</button>
     </div>
   </div>
@@ -524,6 +525,67 @@
     <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
     <button id="paeDoneBtn" onclick="closePaeModal()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
     <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
+  </div>
+</div>
+
+<!-- Assist Modal -->
+<div id="assistModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(92vw,400px);position:relative">
+    <button onclick="closeAssist(false)" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:4px">🎙 Guided Dictation</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Speak naturally — check off each field as you mention it</div>
+
+    <!-- Checklist -->
+    <div id="assistChecklist" style="margin-bottom:14px;display:flex;flex-direction:column;gap:7px">
+      <div class="assist-item" id="aItem-case" style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>Case #</span>
+      </div>
+      <div class="assist-item" id="aItem-client" style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>Client</span>
+      </div>
+      <div class="assist-item" id="aItem-investigator" style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>Investigator</span>
+      </div>
+      <div class="assist-item" id="aItem-acttype" style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>Activity Type</span>
+      </div>
+      <div class="assist-item" id="aItem-date" style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>Date</span>
+      </div>
+      <div class="assist-item" id="aItem-duration" style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>Duration</span>
+      </div>
+      <div class="assist-item" id="aItem-from" style="display:none;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>From (city)</span>
+      </div>
+      <div class="assist-item" id="aItem-to" style="display:none;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>To (city)</span>
+      </div>
+      <div class="assist-item" id="aItem-activity" style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>What you did</span>
+      </div>
+    </div>
+
+    <!-- Live transcript preview -->
+    <div id="assistTranscriptBox" style="min-height:52px;max-height:90px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic;line-height:1.5">(Listening…)</div>
+
+    <!-- Mic status indicator -->
+    <div id="assistMicStatus" style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--warn);text-align:center;margin-bottom:12px">● Starting mic…</div>
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:10px">
+      <button onclick="closeAssist(false)" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--ui);font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Cancel</button>
+      <button onclick="closeAssist(true)" style="flex:2;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
+    </div>
   </div>
 </div>
 <script>
@@ -1708,6 +1770,182 @@ function toggleMic() {
   }
   if (btn.textContent.includes('Stop')) { recognition._setActive(false); recognition.stop(); }
   else { try { recognition._setActive(true); recognition.start(); btn.innerHTML = '🛑 Stop'; btn.style.borderColor = 'var(--warn)'; btn.style.color = 'var(--warn)'; btn.classList.add('mic-active'); } catch (err) { showToast('Mic error: ' + err.message, true); } }
+}
+
+// ── ASSIST GUIDED DICTATION ────────────────────────────────────────────────
+let assistRecognition;
+let assistTranscriptFinal = '';
+let assistTranscriptInterim = '';
+
+function openAssist() {
+  const modal = document.getElementById('assistModal');
+  assistTranscriptFinal = '';
+  assistTranscriptInterim = '';
+
+  // Initialise checklist — green if field already filled
+  function setItem(id, filled) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const dot = el.querySelector('.assist-dot');
+    dot.style.background = filled ? '#4caf50' : 'var(--warn)';
+    el.style.color = filled ? '#4caf50' : 'var(--text)';
+  }
+
+  // All items start orange — detected in speech as user talks
+  setItem('aItem-case',        false);
+  setItem('aItem-client',      false);
+  setItem('aItem-investigator',false);
+  setItem('aItem-acttype',     false);
+  setItem('aItem-date',        false);
+  setItem('aItem-duration',    false);
+  setItem('aItem-activity',    false);
+
+  // From/To hidden initially — shown dynamically when travel is detected
+  document.getElementById('aItem-from').style.display = 'none';
+  document.getElementById('aItem-to').style.display   = 'none';
+
+  document.getElementById('assistTranscriptBox').textContent = '(Listening…)';
+  document.getElementById('assistMicStatus').textContent = '● Starting mic…';
+  document.getElementById('assistMicStatus').style.color = 'var(--warn)';
+
+  modal.style.display = 'flex';
+  startAssistMic();
+}
+
+function closeAssist(save) {
+  stopAssistMic();
+  const modal = document.getElementById('assistModal');
+  modal.style.display = 'none';
+  if (save) {
+    const full = (assistTranscriptFinal + assistTranscriptInterim).trim();
+    if (full) {
+      const aiInput = document.getElementById('aiInput');
+      aiInput.value = aiInput.value ? aiInput.value.trimEnd() + ' ' + full : full;
+    }
+  }
+  assistTranscriptFinal = '';
+  assistTranscriptInterim = '';
+}
+
+function startAssistMic() {
+  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Speech) { showToast('Voice-to-text not supported in this browser', true); return; }
+  stopAssistMic(); // clean up any previous instance
+
+  assistRecognition = new Speech();
+  assistRecognition.continuous = true;
+  assistRecognition.interimResults = true;
+  assistRecognition.lang = 'en-US';
+
+  let isActive = true;
+  let silenceTimeout = null;
+  const SILENCE_MS = 15000;
+
+  assistRecognition.onstart = () => {
+    const statusEl = document.getElementById('assistMicStatus');
+    if (statusEl) { statusEl.textContent = '🔴 Listening'; statusEl.style.color = 'var(--warn)'; }
+  };
+
+  assistRecognition.onresult = (event) => {
+    if (silenceTimeout) clearTimeout(silenceTimeout);
+    silenceTimeout = setTimeout(() => {
+      if (isActive && assistRecognition) {
+        isActive = false;
+        try { assistRecognition.stop(); } catch(e) {}
+      }
+    }, SILENCE_MS);
+
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) { assistTranscriptFinal += t + ' '; }
+      else { interim = t; }
+    }
+    assistTranscriptInterim = interim;
+
+    const full = assistTranscriptFinal + interim;
+    const previewEl = document.getElementById('assistTranscriptBox');
+    if (previewEl) previewEl.textContent = full || '(Listening…)';
+    updateAssistChecklist(full);
+  };
+
+  assistRecognition.onerror = (event) => {
+    if (event.error !== 'no-speech') showToast('Assist mic error: ' + event.error, true);
+  };
+
+  assistRecognition.onend = () => {
+    if (silenceTimeout) clearTimeout(silenceTimeout);
+    const statusEl = document.getElementById('assistMicStatus');
+    if (isActive) {
+      // Auto-restart to keep listening
+      try { assistRecognition.start(); } catch(e) { isActive = false; }
+    } else {
+      if (statusEl) { statusEl.textContent = '⏹ Mic stopped'; statusEl.style.color = 'var(--muted)'; }
+    }
+  };
+
+  try { assistRecognition.start(); } catch(e) { showToast('Assist mic error: ' + e.message, true); }
+}
+
+function stopAssistMic() {
+  if (assistRecognition) {
+    try { assistRecognition.onend = null; assistRecognition.stop(); } catch(e) {}
+    assistRecognition = null;
+  }
+}
+
+function updateAssistChecklist(transcript) {
+  if (!transcript) return;
+  const t = transcript;
+
+  function markGreen(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const dot = el.querySelector('.assist-dot');
+    // Only upgrade orange → green, never downgrade
+    if (dot.style.background !== 'rgb(76, 175, 80)') {
+      dot.style.background = '#4caf50';
+      el.style.color = '#4caf50';
+    }
+  }
+
+  // Case #
+  if (/\b\d{2}[A-Z]{2}\d+\b/i.test(t) || /\bcase\s*(number|#|num)?\s*\d+/i.test(t)) markGreen('aItem-case');
+
+  // Client
+  if (/\bclient\s+\w+/i.test(t)) markGreen('aItem-client');
+
+  // Investigator
+  if (/\b(this\s+is|investigator)\s+\w+/i.test(t)) markGreen('aItem-investigator');
+
+  // Duration (speech-detected even if field empty)
+  if (/\b\d+\s*(minutes?|mins?|hours?|hrs?)\b/i.test(t) || !!document.getElementById('actDuration').value.trim()) markGreen('aItem-duration');
+
+  // From / To — show dynamically when travel time is mentioned
+  if (/\btravel\s*time\b/i.test(t) || /\b(drove|driving|miles|mileage)\b/i.test(t)) {
+    document.getElementById('aItem-from').style.display = 'flex';
+    document.getElementById('aItem-to').style.display   = 'flex';
+  }
+  if (/\b(from|left|departed)\s+\w+/i.test(t)) markGreen('aItem-from');
+  if (/\b(to|arrived(\s+at)?)\s+\w+/i.test(t)) markGreen('aItem-to');
+
+  // Activity Type — detected from speech keywords
+  if (/\b(interview|surveillance|field|intake|planning|consultation|testimony|court|travel|mileage|osint|report|witness)\b/i.test(t)) markGreen('aItem-acttype');
+
+  // Date — detected from speech or a date pattern
+  if (/\b(today|yesterday|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(t) || /\b\d{1,2}[\/\-]\d{1,2}\b/.test(t)) markGreen('aItem-date');
+
+  // What you did: >20 meaningful words after stripping metadata patterns
+  const stripped = t
+    .replace(/\b\d{2}[A-Z]{2}\d+\b/gi, '')
+    .replace(/\bcase\s*(number|#|num)?\s*[\d\w]+/gi, '')
+    .replace(/\bclient\s+\w+/gi, '')
+    .replace(/\b(this\s+is|investigator)\s+\w+/gi, '')
+    .replace(/\b\d+\s*(minutes?|mins?|hours?|hrs?)\b/gi, '')
+    .replace(/\b(from|left|departed|to|arrived(\s+at)?)\s+\w+/gi, '')
+    .trim();
+  const wordCount = stripped.split(/\s+/).filter(w => w.length > 1).length;
+  if (wordCount > 20) markGreen('aItem-activity');
 }
 
 function preParseCheck(text) {
