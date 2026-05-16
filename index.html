@@ -230,7 +230,6 @@
       <option>Out of Pocket - Circuit Court Copies</option>
       <option>Out of Pocket - Discovery Fees</option>
       <option>Out of Pocket - Process Service (Third-Party)</option>
-      <option>Out of Pocket - Printed for File</option>
       <option>Out of Pocket - Photocopies (B&amp;W)</option>
       <option>Out of Pocket - Photocopies (Color)</option>
       <option>Out of Pocket - Photos (3x5 or 4x6)</option>
@@ -1940,7 +1939,6 @@ const OOP_OPTIONS = [
   'Out of Pocket - Circuit Court Copies',
   'Out of Pocket - Discovery Fees',
   'Out of Pocket - Process Service (Third-Party)',
-  'Out of Pocket - Printed for File',
   'Out of Pocket - Photocopies (B&amp;W)',
   'Out of Pocket - Photocopies (Color)',
   'Out of Pocket - Photos (3x5 or 4x6)',
@@ -2057,7 +2055,18 @@ async function submitEntry() {
     mileage: (needsTravel && !isTravel) ? document.getElementById('actMileage').value : '',
     travelFrom: needsTravel ? document.getElementById('travelFrom').value.trim() : '',
     travelTo: needsTravel ? document.getElementById('travelTo').value.trim() : '',
-    notes: document.getElementById('actNotes').value.trim(),
+    notes: (() => {
+      const typed = document.getElementById('actNotes').value.trim();
+      if (typed) return typed;
+      // Auto-generate notes for standalone OOP - Mileage if from/to are filled
+      if (typeVal === 'Out of Pocket - Mileage') {
+        const from = document.getElementById('travelFrom').value.trim();
+        const to = document.getElementById('travelTo').value.trim();
+        const driver = document.getElementById('mileageDriver').value.trim();
+        if (from || to) return `${from}${from && to ? ' → ' : ''}${to}${driver ? ' (Driver: ' + driver + ')' : ''}`;
+      }
+      return typed;
+    })(),
     investigator: investigator,
     logged: new Date().toISOString(),
     synced: false
@@ -2108,7 +2117,24 @@ async function submitEntry() {
       mileage: '',
       travelFrom: '',
       travelTo: '',
-      notes: oopNotes || `${oopQty} ${oopType.replace(/^Out of Pocket - /, '')}`
+      notes: oopNotes || (() => {
+        const oopNoteDefaults = {
+          'Out of Pocket - Photocopies (B&W)': 'Printed for File',
+          'Out of Pocket - Photocopies (Color)': 'Printed for File',
+          'Out of Pocket - Photos (3x5 or 4x6)': 'Printed for File',
+          'Out of Pocket - Photos (Full Page)': 'Printed for File',
+          'Out of Pocket - CD/DVD/Discs': 'Evidence Media',
+          'Out of Pocket - USB/Flash Drive': 'Evidence Media',
+          'Out of Pocket - Circuit Court Copies': 'Court Records',
+          'Out of Pocket - Discovery Fees': 'Discovery',
+          'Out of Pocket - Process Service (Third-Party)': 'Process Service',
+          'Out of Pocket - Records (Public/Gov)': 'Public Records',
+          'Out of Pocket - Records (Medical/DMV)': 'Medical Records',
+          'Out of Pocket - Scanning': 'Pages Scanned'
+        };
+        const shortName = oopType.replace(/^Out of Pocket - /, '');
+        return `${oopQty} ${oopNoteDefaults[oopType] || shortName}`;
+      })()
     });
   }
 
