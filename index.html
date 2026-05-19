@@ -529,6 +529,15 @@
       </select>
     </div>
     <div class="field-group" style="margin-bottom:8px">
+      <label>Payment method</label>
+      <select id="expPaymentMethod">
+        <option value="card" selected>Card</option>
+        <option value="cash">Cash</option>
+        <option value="check">Check</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="field-group" style="margin-bottom:8px">
       <label>Case <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(optional — leave blank for firm overhead)</span></label>
       <select id="expCase">
         <option value="">— No case (firm overhead) —</option>
@@ -1932,6 +1941,7 @@ function submitExpenseEntry() {
   const dateEl = document.getElementById('expDate');
   const caseEl = document.getElementById('expCase');
   const notesEl = document.getElementById('expNotes');
+  const paymentMethodEl = document.getElementById('expPaymentMethod');
   const amount = parseFloat(amountEl.value);
   if (!Number.isFinite(amount) || amount <= 0) {
     showToast('Amount must be a positive number', true);
@@ -1960,6 +1970,10 @@ function submitExpenseEntry() {
     caseLabel: caseEl.value || null,  // caseNumber string; BT server resolves to caseId
     notes: (notesEl.value || '').trim() || null,
     investigator,
+    // Slice 2c: lightweight payment-method dimension. Default 'card'
+    // for new entries; BT server defaults to 'unspecified' if absent
+    // (forward-compat with pre-Slice-2c offline-queue entries).
+    paymentMethod: (paymentMethodEl && paymentMethodEl.value) || 'card',
     synced: false,
   };
   expenseEntries.push(entry);
@@ -1983,6 +1997,7 @@ async function postExpenseToBt(entry) {
     caseNumber: entry.caseLabel || null,
     notes: entry.notes || null,
     investigator: entry.investigator,
+    paymentMethod: entry.paymentMethod || null,
   };
   const res = await fetch(`${cfg.btHostUrl}/api/field-log/expenses`, {
     method: 'POST',
