@@ -105,6 +105,45 @@
     #micBtn { order: -1; flex: 1 0 100%; font-size: 18px; padding: 16px; letter-spacing: 2px; border-radius: 8px; }
     #aiParseBtn { flex: 1; }
   }
+
+  /* ── Mileage Module ─────────────────────────────────────────────── */
+  .miles-trigger-btn { background: var(--surface2); border: 1px solid var(--accent); border-radius: 20px; color: var(--accent); font-family: var(--ui); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 7px 12px; cursor: pointer; white-space: nowrap; transition: background 0.2s; flex: 0 0 auto; min-height: 44px; }
+  .miles-trigger-btn:active { background: var(--accent); color: var(--bg); }
+  .mlg-modal-overlay { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.65); align-items: flex-start; justify-content: center; padding: 16px; overflow-y: auto; }
+  .mlg-modal-overlay.open { display: flex; }
+  .mlg-modal-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; width: min(92vw, 480px); position: relative; margin: auto; }
+  .mlg-title { font-family: var(--ui); font-weight: 800; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: var(--text); margin-bottom: 16px; }
+  .mlg-close-btn { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; }
+  .mlg-fg { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .mlg-fg label { font-family: var(--ui); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .mlg-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mlg-warn { font-size: 11px; color: var(--warn); margin-top: 3px; min-height: 14px; }
+  .mlg-error { font-size: 12px; color: var(--warn); margin: 6px 0; padding: 6px 10px; background: rgba(255,107,53,0.1); border-radius: 6px; display: none; }
+  .mlg-error.visible { display: block; }
+  .mlg-calc-btn { background: var(--accent2); color: var(--bg); border: none; border-radius: 8px; font-family: var(--ui); font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; padding: 12px; cursor: pointer; width: 100%; margin-bottom: 10px; min-height: 44px; transition: opacity 0.2s; }
+  .mlg-calc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mlg-calc-btn:active { opacity: 0.8; }
+  .mlg-computed { border-color: var(--accent) !important; }
+  .mlg-overridden { border-color: #f0a000 !important; }
+  .mlg-toggle-link { background: none; border: none; color: var(--accent2); font-family: var(--ui); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; padding: 0; text-decoration: underline; margin-bottom: 8px; display: inline-block; }
+  .mlg-action-row { display: flex; gap: 8px; margin-top: 16px; }
+  .mlg-confirm-btn { flex: 1; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; font-family: var(--ui); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 14px; cursor: pointer; min-height: 44px; transition: opacity 0.2s; }
+  .mlg-confirm-btn:active { opacity: 0.8; }
+  .mlg-cancel-btn { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-family: var(--ui); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; padding: 14px 18px; cursor: pointer; min-height: 44px; }
+  .mlg-log-table-wrap { overflow-x: auto; margin-top: 8px; }
+  .mlg-log-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mlg-log-table th { font-family: var(--ui); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); background: var(--surface2); padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .mlg-log-table td { padding: 8px 6px; border-bottom: 1px solid rgba(0,144,255,0.12); vertical-align: top; color: var(--text); }
+  .mlg-log-table tr:hover td { background: rgba(0,200,160,0.04); }
+  .mlg-log-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
+  .mlg-log-total { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+  .veh-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+  .veh-card.inactive { opacity: 0.5; }
+  .veh-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .veh-card-name { font-family: var(--ui); font-weight: 700; font-size: 13px; color: var(--text); }
+  .veh-card-name.is-default { color: var(--accent); }
+  .veh-card-detail { font-size: 11px; color: var(--muted); font-family: var(--ui); letter-spacing: 0.5px; }
+  .veh-btn { background: none; font-family: var(--ui); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -268,7 +307,10 @@
     <div class="quick-row" style="margin-bottom:8px">
       <div class="field-group">
         <label>Mileage</label>
-        <input type="number" id="actMileage" placeholder="e.g. 42" step="0.1" min="0">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" id="actMileage" placeholder="e.g. 42" step="0.1" min="0" style="flex:1">
+          <button type="button" class="miles-trigger-btn" onclick="openMileageModal()" title="Open mileage calculator">⊕ Miles</button>
+        </div>
       </div>
       <div class="field-group">
         <label>Driver <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(if not you)</span></label>
@@ -395,6 +437,7 @@
         <div class="config-tabs">
           <button class="config-tab active" onclick="setCfgTab('sync', this)">Cloud Sync</button>
           <button class="config-tab" onclick="setCfgTab('ai', this)">AI Assist</button>
+          <button class="config-tab" onclick="setCfgTab('vehicles', this); renderVehicleList()">Vehicles</button>
         </div>
         <div id="cfg-sync" class="config-pane active">
           <div class="config-row">
@@ -474,6 +517,59 @@
             <button class="ai-btn secondary" style="max-width:160px" onclick="testAiConnection(this)">Test Connection</button>
           </div>
         </div>
+        <!-- ── Vehicles Tab ─────────────────────────────────────── -->
+        <div id="cfg-vehicles" class="config-pane">
+          <div style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Add Vehicle</div>
+          <div class="mlg-2col" style="margin-bottom:8px">
+            <div class="mlg-fg" style="margin-bottom:0">
+              <label>Label <span style="color:var(--warn)">*</span></label>
+              <input type="text" id="vLabel" placeholder="e.g. 2022 RAM 1500" autocapitalize="words">
+            </div>
+            <div class="mlg-fg" style="margin-bottom:0">
+              <label>Year</label>
+              <input type="number" id="vYear" placeholder="e.g. 2022" min="1900" max="2099">
+            </div>
+          </div>
+          <div class="mlg-2col" style="margin-bottom:8px">
+            <div class="mlg-fg" style="margin-bottom:0">
+              <label>Make</label>
+              <input type="text" id="vMake" placeholder="e.g. RAM" autocapitalize="words">
+            </div>
+            <div class="mlg-fg" style="margin-bottom:0">
+              <label>Model</label>
+              <input type="text" id="vModel" placeholder="e.g. 1500" autocapitalize="words">
+            </div>
+          </div>
+          <div class="mlg-2col" style="margin-bottom:8px">
+            <div class="mlg-fg" style="margin-bottom:0">
+              <label>Color</label>
+              <input type="text" id="vColor" placeholder="e.g. Gray" autocapitalize="words">
+            </div>
+            <div class="mlg-fg" style="margin-bottom:0">
+              <label>Plate</label>
+              <input type="text" id="vPlate" placeholder="e.g. ABC123" autocapitalize="characters">
+            </div>
+          </div>
+          <div class="mlg-fg">
+            <label>Year Starting Mileage <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(odometer Jan 1)</span></label>
+            <input type="number" id="vStartMileage" placeholder="e.g. 47200" min="0">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <label class="toggle-switch">
+              <input type="checkbox" id="vSetDefault">
+              <span class="toggle-slider"></span>
+            </label>
+            <label for="vSetDefault" style="font-family:var(--ui);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text);cursor:pointer">Set as Default</label>
+          </div>
+          <button class="ai-btn" style="max-width:160px" onclick="addVehicle()">+ Add Vehicle</button>
+          <div style="border-top:1px solid var(--border);margin:14px 0 10px"></div>
+          <div style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Saved Vehicles</div>
+          <div id="vehicleList">
+            <div style="color:var(--muted);font-size:12px;font-family:var(--ui);letter-spacing:1px;text-transform:uppercase;padding:8px 0">No vehicles added yet</div>
+          </div>
+        </div>
+        <!-- ── End Vehicles Tab ────────────────────────────────── -->
+
         <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center">
           <button class="ai-btn" style="max-width:140px" onclick="saveConfig()">Save Changes</button>
           <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end">
@@ -489,6 +585,63 @@
       </div>
     </details>
   </div>
+  <!-- ── Mileage Log Section ─────────────────────────────────────── -->
+  <div style="margin-top:16px">
+    <details id="mileageLogDetails">
+      <summary>📍 Mileage Log</summary>
+      <div class="config-section" style="margin-top:0;border-top:none;border-radius:0 0 8px 8px">
+        <!-- Filters -->
+        <div class="mlg-2col" style="margin-bottom:8px;align-items:flex-end">
+          <div class="mlg-fg" style="margin-bottom:0">
+            <label>Filter by Case #</label>
+            <input type="text" id="mlgFilterCase" placeholder="e.g. 25CR12345" oninput="renderMileageLog()" autocapitalize="characters" autocorrect="off" spellcheck="false">
+          </div>
+          <button class="ai-btn secondary" style="padding:11px 12px;font-size:11px" onclick="fetchMileageLogFromDrive()">↻ Refresh</button>
+        </div>
+        <div class="mlg-2col" style="margin-bottom:12px">
+          <div class="mlg-fg" style="margin-bottom:0">
+            <label>From Date</label>
+            <input type="date" id="mlgFilterFrom" oninput="renderMileageLog()" style="cursor:pointer">
+          </div>
+          <div class="mlg-fg" style="margin-bottom:0">
+            <label>To Date</label>
+            <input type="date" id="mlgFilterTo" oninput="renderMileageLog()" style="cursor:pointer">
+          </div>
+        </div>
+        <!-- Table -->
+        <div class="mlg-log-table-wrap">
+          <table class="mlg-log-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Case #</th>
+                <th>From</th>
+                <th>To</th>
+                <th style="text-align:right">Miles</th>
+                <th>Vehicle</th>
+                <th>Purpose</th>
+                <th>Notes</th>
+                <th title="Sync status">✓</th>
+              </tr>
+            </thead>
+            <tbody id="mlgTableBody">
+              <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Footer -->
+        <div class="mlg-log-footer">
+          <span style="font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Total: <span class="mlg-log-total" id="mlgTotalMiles">0 mi</span></span>
+          <div style="display:flex;gap:8px">
+            <button class="ai-btn secondary" style="font-size:11px;padding:7px 14px" onclick="exportMileageCsv()">↓ CSV</button>
+            <button class="ai-btn secondary" style="font-size:11px;padding:7px 14px" onclick="exportMileageXlsx()">↓ Excel</button>
+          </div>
+        </div>
+      </div>
+    </details>
+  </div>
+  <!-- ── End Mileage Log Section ──────────────────────────────────── -->
+
   <div class="section-label" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
     <span>Recent Entries (Local)</span>
     <div style="display:flex;gap:6px;align-items:center">
@@ -500,6 +653,116 @@
   <div id="recentLog"></div>
 </main>
 <div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MILEAGE ENTRY MODAL
+     ══════════════════════════════════════════════════════════════ -->
+<div id="mileageModal" class="mlg-modal-overlay" onclick="if(event.target===this)closeMileageModal()">
+  <div class="mlg-modal-inner">
+    <button class="mlg-close-btn" onclick="closeMileageModal()">✕</button>
+    <div class="mlg-title">📍 Mileage Entry</div>
+
+    <!-- Row 1: Date / Case / Investigator -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Date</label>
+        <input type="date" id="mlgDate" style="cursor:pointer">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Case #</label>
+        <input type="text" id="mlgCaseNum" placeholder="e.g. 25CR12345" autocapitalize="characters" autocorrect="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="mlg-2col" style="margin-bottom:10px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Investigator</label>
+        <input type="text" id="mlgInvestigator" placeholder="e.g. Lee" autocapitalize="words" autocorrect="off">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Vehicle</label>
+        <select id="mlgVehicle">
+          <option value="">No vehicle</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Origin Address -->
+    <div class="mlg-fg">
+      <label>Origin Address</label>
+      <input type="text" id="mlgOrigin" placeholder="e.g. 123 Main St, Medford, OR" autocapitalize="words" autocorrect="off" spellcheck="false">
+      <div class="mlg-warn" id="mlgOriginWarning"></div>
+    </div>
+
+    <!-- Destination Address -->
+    <div class="mlg-fg">
+      <label>Destination Address</label>
+      <input type="text" id="mlgDest" placeholder="e.g. 456 Oak Ave, Ashland, OR" autocapitalize="words" autocorrect="off" spellcheck="false">
+      <div class="mlg-warn" id="mlgDestWarning"></div>
+    </div>
+
+    <!-- Calculate button -->
+    <button class="mlg-calc-btn" id="mlgCalcBtn" onclick="calculateMiles()">⊕ Calculate Miles</button>
+
+    <!-- Error message -->
+    <div class="mlg-error" id="mlgError"></div>
+
+    <!-- Miles + Cities -->
+    <div class="mlg-2col" style="margin-bottom:10px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Miles <span id="mlgMilesIndicator" style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0"></span></label>
+        <input type="number" id="mlgMiles" placeholder="Enter or calculate" step="0.1" min="0">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Purpose <span style="color:var(--warn)">*</span></label>
+        <select id="mlgPurpose">
+          <option value="">Select…</option>
+          <option value="Investigation">Investigation</option>
+          <option value="Court">Court</option>
+          <option value="Attorney Meeting">Attorney Meeting</option>
+          <option value="Records Retrieval">Records Retrieval</option>
+          <option value="Surveillance">Surveillance</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="mlg-2col" style="margin-bottom:10px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Origin City <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(auto)</span></label>
+        <input type="text" id="mlgOriginCity" placeholder="e.g. Medford" autocapitalize="words">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Dest City <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(auto)</span></label>
+        <input type="text" id="mlgDestCity" placeholder="e.g. Ashland" autocapitalize="words">
+      </div>
+    </div>
+
+    <!-- Odometer (collapsed by default) -->
+    <button type="button" class="mlg-toggle-link" id="mlgOdomToggle" onclick="toggleOdometerFields()">▸ Show odometer</button>
+    <div id="mlgOdomFields" style="display:none" class="mlg-2col" style="margin-bottom:10px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Odometer Start</label>
+        <input type="number" id="mlgOdomStart" placeholder="e.g. 47200" min="0">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Odometer End</label>
+        <input type="number" id="mlgOdomEnd" placeholder="e.g. 47242" min="0">
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="mlg-fg" style="margin-top:6px">
+      <label>Notes <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <textarea id="mlgNotes" placeholder="Additional details…" style="min-height:60px;resize:vertical"></textarea>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="mlg-action-row">
+      <button class="mlg-confirm-btn" onclick="confirmMileageEntry()">✓ Confirm &amp; Log</button>
+      <button class="mlg-cancel-btn" onclick="closeMileageModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+<!-- ══════════════════════════════════════════════════════════════ -->
 
 <!-- PAE Import Modal -->
 <div id="paeModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center">
@@ -2087,6 +2350,7 @@ async function aiParse(skipWarning = false) {
       if (!entry.investigator) missing.push('investigator');
       if (!entry.type) missing.push('activity type');
       if (!entry.date) missing.push('date');
+      if (!entry.time) missing.push('time');
       if (travelTypes.includes(entry.type)) {
         if (!entry.travelFrom) missing.push('from city');
         if (!entry.travelTo) missing.push('to city');
@@ -2317,6 +2581,11 @@ async function submitEntry() {
     return;
   }
 
+  if (!base.time) {
+    showToast('Time is required', true);
+    return;
+  }
+
   if (typeVal.startsWith('Out of Pocket')) {
     if (typeVal === 'Out of Pocket - Mileage' && !document.getElementById('actMileage').value.trim()) {
       showToast('Mileage is required for Out of Pocket - Mileage', true);
@@ -2435,6 +2704,8 @@ async function submitEntry() {
   document.getElementById('investigatorField').value = localStorage.getItem('tli_last_investigator') || '';
   document.getElementById('retainerInvestigator').value = localStorage.getItem('tli_last_investigator') || '';
   document.getElementById('actType').value = '';
+  document.getElementById('aiPreview').classList.remove('visible');
+  document.getElementById('aiPreview').innerHTML = '';
   onTypeChange('');
   enableSubmitBtn();
   btn.innerHTML = 'LOG ACTIVITY →';
@@ -2510,6 +2781,465 @@ function showToast(msg, isError=false) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 5000);
 }
+
+// ════════════════════════════════════════════════════════════════════
+// MILEAGE MODULE — OPS Track
+// ════════════════════════════════════════════════════════════════════
+
+let vehicles = JSON.parse(localStorage.getItem('tli_vehicles') || '[]');
+let mileageEntries = JSON.parse(localStorage.getItem('tli_mileage_entries') || '[]');
+
+// ── Local persistence ────────────────────────────────────────────────
+
+function saveVehiclesLocal() {
+  localStorage.setItem('tli_vehicles', JSON.stringify(vehicles));
+}
+function saveMileageEntriesLocal() {
+  localStorage.setItem('tli_mileage_entries', JSON.stringify(mileageEntries));
+}
+function getDefaultVehicle() {
+  return vehicles.find(v => v.is_default && v.active) || vehicles.find(v => v.active) || null;
+}
+
+// ── Modal open / close ───────────────────────────────────────────────
+
+function openMileageModal() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('mlgDate').value = today;
+  document.getElementById('mlgCaseNum').value = document.getElementById('caseNum')?.value?.trim() || '';
+  document.getElementById('mlgInvestigator').value = document.getElementById('investigatorField')?.value?.trim() || 'Lee';
+
+  // Populate vehicle dropdown
+  const sel = document.getElementById('mlgVehicle');
+  sel.innerHTML = '<option value="">No vehicle</option>';
+  vehicles.filter(v => v.active).forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.vehicle_id;
+    opt.textContent = v.label;
+    if (v.is_default) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  // Reset fields
+  ['mlgOrigin','mlgDest','mlgOriginCity','mlgDestCity','mlgNotes','mlgOdomStart','mlgOdomEnd'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const milesField = document.getElementById('mlgMiles');
+  milesField.value = '';
+  milesField.dataset.computed = '';
+  milesField.className = '';
+  document.getElementById('mlgPurpose').value = '';
+  document.getElementById('mlgOriginWarning').textContent = '';
+  document.getElementById('mlgDestWarning').textContent = '';
+  const errEl = document.getElementById('mlgError');
+  errEl.textContent = ''; errEl.classList.remove('visible');
+  document.getElementById('mlgMilesIndicator').textContent = '';
+  // Collapse odometer
+  document.getElementById('mlgOdomFields').style.display = 'none';
+  document.getElementById('mlgOdomToggle').textContent = '▸ Show odometer';
+
+  document.getElementById('mileageModal').classList.add('open');
+}
+
+function closeMileageModal() {
+  document.getElementById('mileageModal').classList.remove('open');
+}
+
+// ESC key handler & miles field manual-override detector
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('mileageModal').classList.contains('open')) {
+      closeMileageModal();
+    }
+  });
+
+  const milesField = document.getElementById('mlgMiles');
+  if (milesField) {
+    milesField.addEventListener('input', () => {
+      const comp = milesField.dataset.computed;
+      if (!comp) { milesField.className = ''; document.getElementById('mlgMilesIndicator').textContent = ''; return; }
+      if (milesField.value === comp) {
+        milesField.classList.remove('mlg-overridden'); milesField.classList.add('mlg-computed');
+        document.getElementById('mlgMilesIndicator').textContent = '(computed)';
+      } else {
+        milesField.classList.remove('mlg-computed'); milesField.classList.add('mlg-overridden');
+        document.getElementById('mlgMilesIndicator').textContent = '(manual override)';
+      }
+    });
+  }
+
+  // Initial vehicle load from Drive
+  loadVehiclesFromDrive();
+  renderMileageLog();
+});
+
+function toggleOdometerFields() {
+  const fields = document.getElementById('mlgOdomFields');
+  const link = document.getElementById('mlgOdomToggle');
+  const open = fields.style.display !== 'none';
+  fields.style.display = open ? 'none' : 'grid';
+  link.textContent = open ? '▸ Show odometer' : '▾ Hide odometer';
+}
+
+// ── Calculate miles ──────────────────────────────────────────────────
+
+async function calculateMiles() {
+  const origin = document.getElementById('mlgOrigin').value.trim();
+  const dest   = document.getElementById('mlgDest').value.trim();
+  if (!origin || !dest) { showToast('Enter both addresses first', true); return; }
+
+  const btn = document.getElementById('mlgCalcBtn');
+  btn.innerHTML = '<span class="spinner"></span>Calculating…';
+  btn.disabled = true;
+  document.getElementById('mlgOriginWarning').textContent = '';
+  document.getElementById('mlgDestWarning').textContent = '';
+  const errEl = document.getElementById('mlgError');
+  errEl.textContent = ''; errEl.classList.remove('visible');
+
+  try {
+    // Step 1 — Normalize via Claude Haiku (parallel)
+    const [originNorm, destNorm] = await Promise.all([
+      normalizeAddress(origin),
+      normalizeAddress(dest)
+    ]);
+
+    if (originNorm.confidence === 'low')
+      document.getElementById('mlgOriginWarning').textContent = '⚠ Address may be approximate — verify before submitting';
+    if (destNorm.confidence === 'low')
+      document.getElementById('mlgDestWarning').textContent = '⚠ Address may be approximate — verify before submitting';
+
+    document.getElementById('mlgOrigin').value     = originNorm.normalized || origin;
+    document.getElementById('mlgDest').value       = destNorm.normalized   || dest;
+    document.getElementById('mlgOriginCity').value = originNorm.city || '';
+    document.getElementById('mlgDestCity').value   = destNorm.city   || '';
+
+    // Step 2 — Geocode (parallel)
+    const [originCoords, destCoords] = await Promise.all([
+      geocodeAddress(originNorm.normalized || origin),
+      geocodeAddress(destNorm.normalized   || dest)
+    ]);
+
+    // Step 3 — OSRM driving distance
+    const miles = await getDrivingDistance(originCoords, destCoords);
+
+    const milesField = document.getElementById('mlgMiles');
+    milesField.value = miles;
+    milesField.dataset.computed = String(miles);
+    milesField.classList.remove('mlg-overridden'); milesField.classList.add('mlg-computed');
+    document.getElementById('mlgMilesIndicator').textContent = '(computed)';
+
+  } catch(err) {
+    errEl.textContent = '⚠ ' + err.message + ' — enter miles manually.';
+    errEl.classList.add('visible');
+  } finally {
+    btn.innerHTML = '⊕ Calculate Miles';
+    btn.disabled = false;
+  }
+}
+
+async function normalizeAddress(address) {
+  const key = cfg.anthropicKey;
+  // Graceful fallback if no API key
+  if (!key) {
+    const parts = address.split(',');
+    const city = parts.length > 1 ? parts[1].trim() : '';
+    return { normalized: address, city, state: '', zip: '', confidence: 'low' };
+  }
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 256,
+        system: 'You are an address normalization assistant. Return only valid JSON, no markdown, no explanation.',
+        messages: [{ role: 'user', content: `Normalize this address to standard USPS format and extract the city, state, and zip. Return JSON only: {"normalized": "...", "city": "...", "state": "...", "zip": "...", "confidence": "high|medium|low"} Address: ${address}` }]
+      })
+    });
+    if (!resp.ok) throw new Error('API error');
+    const data = await resp.json();
+    const text = (data.content?.[0]?.text || '').trim();
+    try { return JSON.parse(text); } catch { return { normalized: address, city: '', state: '', zip: '', confidence: 'low' }; }
+  } catch {
+    const parts = address.split(',');
+    return { normalized: address, city: parts.length > 1 ? parts[1].trim() : '', state: '', zip: '', confidence: 'low' };
+  }
+}
+
+async function geocodeAddress(address) {
+  const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(address) + '&format=json&limit=1';
+  const resp = await fetch(url, { headers: { 'User-Agent': 'TLI-FieldLog/1.0' } });
+  if (!resp.ok) throw new Error('Geocoding failed for: ' + address);
+  const data = await resp.json();
+  if (!data.length) throw new Error('Could not locate: ' + address);
+  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+}
+
+async function getDrivingDistance(origin, dest) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${dest.lon},${dest.lat}?overview=false`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('Distance calculation failed');
+  const data = await resp.json();
+  if (!data.routes?.length) throw new Error('No route found between addresses');
+  return Math.round((data.routes[0].distance / 1609.344) * 10) / 10; // miles, 1 decimal
+}
+
+// ── Confirm & Log ────────────────────────────────────────────────────
+
+async function confirmMileageEntry() {
+  const origin  = document.getElementById('mlgOrigin').value.trim();
+  const dest    = document.getElementById('mlgDest').value.trim();
+  const miles   = document.getElementById('mlgMiles').value.trim();
+  const purpose = document.getElementById('mlgPurpose').value.trim();
+
+  if (!origin)  { showToast('Origin address is required', true); return; }
+  if (!dest)    { showToast('Destination address is required', true); return; }
+  if (!miles)   { showToast('Miles required — calculate or enter manually', true); return; }
+  if (!purpose) { showToast('Purpose is required', true); return; }
+
+  const milesField  = document.getElementById('mlgMiles');
+  const computed    = milesField.dataset.computed ? parseFloat(milesField.dataset.computed) : null;
+  const actual      = Math.round(parseFloat(miles) * 10) / 10;
+  const vehicleId   = document.getElementById('mlgVehicle').value || '';
+  const vehicle     = vehicles.find(v => v.vehicle_id === vehicleId) || null;
+  const originCity  = document.getElementById('mlgOriginCity').value.trim();
+  const destCity    = document.getElementById('mlgDestCity').value.trim();
+
+  const entry = {
+    entry_id:             crypto.randomUUID(),
+    date:                 document.getElementById('mlgDate').value,
+    case_number:          document.getElementById('mlgCaseNum').value.trim(),
+    investigator:         document.getElementById('mlgInvestigator').value.trim(),
+    vehicle_id:           vehicleId || null,
+    vehicle_label:        vehicle?.label || null,
+    origin_address:       origin,
+    destination_address:  dest,
+    origin_city:          originCity,
+    destination_city:     destCity,
+    miles_computed:       computed,
+    miles_actual:         actual,
+    odometer_start:       document.getElementById('mlgOdomStart').value ? parseInt(document.getElementById('mlgOdomStart').value) : null,
+    odometer_end:         document.getElementById('mlgOdomEnd').value   ? parseInt(document.getElementById('mlgOdomEnd').value)   : null,
+    purpose,
+    notes:                document.getElementById('mlgNotes').value.trim(),
+    synced:               false,
+    logged:               new Date().toISOString()
+  };
+
+  // 1. Populate activity log form fields
+  const actMileageField = document.getElementById('actMileage');
+  if (actMileageField) actMileageField.value = actual;
+  if (originCity) { const f = document.getElementById('travelFrom'); if (f) f.value = originCity; }
+  if (destCity)   { const t = document.getElementById('travelTo');   if (t) t.value = destCity; }
+
+  // 2. Save locally
+  mileageEntries.push(entry);
+  saveMileageEntriesLocal();
+
+  // 3. Sync to webhook
+  if (cfg.webhookUrl) {
+    try {
+      await fetch(cfg.webhookUrl, {
+        method: 'POST', mode: 'no-cors',
+        body: JSON.stringify({ action: 'logMileage', ...entry })
+      });
+      entry.synced = true;
+      saveMileageEntriesLocal();
+    } catch(_) { /* silent fail — logged locally */ }
+  }
+
+  closeMileageModal();
+  renderMileageLog();
+  showToast('✓ Mileage entry logged — ' + actual + ' mi');
+}
+
+// ── Mileage Log rendering ────────────────────────────────────────────
+
+function renderMileageLog() {
+  const filterCase     = (document.getElementById('mlgFilterCase')?.value || '').trim().toLowerCase();
+  const filterDateFrom = document.getElementById('mlgFilterFrom')?.value || '';
+  const filterDateTo   = document.getElementById('mlgFilterTo')?.value   || '';
+
+  let filtered = [...mileageEntries];
+  if (filterCase)     filtered = filtered.filter(e => (e.case_number || '').toLowerCase().includes(filterCase));
+  if (filterDateFrom) filtered = filtered.filter(e => (e.date || '') >= filterDateFrom);
+  if (filterDateTo)   filtered = filtered.filter(e => (e.date || '') <= filterDateTo);
+
+  // Newest first
+  filtered.sort((a, b) => ((b.date || '') + (b.logged || '')) > ((a.date || '') + (a.logged || '')) ? 1 : -1);
+
+  const totalMiles = filtered.reduce((s, e) => s + (parseFloat(e.miles_actual) || 0), 0);
+  const tbody = document.getElementById('mlgTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = filtered.length ? filtered.map(e => `
+    <tr>
+      <td style="white-space:nowrap">${e.date || ''}</td>
+      <td style="font-family:var(--mono);color:var(--accent);white-space:nowrap">${e.case_number || ''}</td>
+      <td>${e.origin_city || (e.origin_address || '').split(',')[0]}</td>
+      <td>${e.destination_city || (e.destination_address || '').split(',')[0]}</td>
+      <td style="font-family:var(--mono);color:var(--accent2);text-align:right;white-space:nowrap">${e.miles_actual ?? ''}</td>
+      <td style="color:var(--muted)">${e.vehicle_label || '—'}</td>
+      <td style="color:var(--muted)">${e.purpose || ''}</td>
+      <td style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.notes || ''}</td>
+      <td style="text-align:center;font-size:12px;color:${e.synced ? 'var(--accent)' : 'var(--warn)'}" title="${e.synced ? 'Synced' : 'Not synced'}">${e.synced ? '✓' : '↑'}</td>
+    </tr>`) .join('')
+    : `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>`;
+
+  document.getElementById('mlgTotalMiles').textContent = (Math.round(totalMiles * 10) / 10) + ' mi';
+}
+
+async function fetchMileageLogFromDrive() {
+  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+  try {
+    const caseFilter = document.getElementById('mlgFilterCase')?.value?.trim() || '';
+    let url = cfg.webhookUrl + '?action=getMileageLog';
+    if (caseFilter) url += '&case=' + encodeURIComponent(caseFilter);
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.status === 'ok' && Array.isArray(data.entries)) {
+      // Merge: keep locally-unsynced entries, replace synced ones with Drive data
+      const driveIds = new Set(data.entries.map(e => e.entry_id));
+      const localOnly = mileageEntries.filter(e => !e.synced && !driveIds.has(e.entry_id));
+      mileageEntries = [...data.entries.map(e => ({ ...e, synced: true })), ...localOnly];
+      saveMileageEntriesLocal();
+      renderMileageLog();
+      showToast('✓ Mileage log refreshed from Drive');
+    }
+  } catch(err) { showToast('Refresh failed: ' + err.message, true); }
+}
+
+// ── Exports ──────────────────────────────────────────────────────────
+
+function exportMileageCsv() {
+  if (!mileageEntries.length) { showToast('No mileage entries to export', true); return; }
+  const headers = ['Date','Case #','Investigator','Origin Address','Destination Address','Origin City','Dest City','Miles Actual','Miles Computed','Odometer Start','Odometer End','Vehicle','Purpose','Notes'];
+  const rows = mileageEntries.map(e => [
+    e.date, e.case_number, e.investigator,
+    e.origin_address, e.destination_address,
+    e.origin_city, e.destination_city,
+    e.miles_actual, e.miles_computed ?? '',
+    e.odometer_start ?? '', e.odometer_end ?? '',
+    e.vehicle_label || '', e.purpose, e.notes
+  ].map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'mileage-log-' + new Date().toISOString().split('T')[0] + '.csv'; a.click();
+}
+
+function exportMileageXlsx() {
+  // SheetJS not loaded — fall back to CSV with .xlsx extension (opens correctly in Excel)
+  if (!mileageEntries.length) { showToast('No mileage entries to export', true); return; }
+  const headers = ['Date','Case #','Investigator','Origin Address','Destination Address','Origin City','Dest City','Miles Actual','Miles Computed','Odometer Start','Odometer End','Vehicle','Purpose','Notes'];
+  // Build tab-separated values (Excel reads .xlsx/.xls tab-separated fine when opened)
+  const rows = mileageEntries.map(e => [
+    e.date, e.case_number, e.investigator,
+    e.origin_address, e.destination_address,
+    e.origin_city, e.destination_city,
+    e.miles_actual, e.miles_computed ?? '',
+    e.odometer_start ?? '', e.odometer_end ?? '',
+    e.vehicle_label || '', e.purpose, e.notes
+  ].map(v => String(v ?? '').replace(/\t/g, ' ')).join('\t'));
+  const tsv = [headers.join('\t'), ...rows].join('\n');
+  const blob = new Blob([tsv], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'mileage-log-' + new Date().toISOString().split('T')[0] + '.xls'; a.click();
+}
+
+// ── Vehicle management ───────────────────────────────────────────────
+
+function renderVehicleList() {
+  const container = document.getElementById('vehicleList');
+  if (!container) return;
+  if (!vehicles.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:12px;font-family:var(--ui);letter-spacing:1px;text-transform:uppercase;padding:8px 0">No vehicles added yet</div>';
+    return;
+  }
+  container.innerHTML = vehicles.map((v, i) => `
+    <div class="veh-card${v.active ? '' : ' inactive'}">
+      <div class="veh-card-header">
+        <span class="veh-card-name${v.is_default ? ' is-default' : ''}">${v.is_default ? '★ ' : ''}${v.label}</span>
+        <div style="display:flex;gap:6px">
+          ${!v.is_default && v.active ? `<button class="veh-btn" onclick="setDefaultVehicle(${i})" style="border:1px solid var(--accent2);color:var(--accent2)">Set Default</button>` : ''}
+          <button class="veh-btn" onclick="toggleVehicleActive(${i})" style="border:1px solid var(--muted);color:var(--muted)">${v.active ? 'Deactivate' : 'Activate'}</button>
+        </div>
+      </div>
+      <div class="veh-card-detail">
+        ${[v.year, v.make, v.model, v.color].filter(Boolean).join(' · ')}${v.plate ? ' · ' + v.plate : ''}${v.year_starting_mileage ? ' · Starting: ' + Number(v.year_starting_mileage).toLocaleString() + ' mi' : ''}
+      </div>
+    </div>`).join('');
+}
+
+function addVehicle() {
+  const label = document.getElementById('vLabel').value.trim();
+  if (!label) { showToast('Vehicle label is required', true); return; }
+  const isFirst   = vehicles.length === 0;
+  const setDefault = document.getElementById('vSetDefault').checked || isFirst;
+  if (setDefault) vehicles.forEach(v => v.is_default = false);
+  const vehicle = {
+    vehicle_id:            'V' + (vehicles.length + 1),
+    label,
+    year:                  parseInt(document.getElementById('vYear').value) || null,
+    make:                  document.getElementById('vMake').value.trim()    || null,
+    model:                 document.getElementById('vModel').value.trim()   || null,
+    color:                 document.getElementById('vColor').value.trim()   || null,
+    plate:                 document.getElementById('vPlate').value.trim()   || null,
+    year_starting_mileage: parseInt(document.getElementById('vStartMileage').value) || null,
+    is_default:            setDefault,
+    active:                true,
+    created_date:          new Date().toISOString().split('T')[0]
+  };
+  vehicles.push(vehicle);
+  saveVehiclesLocal();
+  ['vLabel','vYear','vMake','vModel','vColor','vPlate','vStartMileage'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('vSetDefault').checked = false;
+  renderVehicleList();
+  if (cfg.webhookUrl) { fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'saveVehicle', ...vehicle }) }).catch(() => {}); }
+  showToast('✓ Vehicle added: ' + label);
+}
+
+function setDefaultVehicle(index) {
+  vehicles.forEach((v, i) => v.is_default = (i === index));
+  saveVehiclesLocal();
+  renderVehicleList();
+  if (cfg.webhookUrl) {
+    vehicles.forEach(v => { fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'saveVehicle', ...v }) }).catch(() => {}); });
+  }
+}
+
+function toggleVehicleActive(index) {
+  vehicles[index].active = !vehicles[index].active;
+  if (!vehicles[index].active && vehicles[index].is_default) {
+    vehicles[index].is_default = false;
+    const next = vehicles.find((v, i) => v.active && i !== index);
+    if (next) next.is_default = true;
+  }
+  saveVehiclesLocal();
+  renderVehicleList();
+  if (cfg.webhookUrl) { fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'saveVehicle', ...vehicles[index] }) }).catch(() => {}); }
+}
+
+async function loadVehiclesFromDrive() {
+  if (!cfg.webhookUrl) return;
+  try {
+    const resp = await fetch(cfg.webhookUrl + '?action=getVehicles');
+    const data = await resp.json();
+    if (data.status === 'ok' && Array.isArray(data.vehicles) && data.vehicles.length) {
+      vehicles = data.vehicles;
+      saveVehiclesLocal();
+      renderVehicleList();
+    }
+  } catch(_) {}
+}
+
+// ════════════════════════════════════════════════════════════════════
+// END MILEAGE MODULE
+// ════════════════════════════════════════════════════════════════════
 </script>
 </body>
 </html>
