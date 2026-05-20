@@ -832,6 +832,10 @@
         <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
         <span>To (city)</span>
       </div>
+      <div class="assist-item" id="aItem-miles" style="display:none;align-items:center;gap:8px;font-size:13px">
+        <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
+        <span>Miles</span>
+      </div>
       <div class="assist-item" id="aItem-activity" style="display:flex;align-items:center;gap:8px;font-size:13px">
         <span class="assist-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--warn)"></span>
         <span>What you did</span>
@@ -2063,9 +2067,10 @@ function openAssist() {
   setItem('aItem-duration',    false);
   setItem('aItem-activity',    false);
 
-  // From/To hidden initially — shown dynamically when travel is detected
-  document.getElementById('aItem-from').style.display = 'none';
-  document.getElementById('aItem-to').style.display   = 'none';
+  // From/To/Miles hidden initially — shown dynamically when travel is detected
+  document.getElementById('aItem-from').style.display  = 'none';
+  document.getElementById('aItem-to').style.display    = 'none';
+  document.getElementById('aItem-miles').style.display = 'none';
 
   document.getElementById('assistTranscriptBox').textContent = '(Listening…)';
   document.getElementById('assistMicStatus').textContent = '● Starting mic…';
@@ -2181,16 +2186,27 @@ function updateAssistChecklist(transcript) {
   // Investigator
   if (/\b(this\s+is|investigator)\s+\w+/i.test(t)) markGreen('aItem-investigator');
 
-  // Duration (speech-detected even if field empty)
-  if (/\b\d+\s*(minutes?|mins?|hours?|hrs?)\b/i.test(t) || !!document.getElementById('actDuration').value.trim()) markGreen('aItem-duration');
+  // Detect OOP expense — hide Duration if OOP type mentioned
+  const isOOPSpeech = /\b(parking|tolls|copies|photocopies|photos|scanning|postage|shipping|records|dvd|usb|flash\s*drive|process\s*service|discovery\s*fee|mileage)\b/i.test(t);
+  const isTravelSpeech = /\btravel\s*time\b/i.test(t) || /\b(drove|driving)\b/i.test(t);
+  if (isOOPSpeech && !isTravelSpeech) {
+    document.getElementById('aItem-duration').style.display = 'none';
+  }
 
-  // From / To — show dynamically when travel time is mentioned
-  if (/\btravel\s*time\b/i.test(t) || /\b(drove|driving|miles|mileage)\b/i.test(t)) {
-    document.getElementById('aItem-from').style.display = 'flex';
-    document.getElementById('aItem-to').style.display   = 'flex';
+  // Duration — only mark green if not OOP, or if travel time
+  if (!isOOPSpeech || isTravelSpeech) {
+    if (/\b\d+\s*(minutes?|mins?|hours?|hrs?)\b/i.test(t)) markGreen('aItem-duration');
+  }
+
+  // From / To / Miles — show dynamically when travel is mentioned
+  if (isTravelSpeech || /\b(miles|mileage)\b/i.test(t)) {
+    document.getElementById('aItem-from').style.display  = 'flex';
+    document.getElementById('aItem-to').style.display    = 'flex';
+    document.getElementById('aItem-miles').style.display = 'flex';
   }
   if (/\b(from|left|departed)\s+\w+/i.test(t)) markGreen('aItem-from');
   if (/\b(to|arrived(\s+at)?)\s+\w+/i.test(t)) markGreen('aItem-to');
+  if (/\b\d+(\.\d+)?\s*(miles?|mi)\b/i.test(t)) markGreen('aItem-miles');
 
   // Activity Type — detected from speech keywords
   if (/\b(interview|surveillance|field|intake|planning|consultation|testimony|court|travel|mileage|osint|report|witness)\b/i.test(t)) markGreen('aItem-acttype');

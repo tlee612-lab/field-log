@@ -6,6 +6,21 @@
 const AUTO_LOG_FOLDER_ID = '1Q3BWEfnUoqoPYWFQ0eDeSXGRAjPybQov';
 const MASTER_LOG_NAME = 'Master Activity Log';
 
+// ── Mileage Module — Sheet definitions ────────────────────────────────
+const MILEAGE_LOG_SHEET_NAME = 'MileageLog';
+const VEHICLES_SHEET_NAME    = 'Vehicles';
+
+const MILEAGE_LOG_HEADERS = [
+  'entry_id', 'date', 'case_number', 'investigator', 'vehicle_id', 'vehicle_label',
+  'origin_address', 'destination_address', 'origin_city', 'destination_city',
+  'miles_computed', 'miles_actual', 'odometer_start', 'odometer_end', 'purpose', 'notes'
+];
+
+const VEHICLE_HEADERS = [
+  'vehicle_id', 'label', 'year', 'make', 'model', 'color', 'plate',
+  'year_starting_mileage', 'is_default', 'active', 'created_date'
+];
+
 const HEADERS = [
   'Logged At', 'Case Number', 'Client Last Name', 'Client First Name', 'Activity Type',
   'Date', 'Time', 'Duration (mins)', 'Tenths of Hours', 'Running Total', 'Quantity', 'Mileage', 'From', 'To',
@@ -62,6 +77,8 @@ function doGet(e) {
     if (action === 'getCases') return buildResponse(getCases());
     if (action === 'getCaseSummary') return buildResponse(getCaseSummary(e.parameter.case || ''));
     if (action === 'upgradeSheet') return buildResponse(upgradeSheetAction(e.parameter.case || ''));
+    if (action === 'getVehicles') return buildResponse(getVehiclesData());
+    if (action === 'getMileageLog') return buildResponse(getMileageLogData(e.parameter.case || ''));
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
       const reqId = e.parameter.reqId || '';
@@ -90,7 +107,9 @@ function doPost(e) {
 
     // Route action-based requests first
     const action = body.action || '';
-    if (action === 'createCase') return buildResponse(createCase(body));
+    if (action === 'createCase')  return buildResponse(createCase(body));
+    if (action === 'logMileage')  return buildResponse(logMileageEntry(body));
+    if (action === 'saveVehicle') return buildResponse(saveVehicleRecord(body));
 
     const reqId = body.reqId || '';
     const incoming = body.data !== undefined ? body.data : body;
@@ -265,7 +284,7 @@ function logEntry(entry) {
   try {
     const tenthsFormula = '=IF(H' + newRowNum + '="","",MAX(0.3,INT(H' + newRowNum + '/60)+LOOKUP(MOD(H' + newRowNum + ',60),{0,1,7,13,19,25,31,37,43,49,55},{0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1})))';
     const dataStartRow = 4;
-    const runningTotalFormula = '=IF(I' + newRowNum + '="","",SUMIF($B$' + dataStartRow + ':B' + newRowNum + ',B' + newRowNum + ',$I$' + dataStartRow + ':I' + newRowNum + '))';
+    const runningTotalFormula = '=IF(I' + newRowNum + '="","",SUM($I$' + dataStartRow + ':I' + newRowNum + '))';
     sheet.getRange(newRowNum, 9).setFormula(tenthsFormula);
     sheet.getRange(newRowNum, 10).setFormula(runningTotalFormula);
     Logger.log('Formulas added to new row');
@@ -736,8 +755,8 @@ function ensureNewColumns(sheet) {
       // Formula for Tenths of Hours (column 9): uses LOOKUP with MAX floor check
       const tenthsFormula = '=IF(H{ROW}="","",MAX(0.3,INT(H{ROW}/60)+LOOKUP(MOD(H{ROW},60),{0,1,7,13,19,25,31,37,43,49,55},{0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1})))';
 
-      // Formula for Running Total (column 10): blank if Tenths is blank, otherwise sum by case
-      const runningTotalFormula = '=IF(I{ROW}="","",SUMIF($B$' + dataStartRow + ':B{ROW},B{ROW},$I$' + dataStartRow + ':I{ROW}))';
+      // Formula for Running Total (column 10): cumulative sum of all tenths from data start to current row
+      const runningTotalFormula = '=IF(I{ROW}="","",SUM($I$' + dataStartRow + ':I{ROW}))';
 
       // Apply formulas to each data row
       for (let row = dataStartRow; row <= lastRow; row++) {
@@ -991,3 +1010,181 @@ function testLogEntry() {
   });
   Logger.log('Result: ' + JSON.stringify(result));
 }
+
+// ════════════════════════════════════════════════════════════════════
+// MILEAGE MODULE — Google Apps Script handlers
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Get or create the shared OPS Track spreadsheet that holds MileageLog
+ * and Vehicles sheets.  We piggyback on the master log file so all data
+ * stays in one place.
+ */
+function getMasterSpreadsheet() {
+  const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+  const files = autoLogFolder.getFilesByName(MASTER_LOG_NAME);
+  if (files.hasNext()) {
+    return SpreadsheetApp.openById(files.next().getId());
+  }
+  // Fall back to creating master sheet (getOrCreateMasterSheet handles this)
+  getOrCreateMasterSheet();
+  const files2 = autoLogFolder.getFilesByName(MASTER_LOG_NAME);
+  if (files2.hasNext()) return SpreadsheetApp.openById(files2.next().getId());
+  throw new Error('Could not locate or create Master Activity Log spreadsheet');
+}
+
+/**
+ * Returns (and auto-creates if absent) the MileageLog sheet tab.
+ */
+function getOrCreateMileageLogSheet() {
+  const ss = getMasterSpreadsheet();
+  let sheet = ss.getSheetByName(MILEAGE_LOG_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(MILEAGE_LOG_SHEET_NAME);
+    sheet.appendRow(MILEAGE_LOG_HEADERS);
+    const hr = sheet.getRange(1, 1, 1, MILEAGE_LOG_HEADERS.length);
+    hr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+    sheet.setFrozenRows(1);
+    // Column widths
+    const widths = [280,90,120,100,80,140,280,280,100,100,100,100,100,100,160,300];
+    widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+    Logger.log('MileageLog sheet created');
+  }
+  return sheet;
+}
+
+/**
+ * Returns (and auto-creates if absent) the Vehicles sheet tab.
+ */
+function getOrCreateVehiclesSheet() {
+  const ss = getMasterSpreadsheet();
+  let sheet = ss.getSheetByName(VEHICLES_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(VEHICLES_SHEET_NAME);
+    sheet.appendRow(VEHICLE_HEADERS);
+    const hr = sheet.getRange(1, 1, 1, VEHICLE_HEADERS.length);
+    hr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+    sheet.setFrozenRows(1);
+    [100,200,60,100,120,80,100,140,80,60,100].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+    Logger.log('Vehicles sheet created');
+  }
+  return sheet;
+}
+
+// ── logMileage ────────────────────────────────────────────────────────
+
+function logMileageEntry(body) {
+  try {
+    const sheet = getOrCreateMileageLogSheet();
+    const row = MILEAGE_LOG_HEADERS.map(h => {
+      const val = body[h];
+      return (val === null || val === undefined) ? '' : val;
+    });
+    sheet.appendRow(row);
+    Logger.log('logMileageEntry: appended entry_id=' + body.entry_id);
+    return { status: 'ok', entry_id: body.entry_id };
+  } catch(err) {
+    Logger.log('logMileageEntry error: ' + err.message);
+    return { status: 'error', message: err.message };
+  }
+}
+
+// ── saveVehicle ───────────────────────────────────────────────────────
+
+function saveVehicleRecord(body) {
+  try {
+    const sheet = getOrCreateVehiclesSheet();
+    const vehicleId = String(body.vehicle_id || '').trim();
+    if (!vehicleId) return { status: 'error', message: 'vehicle_id required' };
+
+    // Search for existing row by vehicle_id (col 1)
+    const lastRow = sheet.getLastRow();
+    let foundRow = -1;
+    if (lastRow > 1) {
+      const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < ids.length; i++) {
+        if (String(ids[i][0]).trim() === vehicleId) { foundRow = i + 2; break; }
+      }
+    }
+
+    const row = VEHICLE_HEADERS.map(h => {
+      const val = body[h];
+      return (val === null || val === undefined) ? '' : val;
+    });
+
+    if (foundRow > 0) {
+      sheet.getRange(foundRow, 1, 1, row.length).setValues([row]);
+      Logger.log('saveVehicleRecord: updated vehicle_id=' + vehicleId);
+    } else {
+      sheet.appendRow(row);
+      Logger.log('saveVehicleRecord: inserted vehicle_id=' + vehicleId);
+    }
+
+    return { status: 'ok', vehicle_id: vehicleId };
+  } catch(err) {
+    Logger.log('saveVehicleRecord error: ' + err.message);
+    return { status: 'error', message: err.message };
+  }
+}
+
+// ── getVehicles ───────────────────────────────────────────────────────
+
+function getVehiclesData() {
+  try {
+    const sheet = getOrCreateVehiclesSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { status: 'ok', vehicles: [] };
+    const rows = sheet.getRange(2, 1, lastRow - 1, VEHICLE_HEADERS.length).getValues();
+    const vehicles = rows
+      .filter(r => r[0] !== '') // skip blank rows
+      .map(r => {
+        const obj = {};
+        VEHICLE_HEADERS.forEach((h, i) => { obj[h] = r[i]; });
+        // Coerce types
+        obj.is_default = String(obj.is_default).toLowerCase() === 'true';
+        obj.active     = String(obj.active).toLowerCase() !== 'false';
+        return obj;
+      })
+      .filter(v => v.active); // only active vehicles
+    return { status: 'ok', vehicles };
+  } catch(err) {
+    Logger.log('getVehiclesData error: ' + err.message);
+    return { status: 'error', message: err.message };
+  }
+}
+
+// ── getMileageLog ─────────────────────────────────────────────────────
+
+function getMileageLogData(caseFilter) {
+  try {
+    const sheet = getOrCreateMileageLogSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { status: 'ok', entries: [] };
+    const rows = sheet.getRange(2, 1, lastRow - 1, MILEAGE_LOG_HEADERS.length).getValues();
+    let entries = rows
+      .filter(r => r[0] !== '')
+      .map(r => {
+        const obj = {};
+        MILEAGE_LOG_HEADERS.forEach((h, i) => { obj[h] = r[i]; });
+        // Coerce numeric fields
+        ['miles_computed','miles_actual','odometer_start','odometer_end'].forEach(k => {
+          if (obj[k] !== '' && obj[k] !== null) {
+            const n = parseFloat(obj[k]);
+            obj[k] = isNaN(n) ? null : n;
+          } else { obj[k] = null; }
+        });
+        return obj;
+      });
+    if (caseFilter) {
+      entries = entries.filter(e => String(e.case_number || '').toLowerCase().includes(caseFilter.toLowerCase()));
+    }
+    return { status: 'ok', entries };
+  } catch(err) {
+    Logger.log('getMileageLogData error: ' + err.message);
+    return { status: 'error', message: err.message };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// END MILEAGE MODULE
+// ════════════════════════════════════════════════════════════════════
