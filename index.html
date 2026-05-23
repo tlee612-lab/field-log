@@ -620,7 +620,7 @@
             <input type="text" id="btUid" placeholder="Paste your BT user UID" autocomplete="off" spellcheck="false">
           </div>
           <div style="margin-top:6px;color:var(--muted);font-size:11px">
-            Required for Bandit chat. Copy from BanditTek → Settings → MY USER UID.
+            Required for ALL syncs to BanditTek (activities, expenses, case creation, case list, Bandit chat). Copy from BanditTek → Settings → MY USER UID.
           </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="ai-btn secondary" style="max-width:100px" onclick="testWebhook()">Test</button>
@@ -1113,9 +1113,16 @@ async function createCaseFromPae() {
       method:  'POST',
       mode:    'cors',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ caseNumber, clientLast, clientFirst, paes }),
+      body:    JSON.stringify({ btUid: cfg.btUid, caseNumber, clientLast, clientFirst, paes }),
     });
     const data = await res.json().catch(() => null);
+
+    if (res.status === 401 && data && data.code === 'FIELDLOG_UID_INVALID') {
+      // Slice 8 — field-log identity binding rejected our btUid.
+      // Surface a clear toast; the finally block restores button state.
+      showToast('Your BanditTek UID is invalid or expired. Re-paste from BanditTek → Settings → My UID.', true);
+      return;
+    }
 
     if (res.status === 200 && data && data.success) {
       const added = Number(data.paeAdded || 0);
@@ -1419,8 +1426,16 @@ refreshDataLists();
 
 async function fetchRemoteCases(verbose = false) {
   if (!cfg.btHostUrl) { if (verbose) showToast('No BT host configured', true); return; }
+  // Slice 8 — btUid required as a query param. Surface UX-friendly
+  // error if missing; server returns 401 anyway, but the client-side
+  // check spares the round-trip.
+  if (!cfg.btUid) { if (verbose) showToast('No BanditTek UID configured — paste from BT Settings → My UID', true); return; }
   try {
-    const res = await fetch(`${cfg.btHostUrl}/api/field-log/cases`);
+    const res = await fetch(`${cfg.btHostUrl}/api/field-log/cases?btUid=${encodeURIComponent(cfg.btUid)}`);
+    if (res.status === 401) {
+      if (verbose) showToast('Your BanditTek UID is invalid or expired. Re-paste from BanditTek → Settings → My UID.', true);
+      return;
+    }
     if (!res.ok) { if (verbose) showToast(`Refresh failed (HTTP ${res.status})`, true); return; }
     const data = await res.json();
     if (!data.success || !Array.isArray(data.cases)) {
@@ -1998,6 +2013,9 @@ async function postExpenseToBt(entry) {
     notes: entry.notes || null,
     investigator: entry.investigator,
     paymentMethod: entry.paymentMethod || null,
+    // Slice 8 — btUid required for identity binding. Server resolves
+    // to a team.uid + records audit attribution accordingly.
+    btUid: cfg.btUid,
   };
   const res = await fetch(`${cfg.btHostUrl}/api/field-log/expenses`, {
     method: 'POST',
@@ -2699,7 +2717,8 @@ async function postEntriesToBt(entriesToPost) {
         method: 'POST',
         mode: 'cors',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseNumber, activities }),
+        // Slice 8 — btUid required for identity binding.
+        body: JSON.stringify({ btUid: cfg.btUid, caseNumber, activities }),
       });
       let data = null;
       try { data = await res.json(); } catch (_) { /* non-JSON body */ }
