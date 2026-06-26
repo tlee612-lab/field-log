@@ -1052,8 +1052,9 @@ function parsePaeText(text) {
                 || flat.match(/Effective\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (effMatch) result.effectiveDate = effMatch[1].trim();
 
-  // Expiration date — labeled field
-  const expMatch = flat.match(/Expiration\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  // Expiration date — date follows "must be billed by this date." in extracted text
+  const expMatch = flat.match(/billed\s+by\s+this\s+date\.?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i)
+                || flat.match(/Expiration\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (expMatch) result.expirationDate = expMatch[1].trim();
 
   result._debugDates = `eff=${result.effectiveDate || 'not found'} exp=${result.expirationDate || 'not found'}`;
