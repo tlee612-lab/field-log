@@ -989,7 +989,8 @@ function parsePaeText(text) {
   const result = {};
 
   // DEBUG: Store a sample of extracted text to see what we're working with
-  result._textSample = flat.substring(0, 300);
+  const _expIdx = flat.toLowerCase().indexOf('expir');
+  result._textSample = _expIdx >= 0 ? flat.substring(Math.max(0, _expIdx - 20), _expIdx + 300) : flat.substring(0, 300);
 
   // Authorization number
   const auth = flat.match(/Authorization\s+No[:\s]*([0-9]+)/i);
