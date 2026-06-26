@@ -1563,13 +1563,21 @@ async function handlePaeFile(file) {
       if (parsed.caseNumber) {
         const rawExisting = paeStore[parsed.caseNumber];
         const existing = Array.isArray(rawExisting) ? rawExisting : (rawExisting ? [rawExisting] : []);
-        const isDupe = parsed.authNumber && existing.some(p => p.authNumber === parsed.authNumber);
-        if (!isDupe) paeStore[parsed.caseNumber] = [...existing, parsed];
+        // Overwrite existing record with same auth number so re-scanning corrects bad data
+        if (parsed.authNumber) {
+          paeStore[parsed.caseNumber] = [...existing.filter(p => p.authNumber !== parsed.authNumber), parsed];
+        } else {
+          paeStore[parsed.caseNumber] = [...existing, parsed];
+        }
         savePaeStore();
         _lastParsedPae = parsed;
-        // Add to current session (dedupe by authNumber within session)
-        const sessIsDupe = parsed.authNumber && _sessionPaes.some(p => p.authNumber === parsed.authNumber);
-        if (!sessIsDupe) _sessionPaes.push(parsed);
+        // Add to current session — overwrite if same auth number
+        if (parsed.authNumber) {
+          const idx = _sessionPaes.findIndex(p => p.authNumber === parsed.authNumber);
+          if (idx >= 0) _sessionPaes[idx] = parsed; else _sessionPaes.push(parsed);
+        } else {
+          _sessionPaes.push(parsed);
+        }
       }
       // Info bar uses session PAEs only
       const sessionTotal = _sessionPaes.reduce((s, p) => s + (parseFloat(p.hours) || 0), 0);
