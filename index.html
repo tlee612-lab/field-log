@@ -1179,28 +1179,46 @@ async function checkPaeExpirations() {
       return;
     }
 
-    const order = { expired: 0, soon: 1, active: 2, 'no-date': 3 };
-    rows.sort((a, b) => order[a.status] - order[b.status] || (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999));
-
     const colors = { expired: '#e55', soon: 'var(--warn)', active: 'var(--accent)', 'no-date': 'var(--muted)' };
     const labels = {
-      expired: d => `Expired ${Math.abs(d)} day${Math.abs(d) === 1 ? '' : 's'} ago`,
-      soon: d => `Expires in ${d} day${d === 1 ? '' : 's'}`,
-      active: d => `Active — ${d} days left`,
+      expired: d => `Expired ${Math.abs(d)}d ago`,
+      soon: d => `Expires in ${d}d`,
+      active: d => `Active — ${d}d left`,
       'no-date': () => 'No exp. date'
     };
 
+    // Group by case number, sorted alphabetically
+    const byCase = {};
+    rows.forEach(r => {
+      if (!byCase[r.caseNum]) byCase[r.caseNum] = { client: r.client, paes: [] };
+      byCase[r.caseNum].paes.push(r);
+    });
+    const sortedCases = Object.keys(byCase).sort();
+    // Within each case sort PAEs: expired first, then soonest
+    const paeOrder = { expired: 0, soon: 1, active: 2, 'no-date': 3 };
+    sortedCases.forEach(cn => byCase[cn].paes.sort((a, b) => paeOrder[a.status] - paeOrder[b.status] || (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999)));
+
+    // Worst status per case for the case header accent
+    const worstStatus = cn => byCase[cn].paes.reduce((w, p) => paeOrder[p.status] < paeOrder[w] ? p.status : w, 'no-date');
+
     box.innerHTML = `
       <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div>
-      <div style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px">
-        ${rows.map(r => `
-          <div style="display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid ${colors[r.status]}">
-            <div style="font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${r.caseNum} — ${r.client}</div>
-            <div style="font-size:11px;color:${colors[r.status]};font-family:var(--ui);font-weight:700;text-align:right;white-space:nowrap">${labels[r.status](r.daysLeft)}</div>
-            <div style="font-size:11px;color:var(--muted)">PAE #${r.authNum}</div>
-            <div style="font-size:11px;color:var(--muted);text-align:right">${r.expStr || '—'}</div>
-          </div>
-        `).join('')}
+      <div style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px">
+        ${sortedCases.map(cn => {
+          const { client, paes } = byCase[cn];
+          const ws = worstStatus(cn);
+          return `
+            <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+              <div style="padding:8px 10px;background:var(--surface2);border-left:3px solid ${colors[ws]};font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${cn} — ${client}</div>
+              ${paes.map(r => `
+                <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 10px;border-top:1px solid var(--border)">
+                  <div style="font-size:11px;color:var(--muted)">PAE #${r.authNum} &nbsp;·&nbsp; ${r.effDate ? r.effDate + ' – ' : ''}${r.expStr || '—'}</div>
+                  <div style="font-size:11px;color:${colors[r.status]};font-family:var(--ui);font-weight:700;text-align:right;white-space:nowrap">${labels[r.status](r.daysLeft)}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }).join('')}
       </div>
       <button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
     `;

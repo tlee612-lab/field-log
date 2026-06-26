@@ -900,11 +900,25 @@ function getPaeExpirations() {
           const client = String(paeSheet.getRange('B3').getValue()).trim();
           // Read PAE data rows 6-50, columns 1 (Auth#) and 8 (Exp Date)
           const zone = paeSheet.getRange(6, 1, 45, 8).getValues();
+          const tz = Session.getScriptTimeZone();
           zone.forEach(row => {
             const authNum = String(row[0]).trim();
-            const expDate = String(row[7]).trim();
             if (!authNum || authNum === '') return;
-            results.push({ caseNum, client, authNum, expDate });
+            const expRaw = row[7];
+            let expDate = '';
+            if (expRaw instanceof Date && !isNaN(expRaw.getTime())) {
+              expDate = Utilities.formatDate(expRaw, tz, 'MM/dd/yyyy');
+            } else if (expRaw) {
+              expDate = String(expRaw).trim();
+            }
+            const effRaw = row[6];
+            let effDate = '';
+            if (effRaw instanceof Date && !isNaN(effRaw.getTime())) {
+              effDate = Utilities.formatDate(effRaw, tz, 'MM/dd/yyyy');
+            } else if (effRaw) {
+              effDate = String(effRaw).trim();
+            }
+            results.push({ caseNum, client, authNum, expDate, effDate });
           });
         } catch(e) {}
         break;
