@@ -787,6 +787,7 @@
     <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
     <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
     <button id="paeDoneBtn" onclick="closePaeModal()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
+    <button onclick="checkPaeExpirations()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
     <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
   </div>
 </div>
@@ -1128,6 +1129,84 @@ async function handlePaeImage(imageFile) {
 
 function closePaeModal() {
   document.getElementById('paeModal').style.display = 'none';
+}
+
+async function checkPaeExpirations() {
+  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(92vw,400px);max-height:80vh;display:flex;flex-direction:column';
+  box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Loading from Drive…</div>`;
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  try {
+    const res = await fetch(cfg.webhookUrl + '?action=getPaeExpirations');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const warnDays = 30;
+
+    const rows = (data.paes || []).map(p => {
+      const expStr = String(p.expDate || '').trim();
+      let status = 'no-date', daysLeft = null;
+      if (expStr && expStr !== 'Invalid Date') {
+        const parts = expStr.split(/[\/\-]/);
+        const expDate = new Date(
+          parseInt(parts[2]) < 100 ? 2000 + parseInt(parts[2]) : parseInt(parts[2]),
+          parseInt(parts[0]) - 1,
+          parseInt(parts[1])
+        );
+        expDate.setHours(0, 0, 0, 0);
+        if (!isNaN(expDate)) {
+          daysLeft = Math.round((expDate - today) / 86400000);
+          if (daysLeft < 0) status = 'expired';
+          else if (daysLeft <= warnDays) status = 'soon';
+          else status = 'active';
+        }
+      }
+      return { ...p, expStr, status, daysLeft };
+    });
+
+    if (!rows.length) {
+      box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No PAEs found in Drive</div><button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>`;
+      return;
+    }
+
+    const order = { expired: 0, soon: 1, active: 2, 'no-date': 3 };
+    rows.sort((a, b) => order[a.status] - order[b.status] || (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999));
+
+    const colors = { expired: '#e55', soon: 'var(--warn)', active: 'var(--accent)', 'no-date': 'var(--muted)' };
+    const labels = {
+      expired: d => `Expired ${Math.abs(d)} day${Math.abs(d) === 1 ? '' : 's'} ago`,
+      soon: d => `Expires in ${d} day${d === 1 ? '' : 's'}`,
+      active: d => `Active — ${d} days left`,
+      'no-date': () => 'No exp. date'
+    };
+
+    box.innerHTML = `
+      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div>
+      <div style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px">
+        ${rows.map(r => `
+          <div style="display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid ${colors[r.status]}">
+            <div style="font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${r.caseNum} — ${r.client}</div>
+            <div style="font-size:11px;color:${colors[r.status]};font-family:var(--ui);font-weight:700;text-align:right;white-space:nowrap">${labels[r.status](r.daysLeft)}</div>
+            <div style="font-size:11px;color:var(--muted)">PAE #${r.authNum}</div>
+            <div style="font-size:11px;color:var(--muted);text-align:right">${r.expStr || '—'}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
+    `;
+  } catch (err) {
+    box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:#e55;font-size:13px;text-align:center;padding:20px">Error: ${err.message}</div><button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>`;
+  }
 }
 
 async function handlePaeFile(file) {
@@ -2451,6 +2530,7 @@ function editEntry(id) {
 }
 
 const OOP_OPTIONS = [
+  'Out of Pocket - Mileage',
   'Out of Pocket - Parking &amp; Tolls',
   'Out of Pocket - CD/DVD/Discs',
   'Out of Pocket - USB/Flash Drive',
@@ -2479,13 +2559,24 @@ function addOopRow() {
   row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 28px;gap:6px;align-items:start;margin-bottom:6px';
   row.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:4px">
-      <select id="oopType_${n}" style="width:100%">${oopOptionsHtml()}</select>
+      <select id="oopType_${n}" style="width:100%" onchange="onOopRowTypeChange(${n})">
+        ${oopOptionsHtml()}
+      </select>
       <input type="text" id="oopNotes_${n}" placeholder="Notes (optional)" style="width:100%;font-size:12px">
     </div>
     <input type="number" id="oopQty_${n}" placeholder="Qty" step="1" min="0" style="width:100%">
     <button type="button" onclick="removeOopRow(${n})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
   `;
   document.getElementById('oopRows').appendChild(row);
+}
+
+function onOopRowTypeChange(n) {
+  const qtyInput = document.getElementById('oopQty_' + n);
+  const notesInput = document.getElementById('oopNotes_' + n);
+  const isMileage = document.getElementById('oopType_' + n).value === 'Out of Pocket - Mileage';
+  qtyInput.placeholder = isMileage ? 'Miles' : 'Qty';
+  qtyInput.step = isMileage ? '0.1' : '1';
+  notesInput.placeholder = isMileage ? 'From → To (optional)' : 'Notes (optional)';
 }
 
 function removeOopRow(n) {
@@ -2583,6 +2674,26 @@ async function submitEntry() {
         const driver = document.getElementById('mileageDriver').value.trim();
         if (from || to) return `${from}${from && to ? ' → ' : ''}${to}${driver ? ' (Driver: ' + driver + ')' : ''}`;
       }
+      // Auto-generate notes for standalone non-mileage OOP
+      if (isOOP) {
+        const oopNoteDefaults = {
+          'Out of Pocket - Photocopies (B&W)': 'Printed for File',
+          'Out of Pocket - Photocopies (Color)': 'Printed for File',
+          'Out of Pocket - Photos (3x5 or 4x6)': 'Printed for File',
+          'Out of Pocket - Photos (Full Page)': 'Printed for File',
+          'Out of Pocket - CD/DVD/Discs': 'Evidence Media',
+          'Out of Pocket - USB/Flash Drive': 'Evidence Media',
+          'Out of Pocket - Circuit Court Copies': 'Court Records',
+          'Out of Pocket - Discovery Fees': 'Discovery',
+          'Out of Pocket - Process Service (Third-Party)': 'Process Service',
+          'Out of Pocket - Records (Public/Gov)': 'Public Records',
+          'Out of Pocket - Records (Medical/DMV)': 'Medical Records',
+          'Out of Pocket - Scanning': 'Pages Scanned'
+        };
+        const qty = document.getElementById('actDuration').value.trim();
+        const defaultNote = oopNoteDefaults[typeVal] || typeVal.replace(/^Out of Pocket - /, '');
+        return qty ? `${qty} ${defaultNote}` : defaultNote;
+      }
       return typed;
     })(),
     investigator: investigator,
@@ -2631,17 +2742,19 @@ async function submitEntry() {
       showToast('Please enter a quantity for each OOP expense row', true);
       return;
     }
+    const isMileageAddon = oopType === 'Out of Pocket - Mileage';
     oopAddonEntries.push({
       ...base,
       id: Date.now() + Math.random(),
       type: oopType,
       duration: '',
-      quantity: oopQty,
-      mileage: '',
+      quantity: isMileageAddon ? '' : oopQty,
+      mileage: isMileageAddon ? oopQty : '',
       travelFrom: '',
       travelTo: '',
       notes: oopNotes || (() => {
         const oopNoteDefaults = {
+          'Out of Pocket - Mileage': 'miles',
           'Out of Pocket - Photocopies (B&W)': 'Printed for File',
           'Out of Pocket - Photocopies (Color)': 'Printed for File',
           'Out of Pocket - Photos (3x5 or 4x6)': 'Printed for File',

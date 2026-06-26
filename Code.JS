@@ -79,6 +79,7 @@ function doGet(e) {
     if (action === 'upgradeSheet') return buildResponse(upgradeSheetAction(e.parameter.case || ''));
     if (action === 'getVehicles') return buildResponse(getVehiclesData());
     if (action === 'getMileageLog') return buildResponse(getMileageLogData(e.parameter.case || ''));
+    if (action === 'getPaeExpirations') return buildResponse(getPaeExpirations());
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
       const reqId = e.parameter.reqId || '';
@@ -875,6 +876,44 @@ function setupRetainedSheet(sheet, folderName) {
   sheet.setColumnWidth(2, 300);
 
   Logger.log('setupRetainedSheet: complete');
+}
+
+function getPaeExpirations() {
+  try {
+    const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+    const folders = autoLogFolder.getFolders();
+    const results = [];
+    while (folders.hasNext()) {
+      const folder = folders.next();
+      const folderName = folder.getName();
+      const parts = folderName.split(' - ');
+      if (parts.length < 2) continue;
+      const caseNum = parts[0].trim();
+      const files = folder.getFiles();
+      while (files.hasNext()) {
+        const file = files.next();
+        if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
+        try {
+          const ss = SpreadsheetApp.openById(file.getId());
+          const paeSheet = ss.getSheetByName('PAE Summary');
+          if (!paeSheet) break;
+          const client = String(paeSheet.getRange('B3').getValue()).trim();
+          // Read PAE data rows 6-50, columns 1 (Auth#) and 8 (Exp Date)
+          const zone = paeSheet.getRange(6, 1, 45, 8).getValues();
+          zone.forEach(row => {
+            const authNum = String(row[0]).trim();
+            const expDate = String(row[7]).trim();
+            if (!authNum || authNum === '') return;
+            results.push({ caseNum, client, authNum, expDate });
+          });
+        } catch(e) {}
+        break;
+      }
+    }
+    return { status: 'ok', paes: results };
+  } catch (err) {
+    return { status: 'error', message: err.message };
+  }
 }
 
 // ── PAE Summary tab ─────────────────────────────────────────────────────────
