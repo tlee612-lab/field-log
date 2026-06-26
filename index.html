@@ -988,10 +988,6 @@ function parsePaeText(text) {
   const flat = String(text || '').replace(/\s+/g, ' ').trim();
   const result = {};
 
-  // DEBUG: Store a sample of extracted text to see what we're working with
-  const _expIdx = flat.toLowerCase().indexOf('expir');
-  result._textSample = _expIdx >= 0 ? flat.substring(Math.max(0, _expIdx - 20), _expIdx + 300) : flat.substring(0, 300);
-
   // Authorization number
   const auth = flat.match(/Authorization\s+No[:\s]*([0-9]+)/i);
   if (auth) result.authNumber = auth[1].trim();
@@ -1056,8 +1052,6 @@ function parsePaeText(text) {
   // Expiration date — label is in text but email addresses sit between it and the date
   const expMatch = flat.match(/Expiration\s+Date:.{0,300}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (expMatch) result.expirationDate = expMatch[1].trim();
-
-  result._debugDates = `eff=${result.effectiveDate || 'not found'} exp=${result.expirationDate || 'not found'}`;
 
   return result;
 }
@@ -1134,6 +1128,12 @@ function openPaeModal() {
   document.getElementById('paeModalList').innerHTML = '';
   document.getElementById('paeDoneBtn').style.display = 'none';
   document.getElementById('paeModalHint').textContent = 'Fills Case #, Client Name, and Authorized Hours';
+  // Clear main form fields so prior scan data doesn't persist into next session
+  document.getElementById('caseNum').value = '';
+  document.getElementById('clientLast').value = '';
+  document.getElementById('clientFirst').value = '';
+  document.getElementById('paeInfo').style.display = 'none';
+  document.getElementById('paeCreateBtn').style.display = 'none';
   // Show camera button on mobile devices
   document.getElementById('paeCameraBtn').style.display = isMobileDevice() ? 'block' : 'none';
   document.getElementById('paeModal').style.display = 'flex';
@@ -1561,9 +1561,6 @@ async function handlePaeFile(file) {
     const createEl = document.getElementById('paeCreateBtn');
 
     if (filled.length > 0) {
-      // TEMP DEBUG — shows extracted text in modal so we can see what the parser gets
-      const _dbgEl = document.getElementById('paeDebugOut') || (() => { const d = document.createElement('div'); d.id='paeDebugOut'; d.style='font-size:10px;font-family:monospace;color:#f80;background:#111;padding:8px;margin:8px 0;border-radius:6px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto'; document.getElementById('paeModalList')?.before(d); return d; })();
-      _dbgEl.textContent = (parsed._debugDates || '') + '\n\nTEXT:\n' + (parsed._textSample || '').substring(0, 500);
 
       // Store PAE data keyed by case number
       if (parsed.caseNumber) {
