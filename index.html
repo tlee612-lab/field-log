@@ -171,10 +171,10 @@
       </div>
     </div>
     <div style="flex:1">
-      <div style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Create Case</div>
+      <div style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Manage</div>
       <div class="button-group">
-        <button id="modePae" onclick="openPaeModal()">📋 PAE</button>
-        <button id="createRetainerBtn" onclick="setEntryMode('retainer')">➕ Retn</button>
+        <button id="modePae" onclick="openCreateModal()">➕ Create</button>
+        <button id="casesBtn" onclick="openCasesModal()">≡ Cases</button>
       </div>
     </div>
   </div>
@@ -764,31 +764,85 @@
 </div>
 <!-- ══════════════════════════════════════════════════════════════ -->
 
-<!-- PAE Import Modal -->
+<!-- Create Case Modal -->
 <div id="paeModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(92vw,380px);position:relative">
     <button onclick="closePaeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">✕</button>
-    <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:16px">📋 Import PAE</div>
-    <input type="file" id="paeCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePaeImage(this.files[0]);this.value=''">
-    <div id="paeCameraBtn" style="display:none;margin-bottom:12px">
-      <button onclick="document.getElementById('paeCameraInput').click()" style="width:100%;padding:12px;border-radius:8px;border:2px solid var(--accent2);background:var(--surface2);color:var(--accent2);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📸 Take Photo</button>
+    <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">Create Case</div>
+    <!-- Tabs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">
+      <button id="createTabPaeBtn" onclick="switchCreateTab('pae')" style="padding:8px;border-radius:6px;border:2px solid var(--accent);background:var(--surface2);color:var(--accent);font-family:var(--ui);font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📋 PAE Import</button>
+      <button id="createTabRetainerBtn" onclick="switchCreateTab('retainer')" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">➕ Retainer</button>
     </div>
-    <div id="paeDropZone"
-         ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
-         ondragleave="this.style.borderColor='var(--border)'"
-         ondrop="event.preventDefault();this.style.borderColor='var(--border)';handlePaeFile(event.dataTransfer.files[0])"
-         style="border:2px dashed var(--border);border-radius:8px;padding:24px 16px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:12px"
-         onclick="document.getElementById('paeFileInput').click()">
-      <div style="font-size:28px;margin-bottom:8px">📄</div>
-      Drop PAE PDF here<br>
-      <span style="color:var(--accent);text-decoration:underline">or tap to select a file</span>
+    <!-- PAE Tab -->
+    <div id="createTabPae">
+      <input type="file" id="paeCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePaeImage(this.files[0]);this.value=''">
+      <div id="paeCameraBtn" style="display:none;margin-bottom:12px">
+        <button onclick="document.getElementById('paeCameraInput').click()" style="width:100%;padding:12px;border-radius:8px;border:2px solid var(--accent2);background:var(--surface2);color:var(--accent2);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📸 Take Photo</button>
+      </div>
+      <div id="paeDropZone"
+           ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+           ondragleave="this.style.borderColor='var(--border)'"
+           ondrop="event.preventDefault();this.style.borderColor='var(--border)';handlePaeFile(event.dataTransfer.files[0])"
+           style="border:2px dashed var(--border);border-radius:8px;padding:24px 16px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:12px"
+           onclick="document.getElementById('paeFileInput').click()">
+        <div style="font-size:28px;margin-bottom:8px">📄</div>
+        Drop PAE PDF here<br>
+        <span style="color:var(--accent);text-decoration:underline">or tap to select a file</span>
+      </div>
+      <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
+      <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
+      <button id="paeDoneBtn" onclick="closePaeModal()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
+      <button onclick="checkPaeExpirations()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
+      <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
     </div>
-    <!-- Accumulated PAE list shown after each drop -->
-    <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
-    <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
-    <button id="paeDoneBtn" onclick="closePaeModal()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
-    <button onclick="checkPaeExpirations()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
-    <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
+    <!-- Retainer Tab -->
+    <div id="createTabRetainer" style="display:none">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="field-group">
+          <label>Investigator</label>
+          <input type="text" id="createRetainerInvestigator" placeholder="Investigator name" autocapitalize="words" autocorrect="off" spellcheck="false" list="investigatorList">
+        </div>
+        <div class="field-group">
+          <label>Retainer #</label>
+          <input type="text" id="createRetainerNum" placeholder="e.g. 26RT0001" autocapitalize="characters" autocorrect="off" spellcheck="false">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="field-group">
+            <label>Client Last</label>
+            <input type="text" id="createRetainerLast" placeholder="Smith" autocapitalize="words" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="field-group">
+            <label>Client First</label>
+            <input type="text" id="createRetainerFirst" placeholder="John" autocapitalize="words" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="field-group">
+            <label>Attorney</label>
+            <input type="text" id="createRetainerAttorney" placeholder="Jane Doe" autocapitalize="words" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="field-group">
+            <label>Amount ($)</label>
+            <input type="number" id="createRetainerAmount" placeholder="5000" step="0.01" min="0">
+          </div>
+        </div>
+        <button onclick="submitCreateRetainer()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">➕ Create Retainer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cases Modal -->
+<div id="casesModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(92vw,400px);max-height:85vh;display:flex;flex-direction:column;position:relative">
+    <button onclick="closeCasesModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">Cases</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+      <button onclick="refreshCasesModal()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">↺ Refresh</button>
+      <button onclick="openTrackerViewer()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">⊞ View Tracker</button>
+    </div>
+    <div id="casesModalList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 </div>
 
@@ -1035,6 +1089,45 @@ function savePaeStore() { localStorage.setItem('tli_pae_store', JSON.stringify(p
 let _lastParsedPae = null;
 let _sessionPaes = []; // PAEs dropped in the current modal session only
 
+function openCreateModal() {
+  switchCreateTab('pae');
+  openPaeModal();
+}
+
+function switchCreateTab(tab) {
+  const isPae = tab === 'pae';
+  document.getElementById('createTabPae').style.display = isPae ? '' : 'none';
+  document.getElementById('createTabRetainer').style.display = isPae ? 'none' : '';
+  const paeBtn = document.getElementById('createTabPaeBtn');
+  const retBtn = document.getElementById('createTabRetainerBtn');
+  paeBtn.style.border = isPae ? '2px solid var(--accent)' : '1px solid var(--border)';
+  paeBtn.style.color = isPae ? 'var(--accent)' : 'var(--muted)';
+  paeBtn.style.background = isPae ? 'var(--surface2)' : 'transparent';
+  retBtn.style.border = isPae ? '1px solid var(--border)' : '2px solid var(--accent)';
+  retBtn.style.color = isPae ? 'var(--muted)' : 'var(--accent)';
+  retBtn.style.background = isPae ? 'transparent' : 'var(--surface2)';
+}
+
+function submitCreateRetainer() {
+  const inv = document.getElementById('createRetainerInvestigator').value.trim();
+  const num = document.getElementById('createRetainerNum').value.trim();
+  const last = document.getElementById('createRetainerLast').value.trim();
+  const first = document.getElementById('createRetainerFirst').value.trim();
+  const attorney = document.getElementById('createRetainerAttorney').value.trim();
+  const amount = document.getElementById('createRetainerAmount').value.trim();
+  if (!num || !last) { showToast('Retainer # and client last name required', true); return; }
+  // Populate main retainer fields and switch to retainer mode
+  if (inv) document.getElementById('retainerInvestigator').value = inv;
+  document.getElementById('retainerNum').value = num;
+  document.getElementById('retainerClientLast').value = last;
+  document.getElementById('retainerClientFirst').value = first || '';
+  if (attorney) document.getElementById('retainerAttorney').value = attorney;
+  if (amount) document.getElementById('retainerAmount').value = amount;
+  closePaeModal();
+  setEntryMode('retainer');
+  showToast('Retainer ready — fill in activity details and log');
+}
+
 function openPaeModal() {
   _sessionPaes = []; // fresh session — don't carry over prior drops
   document.getElementById('paeModalList').style.display = 'none';
@@ -1044,6 +1137,169 @@ function openPaeModal() {
   // Show camera button on mobile devices
   document.getElementById('paeCameraBtn').style.display = isMobileDevice() ? 'block' : 'none';
   document.getElementById('paeModal').style.display = 'flex';
+}
+
+// ── Court dates ──────────────────────────────────────────────────────────────
+let courtDates = JSON.parse(localStorage.getItem('tli_court_dates') || '{}');
+function saveCourtDatesLocal() { localStorage.setItem('tli_court_dates', JSON.stringify(courtDates)); }
+
+// ── Cases modal ──────────────────────────────────────────────────────────────
+function openCasesModal() {
+  buildCasesModalList();
+  document.getElementById('casesModal').style.display = 'flex';
+}
+
+function closeCasesModal() {
+  document.getElementById('casesModal').style.display = 'none';
+}
+
+async function refreshCasesModal() {
+  await fetchRemoteCases(true);
+  buildCasesModalList();
+}
+
+function buildCasesModalList() {
+  const list = document.getElementById('casesModalList');
+  if (!knownCases || !knownCases.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px;font-family:var(--ui)">No cases loaded — tap Refresh</div>';
+    return;
+  }
+  const sorted = [...knownCases].sort((a, b) => (a.case || '').localeCompare(b.case || ''));
+  list.innerHTML = sorted.map(c => {
+    const caseNum = c.case;
+    const paes = paeStore[caseNum];
+    const latestPae = Array.isArray(paes) && paes.length ? paes[paes.length - 1] : null;
+    const attorney = latestPae?.attorney || '—';
+    const courtDate = courtDates[caseNum] || '';
+    return `
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="background:var(--surface2);padding:8px 10px;font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${caseNum} — ${c.client}${c.clientFirst ? ', ' + c.clientFirst : ''}</div>
+        <div style="padding:8px 10px;font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px">
+          <span style="color:var(--muted)">Attorney</span><span style="text-align:right">${attorney}</span>
+          <span style="color:var(--muted)">Court Date</span><span style="text-align:right;color:${courtDate ? 'var(--text)' : 'var(--muted)'};font-style:${courtDate ? 'normal' : 'italic'}">${courtDate ? formatCourtDate(courtDate) : 'Not set'}</span>
+        </div>
+        <div style="padding:0 10px 10px;display:flex;gap:6px;align-items:center">
+          <input type="date" id="courtDateInput_${caseNum}" value="${courtDate}" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">
+          <button onclick="saveCourtDate('${caseNum}')" style="padding:5px 12px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;white-space:nowrap">Save</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function formatCourtDate(val) {
+  if (!val) return '';
+  const [y, m, d] = val.split('-');
+  return `${m}/${d}/${y}`;
+}
+
+function saveCourtDate(caseNum) {
+  const val = document.getElementById('courtDateInput_' + caseNum).value;
+  courtDates[caseNum] = val;
+  saveCourtDatesLocal();
+  if (cfg.webhookUrl) {
+    fetch(cfg.webhookUrl, {
+      method: 'POST', mode: 'no-cors',
+      body: JSON.stringify({ action: 'setCourtDate', case: caseNum, courtDate: val ? formatCourtDate(val) : '' })
+    }).catch(() => {});
+  }
+  buildCasesModalList();
+  showToast(val ? 'Court date saved' : 'Court date cleared');
+}
+
+// ── Tracker viewer ───────────────────────────────────────────────────────────
+async function openTrackerViewer() {
+  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(92vw,440px);max-height:85vh;display:flex;flex-direction:column';
+  box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">Case Tracker</div><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Loading from Drive…</div>`;
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  try {
+    const res = await fetch(cfg.webhookUrl + '?action=getMasterData');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Error');
+
+    let sortMode = 'attorney';
+    const rows = data.rows || [];
+
+    function renderTracker() {
+      const colors = { expired: '#e55', soon: 'var(--warn)', active: 'var(--accent)', '': 'var(--muted)' };
+      const today = new Date(); today.setHours(0,0,0,0);
+
+      function expStatus(expStr) {
+        if (!expStr) return '';
+        const parts = expStr.split(/[\/\-]/);
+        const d = new Date(parseInt(parts[2]) < 100 ? 2000+parseInt(parts[2]) : parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+        d.setHours(0,0,0,0);
+        if (isNaN(d)) return '';
+        const days = Math.round((d - today) / 86400000);
+        if (days < 0) return 'expired';
+        if (days <= 30) return 'soon';
+        return 'active';
+      }
+
+      // Group rows
+      let groups = {};
+      let groupKey = r => sortMode === 'attorney' ? (r.attorney || '—') : sortMode === 'court' ? (r.courtDate || 'No court date') : (r.caseNum || '—');
+
+      rows.forEach(r => {
+        const k = groupKey(r);
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(r);
+      });
+
+      const sortedKeys = Object.keys(groups).sort((a, b) => {
+        if (sortMode === 'court') {
+          if (a === 'No court date') return 1;
+          if (b === 'No court date') return -1;
+        }
+        return a.localeCompare(b);
+      });
+
+      const sortBtns = ['attorney', 'court', 'expiration'].map(m => {
+        const labels = { attorney: 'By Attorney', court: 'By Court Date', expiration: 'By Expiration' };
+        const active = m === sortMode;
+        return `<button onclick="trackerSort('${m}')" style="padding:6px 10px;border-radius:6px;border:${active ? '2px solid var(--accent)' : '1px solid var(--border)'};background:${active ? 'var(--surface2)' : 'transparent'};color:${active ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${labels[m]}</button>`;
+      }).join('');
+
+      const groupsHtml = sortedKeys.map(k => {
+        const caseRows = groups[k];
+        const rowsHtml = caseRows.map(r => {
+          const st = expStatus(r.expDate);
+          const stColor = colors[st] || 'var(--muted)';
+          return `<div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 10px;border-top:1px solid var(--border);font-size:11px">
+            <span style="color:var(--muted)">${sortMode !== 'attorney' ? (r.attorney || '—') + ' · ' : ''}${sortMode !== 'court' ? (r.courtDate || 'No court date') + ' · ' : ''}PAE #${r.authNum} · ${r.authHrs || '—'} hrs</span>
+            <span style="color:${stColor};font-family:var(--ui);font-weight:700;white-space:nowrap">${r.expDate || '—'}</span>
+            <span style="color:var(--muted)">${sortMode === 'attorney' ? r.caseNum + ' — ' + r.clientLast : ''}</span>
+            <span style="color:${stColor};font-size:10px;text-align:right">${st === 'expired' ? 'Expired' : st === 'soon' ? 'Soon' : st === 'active' ? 'Active' : ''}</span>
+          </div>`;
+        }).join('');
+        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px">
+          <div style="padding:8px 10px;background:var(--surface2);font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${k}</div>
+          ${rowsHtml}
+        </div>`;
+      }).join('');
+
+      box.innerHTML = `
+        <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">Case Tracker</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${sortBtns}</div>
+        <div style="overflow-y:auto;flex:1">${rows.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No data in master tracker yet.<br>Drop a PAE to populate it.</div>'}</div>
+        <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
+      `;
+    }
+
+    window.trackerSort = m => { sortMode = m; renderTracker(); };
+    renderTracker();
+
+  } catch (err) {
+    box.innerHTML = `<div style="color:#e55;font-size:13px;padding:20px;text-align:center">Error: ${err.message}</div><button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>`;
+  }
 }
 
 async function handlePaeImage(imageFile) {

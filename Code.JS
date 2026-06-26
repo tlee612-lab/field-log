@@ -80,6 +80,8 @@ function doGet(e) {
     if (action === 'getVehicles') return buildResponse(getVehiclesData());
     if (action === 'getMileageLog') return buildResponse(getMileageLogData(e.parameter.case || ''));
     if (action === 'getPaeExpirations') return buildResponse(getPaeExpirations());
+    if (action === 'getMasterData') return buildResponse(getMasterData());
+    if (action === 'rebuildMaster') return buildResponse(rebuildMasterTracker());
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
       const reqId = e.parameter.reqId || '';
@@ -111,6 +113,8 @@ function doPost(e) {
     if (action === 'createCase')  return buildResponse(createCase(body));
     if (action === 'logMileage')  return buildResponse(logMileageEntry(body));
     if (action === 'saveVehicle') return buildResponse(saveVehicleRecord(body));
+    if (action === 'setCourtDate') return buildResponse(setCourtDateAction(body));
+    if (action === 'rebuildMaster') return buildResponse(rebuildMasterTracker());
 
     const reqId = body.reqId || '';
     const incoming = body.data !== undefined ? body.data : body;
@@ -618,6 +622,13 @@ function createCase(body) {
     Logger.log('createCase: ' + paeCount + ' new PAE row(s) added');
   }
 
+  // Update master tracker
+  try {
+    const allPaes = getAllPaesFromSheet(paeSheet);
+    const courtDate = String(paeSheet.getRange('B4').getValue() || '').trim();
+    updateMasterForCase(caseNum, clientLast, clientFirst, allPaes, courtDate);
+  } catch(e) { Logger.log('Master tracker update error: ' + e.message); }
+
   return {
     status:   'ok',
     created:   isNew,
@@ -878,6 +889,215 @@ function setupRetainedSheet(sheet, folderName) {
   Logger.log('setupRetainedSheet: complete');
 }
 
+// ── Master Tracker ───────────────────────────────────────────────────────────
+const MASTER_TRACKER_NAME = 'OPS Track Master';
+const MASTER_TRACKER_HEADERS = [
+  'Case #', 'Client Last', 'Client First', 'Attorney', 'Court Date',
+  'PAE #', 'Auth Hrs', 'Rate/Hr', 'Svc Amt', 'Total Costs',
+  'Eff Date', 'Exp Date', 'County'
+];
+
+function getMasterTrackerSheet() {
+  const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+  const files = autoLogFolder.getFilesByName(MASTER_TRACKER_NAME);
+  let ss;
+  if (files.hasNext()) {
+    ss = SpreadsheetApp.openById(files.next().getId());
+  } else {
+    ss = SpreadsheetApp.create(MASTER_TRACKER_NAME);
+    DriveApp.getFileById(ss.getId()).moveTo(autoLogFolder);
+    const sheet = ss.getActiveSheet();
+    sheet.setName('Tracker');
+    setupMasterTrackerSheet(sheet);
+  }
+  return ss.getSheetByName('Tracker') || ss.getActiveSheet();
+}
+
+function setupMasterTrackerSheet(sheet) {
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, MASTER_TRACKER_HEADERS.length).setValues([MASTER_TRACKER_HEADERS]);
+  const hdr = sheet.getRange(1, 1, 1, MASTER_TRACKER_HEADERS.length);
+  hdr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+  sheet.setFrozenRows(1);
+  [80, 90, 90, 130, 90, 80, 70, 70, 80, 90, 90, 90, 100].forEach((w, i) => sheet.setColumnWidth(i+1, w));
+}
+
+function updateMasterForCase(caseNum, clientLast, clientFirst, paes, courtDate) {
+  try {
+    const sheet = getMasterTrackerSheet();
+    const lastRow = Math.max(sheet.getLastRow(), 1);
+    const tz = Session.getScriptTimeZone();
+
+    // Remove existing rows for this case
+    if (lastRow > 1) {
+      const caseCol = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = caseCol.length - 1; i >= 0; i--) {
+        if (String(caseCol[i][0]).trim() === caseNum) {
+          sheet.deleteRow(i + 2);
+        }
+      }
+    }
+
+    // Append one row per PAE
+    paes.forEach(p => {
+      const expRaw = p.expirationDate;
+      const effRaw = p.effectiveDate;
+      const expDate = expRaw instanceof Date && !isNaN(expRaw.getTime())
+        ? Utilities.formatDate(expRaw, tz, 'MM/dd/yyyy') : (expRaw || '');
+      const effDate = effRaw instanceof Date && !isNaN(effRaw.getTime())
+        ? Utilities.formatDate(effRaw, tz, 'MM/dd/yyyy') : (effRaw || '');
+      sheet.appendRow([
+        caseNum, clientLast || '', clientFirst || '',
+        p.attorney || '', courtDate || '',
+        p.authNumber || '', parseFloat(p.hours) || '',
+        parseFloat(p.approvedRate) || '', parseFloat(p.serviceAmount) || '',
+        parseFloat(p.totalCosts) || '', effDate, expDate, p.county || ''
+      ]);
+    });
+
+    // If no PAEs, still write a placeholder row
+    if (!paes || !paes.length) {
+      sheet.appendRow([caseNum, clientLast || '', clientFirst || '', '', courtDate || '', '', '', '', '', '', '', '', '']);
+    }
+  } catch(err) {
+    Logger.log('updateMasterForCase error: ' + err.message);
+  }
+}
+
+function setCourtDateAction(body) {
+  try {
+    const caseNum = String(body.case || '').trim();
+    const courtDate = String(body.courtDate || '').trim();
+    if (!caseNum) return { status: 'error', message: 'No case number' };
+
+    // Update master tracker rows
+    const masterSheet = getMasterTrackerSheet();
+    const lastRow = masterSheet.getLastRow();
+    let updated = 0;
+    if (lastRow >= 2) {
+      const data = masterSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      data.forEach((row, i) => {
+        if (String(row[0]).trim() === caseNum) {
+          masterSheet.getRange(i + 2, 5).setValue(courtDate);
+          updated++;
+        }
+      });
+    }
+
+    // Write to the case's PAE Summary sheet B4
+    try {
+      const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+      const folders = autoLogFolder.getFolders();
+      while (folders.hasNext()) {
+        const folder = folders.next();
+        if (!folder.getName().startsWith(caseNum + ' ')) continue;
+        const files = folder.getFiles();
+        while (files.hasNext()) {
+          const file = files.next();
+          if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
+          const ss = SpreadsheetApp.openById(file.getId());
+          const paeSheet = ss.getSheetByName('PAE Summary');
+          if (paeSheet) paeSheet.getRange('B4').setValue(courtDate);
+          break;
+        }
+        break;
+      }
+    } catch(e) { Logger.log('setCourtDate PAE sheet error: ' + e.message); }
+
+    return { status: 'ok', updated };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
+function rebuildMasterTracker() {
+  try {
+    const sheet = getMasterTrackerSheet();
+    setupMasterTrackerSheet(sheet);
+    const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+    const tz = Session.getScriptTimeZone();
+    const folders = autoLogFolder.getFolders();
+    let totalRows = 0;
+    while (folders.hasNext()) {
+      const folder = folders.next();
+      const folderName = folder.getName();
+      const parts = folderName.split(' - ');
+      if (parts.length < 2) continue;
+      const caseNum = parts[0].trim();
+      const clientPart = parts.slice(1).join(' - ').trim();
+      const nameParts = clientPart.split(',');
+      const clientLast = nameParts[0].trim();
+      const clientFirst = nameParts.length > 1 ? nameParts[1].trim() : '';
+      const files = folder.getFiles();
+      while (files.hasNext()) {
+        const file = files.next();
+        if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
+        try {
+          const ss = SpreadsheetApp.openById(file.getId());
+          const paeSheet = ss.getSheetByName('PAE Summary');
+          if (!paeSheet) break;
+          const courtDate = String(paeSheet.getRange('B4').getValue() || '').trim();
+          const zone = paeSheet.getRange(6, 1, 45, 10).getValues();
+          let addedForCase = false;
+          zone.forEach(row => {
+            const authNum = String(row[0]).trim();
+            if (!authNum) return;
+            const expRaw = row[7]; const effRaw = row[6];
+            const expDate = expRaw instanceof Date && !isNaN(expRaw.getTime()) ? Utilities.formatDate(expRaw, tz, 'MM/dd/yyyy') : String(expRaw || '').trim();
+            const effDate = effRaw instanceof Date && !isNaN(effRaw.getTime()) ? Utilities.formatDate(effRaw, tz, 'MM/dd/yyyy') : String(effRaw || '').trim();
+            sheet.appendRow([
+              caseNum, clientLast, clientFirst,
+              String(row[9] || '').trim(), courtDate,
+              authNum, row[1] || '', row[2] || '', row[3] || '', row[5] || '',
+              effDate, expDate, String(row[8] || '').trim()
+            ]);
+            totalRows++;
+            addedForCase = true;
+          });
+          if (!addedForCase) {
+            sheet.appendRow([caseNum, clientLast, clientFirst, '', courtDate, '', '', '', '', '', '', '', '']);
+            totalRows++;
+          }
+        } catch(e) { Logger.log('rebuildMaster case error: ' + e.message); }
+        break;
+      }
+    }
+    return { status: 'ok', rows: totalRows };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
+function getMasterData() {
+  try {
+    const sheet = getMasterTrackerSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { status: 'ok', rows: [] };
+    const data = sheet.getRange(2, 1, lastRow - 1, MASTER_TRACKER_HEADERS.length).getValues();
+    const tz = Session.getScriptTimeZone();
+    const rows = data
+      .filter(r => String(r[0]).trim())
+      .map(r => ({
+        caseNum:    String(r[0]).trim(),
+        clientLast: String(r[1]).trim(),
+        clientFirst:String(r[2]).trim(),
+        attorney:   String(r[3]).trim(),
+        courtDate:  String(r[4]).trim(),
+        authNum:    String(r[5]).trim(),
+        authHrs:    r[6] || '',
+        rate:       r[7] || '',
+        svcAmt:     r[8] || '',
+        totalCosts: r[9] || '',
+        effDate:    r[10] instanceof Date && !isNaN(r[10].getTime()) ? Utilities.formatDate(r[10], tz, 'MM/dd/yyyy') : String(r[10] || '').trim(),
+        expDate:    r[11] instanceof Date && !isNaN(r[11].getTime()) ? Utilities.formatDate(r[11], tz, 'MM/dd/yyyy') : String(r[11] || '').trim(),
+        county:     String(r[12] || '').trim()
+      }));
+    return { status: 'ok', rows };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
 function getPaeExpirations() {
   try {
     const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
@@ -955,9 +1175,11 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
   sheet.getRange('B2').setValue(caseNum);
   sheet.getRange('A3').setValue('Client');
   sheet.getRange('B3').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
+  sheet.getRange('A4').setValue('Court Date');
+  sheet.getRange('B4').setValue('');
 
   // Style info block
-  const infoLabels = sheet.getRange('A1:A3');
+  const infoLabels = sheet.getRange('A1:A4');
   infoLabels.setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
 
   sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
@@ -1041,6 +1263,29 @@ function addPaesToSummarySheet(sheet, paes) {
   });
 
   return added;
+}
+
+function getAllPaesFromSheet(paeSheet) {
+  const tz = Session.getScriptTimeZone();
+  const zone = paeSheet.getRange(6, 1, 45, 10).getValues();
+  const results = [];
+  zone.forEach(row => {
+    const authNum = String(row[0]).trim();
+    if (!authNum) return;
+    const expRaw = row[7]; const effRaw = row[6];
+    results.push({
+      authNumber:    authNum,
+      hours:         row[1] || '',
+      approvedRate:  row[2] || '',
+      serviceAmount: row[3] || '',
+      totalCosts:    row[5] || '',
+      effectiveDate: effRaw instanceof Date && !isNaN(effRaw.getTime()) ? Utilities.formatDate(effRaw, tz, 'MM/dd/yyyy') : String(effRaw || '').trim(),
+      expirationDate:expRaw instanceof Date && !isNaN(expRaw.getTime()) ? Utilities.formatDate(expRaw, tz, 'MM/dd/yyyy') : String(expRaw || '').trim(),
+      county:        String(row[8] || '').trim(),
+      attorney:      String(row[9] || '').trim()
+    });
+  });
+  return results;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
