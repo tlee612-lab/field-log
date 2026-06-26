@@ -1154,8 +1154,16 @@ function closeCasesModal() {
 }
 
 async function refreshCasesModal() {
-  await fetchRemoteCases(true);
-  buildCasesModalList();
+  const btn = document.querySelector('#casesModal button[onclick="refreshCasesModal()"]');
+  if (btn) { btn.textContent = '⏳ Refreshing…'; btn.disabled = true; }
+  try {
+    await fetchRemoteCases(true);
+    buildCasesModalList();
+  } catch(e) {
+    showToast('Refresh failed: ' + e.message, true);
+  } finally {
+    if (btn) { btn.textContent = '↺ Refresh'; btn.disabled = false; }
+  }
 }
 
 function buildCasesModalList() {
@@ -1224,6 +1232,20 @@ async function openTrackerViewer() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Error');
+
+    // If sheet was just created or is empty, rebuild from all case folders
+    if (data.created || !data.rows.length) {
+      if (data.created) showToast('OPS Track Master created — building tracker…');
+      box.querySelector('div:last-child').textContent = 'Building tracker from Drive…';
+      const rebuildRes = await fetch(cfg.webhookUrl + '?action=rebuildMaster');
+      const rebuildData = await rebuildRes.json();
+      if (rebuildData.status === 'ok') {
+        // Re-fetch populated data
+        const res2 = await fetch(cfg.webhookUrl + '?action=getMasterData');
+        const data2 = await res2.json();
+        if (data2.status === 'ok') data.rows = data2.rows;
+      }
+    }
 
     let sortMode = 'attorney';
     const rows = data.rows || [];

@@ -897,6 +897,8 @@ const MASTER_TRACKER_HEADERS = [
   'Eff Date', 'Exp Date', 'County'
 ];
 
+let _masterTrackerCreatedThisRequest = false;
+
 function getMasterTrackerSheet() {
   const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
   const files = autoLogFolder.getFilesByName(MASTER_TRACKER_NAME);
@@ -905,10 +907,11 @@ function getMasterTrackerSheet() {
     ss = SpreadsheetApp.openById(files.next().getId());
   } else {
     ss = SpreadsheetApp.create(MASTER_TRACKER_NAME);
-    DriveApp.getFileById(ss.getId()).moveTo(autoLogFolder);
+    try { DriveApp.getFileById(ss.getId()).moveTo(autoLogFolder); } catch(e) { Logger.log('moveTo failed: ' + e.message); }
     const sheet = ss.getActiveSheet();
     sheet.setName('Tracker');
     setupMasterTrackerSheet(sheet);
+    _masterTrackerCreatedThisRequest = true;
   }
   return ss.getSheetByName('Tracker') || ss.getActiveSheet();
 }
@@ -1062,7 +1065,7 @@ function rebuildMasterTracker() {
         break;
       }
     }
-    return { status: 'ok', rows: totalRows };
+    return { status: 'ok', rows: totalRows, created: _masterTrackerCreatedThisRequest };
   } catch(err) {
     return { status: 'error', message: err.message };
   }
@@ -1092,7 +1095,7 @@ function getMasterData() {
         expDate:    r[11] instanceof Date && !isNaN(r[11].getTime()) ? Utilities.formatDate(r[11], tz, 'MM/dd/yyyy') : String(r[11] || '').trim(),
         county:     String(r[12] || '').trim()
       }));
-    return { status: 'ok', rows };
+    return { status: 'ok', rows, created: _masterTrackerCreatedThisRequest };
   } catch(err) {
     return { status: 'error', message: err.message };
   }
