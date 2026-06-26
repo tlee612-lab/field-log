@@ -1047,23 +1047,15 @@ function parsePaeText(text) {
   const total = flat.match(/Total\s+Authorized\s+Costs?[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
   if (total) result.totalCosts = total[1].replace(/,/g,'').trim();
 
-  // Extract dates — find all date patterns and assume first is effective, last is expiration
-  const datePattern = /([0-9]{1,2})[\/\-]([0-9]{1,2})[\/\-]([0-9]{2,4})/g;
-  const allDates = [];
-  let dateMatch;
-  while ((dateMatch = datePattern.exec(flat)) !== null) {
-    allDates.push(dateMatch[0]);
-  }
+  // Effective date — labeled field in the PAE form
+  const effMatch = flat.match(/Effective\s+Date[:\s]+([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
+  if (effMatch) result.effectiveDate = effMatch[1].trim();
 
-  if (allDates.length > 0) {
-    result.effectiveDate = allDates[0]; // First date found
-    if (allDates.length > 1) {
-      result.expirationDate = allDates[allDates.length - 1]; // Last date found
-    }
-  }
+  // Expiration date — labeled field in the PAE form
+  const expMatch = flat.match(/Expir\w*\s+Date[:\s]+([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
+  if (expMatch) result.expirationDate = expMatch[1].trim();
 
-  // Store debug info for display in toast
-  result._debugDates = `Found ${allDates.length} dates: ${allDates.join(', ')}`;
+  result._debugDates = `eff=${result.effectiveDate || 'not found'} exp=${result.expirationDate || 'not found'}`;
 
   return result;
 }
