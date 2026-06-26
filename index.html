@@ -1047,13 +1047,28 @@ function parsePaeText(text) {
   const total = flat.match(/Total\s+Authorized\s+Costs?[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
   if (total) result.totalCosts = total[1].replace(/,/g,'').trim();
 
-  // Effective date
-  const effMatch = flat.match(/Effective\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
-  if (effMatch) result.effectiveDate = effMatch[1].trim();
-
-  // Expiration date
+  // Expiration date — labeled match
   const expMatch = flat.match(/Expiration\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
   if (expMatch) result.expirationDate = expMatch[1].trim();
+
+  // Processed date — identify so we can exclude it
+  const procMatch = flat.match(/Processed\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  const procDate = procMatch ? procMatch[1].trim() : null;
+
+  // Effective date — labeled match first; if that fails, find all dates and exclude
+  // expiration and processed date, then take the earliest remaining
+  const effLabeled = flat.match(/Effective\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  if (effLabeled) {
+    result.effectiveDate = effLabeled[1].trim();
+  } else {
+    const exclude = new Set([result.expirationDate, procDate].filter(Boolean));
+    const allDates = [...flat.matchAll(/\d{1,2}\/\d{1,2}\/\d{4}/g)].map(m => m[0]);
+    const candidates = allDates.filter(d => !exclude.has(d));
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => new Date(a) - new Date(b));
+      result.effectiveDate = candidates[0];
+    }
+  }
 
   result._debugDates = `eff=${result.effectiveDate || 'not found'} exp=${result.expirationDate || 'not found'}`;
 
