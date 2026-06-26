@@ -1559,6 +1559,9 @@ async function handlePaeFile(file) {
     const createEl = document.getElementById('paeCreateBtn');
 
     if (filled.length > 0) {
+      // TEMP DEBUG — remove after fixing date parsing
+      showToast('DEBUG: ' + (parsed._debugDates || 'no debug') + ' | sample: ' + (parsed._textSample || '').substring(0, 120), false, 12000);
+
       // Store PAE data keyed by case number
       if (parsed.caseNumber) {
         const rawExisting = paeStore[parsed.caseNumber];
