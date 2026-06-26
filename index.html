@@ -393,7 +393,6 @@
     </div>
   </div>
   </div><!-- end aiSection -->
-  <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;padding:2px 0">build 85c4312</div>
   </div><!-- end sidebar -->
 
   <div id="devModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;padding:20px">
@@ -1054,9 +1053,8 @@ function parsePaeText(text) {
                 || flat.match(/Effective\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (effMatch) result.effectiveDate = effMatch[1].trim();
 
-  // Expiration date — date follows "must be billed by this date." in extracted text
-  const expMatch = flat.match(/billed\s+by\s+this\s+date\.?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i)
-                || flat.match(/Expiration\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  // Expiration date — label is in text but email addresses sit between it and the date
+  const expMatch = flat.match(/Expiration\s+Date:.{0,300}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (expMatch) result.expirationDate = expMatch[1].trim();
 
   result._debugDates = `eff=${result.effectiveDate || 'not found'} exp=${result.expirationDate || 'not found'}`;
@@ -3711,5 +3709,6 @@ async function loadVehiclesFromDrive() {
 // END MILEAGE MODULE
 // ════════════════════════════════════════════════════════════════════
 </script>
+<div style="position:fixed;bottom:4px;right:6px;font-family:monospace;font-size:9px;color:#555;z-index:9999">cef0f50</div>
 </body>
 </html>
