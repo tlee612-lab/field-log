@@ -1047,11 +1047,12 @@ function parsePaeText(text) {
   const total = flat.match(/Total\s+Authorized\s+Costs?[:\s]*\$?([0-9,]+(?:\.[0-9]+)?)/i);
   if (total) result.totalCosts = total[1].replace(/,/g,'').trim();
 
-  // Effective date — labeled field, date may use 2 or 4 digit year
-  const effMatch = flat.match(/Effective\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  // Effective date — date follows the description "will not be paid." in extracted text
+  const effMatch = flat.match(/will\s+not\s+be\s+paid\.?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i)
+                || flat.match(/Effective\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (effMatch) result.effectiveDate = effMatch[1].trim();
 
-  // Expiration date — labeled field, date may use 2 or 4 digit year
+  // Expiration date — labeled field
   const expMatch = flat.match(/Expiration\s+Date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (expMatch) result.expirationDate = expMatch[1].trim();
 
@@ -1559,8 +1560,9 @@ async function handlePaeFile(file) {
     const createEl = document.getElementById('paeCreateBtn');
 
     if (filled.length > 0) {
-      // TEMP DEBUG — remove after fixing date parsing
-      showToast('DEBUG: ' + (parsed._debugDates || 'no debug') + ' | sample: ' + (parsed._textSample || '').substring(0, 120), false, 12000);
+      // TEMP DEBUG — shows extracted text in modal so we can see what the parser gets
+      const _dbgEl = document.getElementById('paeDebugOut') || (() => { const d = document.createElement('div'); d.id='paeDebugOut'; d.style='font-size:10px;font-family:monospace;color:#f80;background:#111;padding:8px;margin:8px 0;border-radius:6px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto'; document.getElementById('paeModalList')?.before(d); return d; })();
+      _dbgEl.textContent = (parsed._debugDates || '') + '\n\nTEXT:\n' + (parsed._textSample || '').substring(0, 500);
 
       // Store PAE data keyed by case number
       if (parsed.caseNumber) {
