@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#233]</title>
+<title>OPS Track [#234]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -665,7 +665,7 @@
 <div id="mileageModal" class="mlg-modal-overlay" onclick="if(event.target===this)closeMileageModal()">
   <div class="mlg-modal-inner">
     <button class="mlg-close-btn" onclick="closeMileageModal()">✕</button>
-    <div class="mlg-title">📍 Mileage Entry</div>
+    <div class="mlg-title">📍 Mileage Entry <span style="font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0;text-transform:none">(non-case)</span></div>
 
     <!-- Row 1: Date / Case / Investigator -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -677,6 +677,10 @@
         <label>Case #</label>
         <input type="text" id="mlgCaseNum" placeholder="e.g. 25CR12345" autocapitalize="characters" autocorrect="off" spellcheck="false">
       </div>
+    </div>
+    <div class="mlg-fg" style="margin-bottom:10px">
+      <label>Note <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(if non-case related)</span></label>
+      <input type="text" id="mlgNote" placeholder="e.g. Office supply run, Training, Personal errand" autocapitalize="sentences" autocorrect="off" spellcheck="false">
     </div>
     <div class="mlg-2col" style="margin-bottom:10px">
       <div class="mlg-fg" style="margin-bottom:0">
@@ -3326,7 +3330,7 @@ function openMileageModal() {
   });
 
   // Reset fields
-  ['mlgOrigin','mlgDest','mlgOriginCity','mlgDestCity','mlgNotes','mlgOdomStart','mlgOdomEnd'].forEach(id => {
+  ['mlgOrigin','mlgDest','mlgOriginCity','mlgDestCity','mlgNote','mlgNotes','mlgOdomStart','mlgOdomEnd'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const milesField = document.getElementById('mlgMiles');
@@ -3518,6 +3522,7 @@ async function confirmMileageEntry() {
     entry_id:             crypto.randomUUID(),
     date:                 document.getElementById('mlgDate').value,
     case_number:          document.getElementById('mlgCaseNum').value.trim(),
+    trip_note:            document.getElementById('mlgNote').value.trim(),
     investigator:         document.getElementById('mlgInvestigator').value.trim(),
     vehicle_id:           vehicleId || null,
     vehicle_label:        vehicle?.label || null,
