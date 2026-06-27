@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#242]</title>
+<title>OPS Track [#243]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -557,8 +557,10 @@
     <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📍 Mileage Log</div>
     <div class="mlg-2col" style="margin-bottom:8px;align-items:flex-end">
       <div class="mlg-fg" style="margin-bottom:0">
-        <label>Filter by Case #</label>
-        <input type="text" id="mlgFilterCase" placeholder="e.g. 25CR12345" oninput="renderMileageLog()" autocapitalize="characters" autocorrect="off" spellcheck="false">
+        <label>Filter by Vehicle</label>
+        <select id="mlgFilterVehicle" onchange="renderMileageLog()">
+          <option value="">All Vehicles</option>
+        </select>
       </div>
       <button class="ai-btn secondary" style="padding:11px 12px;font-size:11px" onclick="fetchMileageLogFromDrive()">↻ Refresh</button>
     </div>
@@ -3588,12 +3590,12 @@ async function confirmMileageEntry() {
 // ── Mileage Log rendering ────────────────────────────────────────────
 
 function renderMileageLog() {
-  const filterCase     = (document.getElementById('mlgFilterCase')?.value || '').trim().toLowerCase();
+  const filterVehicle  = document.getElementById('mlgFilterVehicle')?.value || '';
   const filterDateFrom = document.getElementById('mlgFilterFrom')?.value || '';
   const filterDateTo   = document.getElementById('mlgFilterTo')?.value   || '';
 
   let filtered = [...mileageEntries];
-  if (filterCase)     filtered = filtered.filter(e => (e.case_number || '').toLowerCase().includes(filterCase));
+  if (filterVehicle)  filtered = filtered.filter(e => (e.vehicle_id || '') === filterVehicle);
   if (filterDateFrom) filtered = filtered.filter(e => (e.date || '') >= filterDateFrom);
   if (filterDateTo)   filtered = filtered.filter(e => (e.date || '') <= filterDateTo);
 
@@ -3624,9 +3626,7 @@ function renderMileageLog() {
 async function fetchMileageLogFromDrive() {
   if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
   try {
-    const caseFilter = document.getElementById('mlgFilterCase')?.value?.trim() || '';
-    let url = cfg.webhookUrl + '?action=getMileageLog';
-    if (caseFilter) url += '&case=' + encodeURIComponent(caseFilter);
+    const url = cfg.webhookUrl + '?action=getMileageLog';
     const resp = await fetch(url);
     const data = await resp.json();
     if (data.status === 'ok' && Array.isArray(data.entries)) {
@@ -3689,6 +3689,14 @@ function closeVehicleModal() {
   document.getElementById('vehicleModal').style.display = 'none';
 }
 function openMileageLogModal() {
+  const sel = document.getElementById('mlgFilterVehicle');
+  sel.innerHTML = '<option value="">All Vehicles</option>';
+  vehicles.filter(v => v.active).forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.vehicle_id;
+    opt.textContent = v.label;
+    sel.appendChild(opt);
+  });
   renderMileageLog();
   document.getElementById('mileageLogModal').style.display = 'flex';
 }
