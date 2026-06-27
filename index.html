@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#225]</title>
+<title>OPS Track [#226]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1544,6 +1544,16 @@ async function handlePaeFile(file) {
   try {
     const text = await extractPdfText(file);
     const parsed = parsePaeText(text);
+
+    // Reject PAEs from a different case than what's already in this session
+    if (_sessionPaes.length > 0 && parsed.caseNumber) {
+      const sessionCase = _sessionPaes[0].caseNumber;
+      if (sessionCase && parsed.caseNumber.toLowerCase() !== sessionCase.toLowerCase()) {
+        showToast('Different case # (' + parsed.caseNumber + ') — start a new session for a different case', true);
+        return;
+      }
+    }
+
     let filled = [];
     if (parsed.caseNumber) {
       document.getElementById('caseNum').value = parsed.caseNumber;
