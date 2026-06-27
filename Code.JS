@@ -19,7 +19,7 @@ const MILEAGE_LOG_HEADERS = [
 
 const VEHICLE_HEADERS = [
   'vehicle_id', 'label', 'year', 'make', 'model', 'color', 'plate',
-  'year_starting_mileage', 'is_default', 'active', 'created_date'
+  'year_starting_mileage', 'year_ending_mileage', 'owner', 'is_default', 'active', 'created_date'
 ];
 
 const HEADERS = [

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#239]</title>
+<title>OPS Track [#240]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -841,9 +841,19 @@
         <input type="text" id="vPlate" placeholder="e.g. ABC123" autocapitalize="characters">
       </div>
     </div>
+    <div class="mlg-2col" style="margin-bottom:8px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Year Starting Mileage <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(Jan 1)</span></label>
+        <input type="number" id="vStartMileage" placeholder="e.g. 47200" min="0">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Year Ending Mileage <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(Dec 31)</span></label>
+        <input type="number" id="vEndMileage" placeholder="e.g. 58400" min="0">
+      </div>
+    </div>
     <div class="mlg-fg">
-      <label>Year Starting Mileage <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(odometer Jan 1)</span></label>
-      <input type="number" id="vStartMileage" placeholder="e.g. 47200" min="0">
+      <label>Owner</label>
+      <input type="text" id="vOwner" placeholder="e.g. Thomas Lee" autocapitalize="words" autocorrect="off" spellcheck="false">
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
       <label class="toggle-switch">
@@ -3715,13 +3725,15 @@ function addVehicle() {
     color:                 document.getElementById('vColor').value.trim()   || null,
     plate:                 document.getElementById('vPlate').value.trim()   || null,
     year_starting_mileage: parseInt(document.getElementById('vStartMileage').value) || null,
+    year_ending_mileage:   parseInt(document.getElementById('vEndMileage').value)   || null,
+    owner:                 document.getElementById('vOwner').value.trim()            || null,
     is_default:            setDefault,
     active:                true,
     created_date:          new Date().toISOString().split('T')[0]
   };
   vehicles.push(vehicle);
   saveVehiclesLocal();
-  ['vLabel','vYear','vMake','vModel','vColor','vPlate','vStartMileage'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['vLabel','vYear','vMake','vModel','vColor','vPlate','vStartMileage','vEndMileage','vOwner'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('vSetDefault').checked = false;
   renderVehicleList();
   if (cfg.webhookUrl) { fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'saveVehicle', ...vehicle }) }).catch(() => {}); }
