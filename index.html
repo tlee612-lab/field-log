@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#244]</title>
+<title>OPS Track [#245]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -664,11 +664,19 @@
         <label>Purpose <span style="color:var(--warn)">*</span></label>
         <select id="mlgPurpose">
           <option value="">Select…</option>
-          <option value="Investigation">Investigation</option>
-          <option value="Court">Court</option>
-          <option value="Attorney Meeting">Attorney Meeting</option>
-          <option value="Records Retrieval">Records Retrieval</option>
-          <option value="Surveillance">Surveillance</option>
+          <optgroup label="Business">
+            <option value="Office / Admin">Office / Admin</option>
+            <option value="Training / Education">Training / Education</option>
+            <option value="Supply Run">Supply Run</option>
+            <option value="Bank / Errands">Bank / Errands</option>
+            <option value="Client Meeting">Client Meeting</option>
+            <option value="Meals &amp; Entertainment">Meals &amp; Entertainment</option>
+          </optgroup>
+          <optgroup label="Personal">
+            <option value="Personal">Personal</option>
+            <option value="Medical">Medical</option>
+            <option value="Commute">Commute</option>
+          </optgroup>
           <option value="Other">Other</option>
         </select>
       </div>
