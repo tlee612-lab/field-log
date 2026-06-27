@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#230]</title>
+<title>OPS Track [#231]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -791,7 +791,6 @@
       <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
       <button id="paeDoneBtn" onclick="createCaseFromPae()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
       <button id="paeSkipBtn" onclick="closePaeModal()" style="display:none;width:100%;margin-top:6px;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">✓ Done without creating</button>
-      <button onclick="checkPaeExpirations()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
       <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
     </div>
     <!-- Retainer Tab -->
@@ -845,6 +844,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
       <button onclick="refreshCasesModal()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">↺ Refresh</button>
       <button onclick="openTrackerViewer()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">⊞ View Tracker</button>
+      <button onclick="checkPaeExpirations()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
     </div>
     <div id="casesModalList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px"></div>
   </div>
@@ -1145,7 +1145,7 @@ function saveCourtDatesLocal() { localStorage.setItem('tli_court_dates', JSON.st
 // ── Cases modal ──────────────────────────────────────────────────────────────
 function openCasesModal() {
   document.getElementById('casesModal').style.display = 'flex';
-  loadCasesModalFromMaster();
+  buildCasesModalList();
 }
 
 function closeCasesModal() {
