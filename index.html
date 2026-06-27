@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#240]</title>
+<title>OPS Track [#241]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -862,7 +862,8 @@
       </label>
       <label for="vSetDefault" style="font-family:var(--ui);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text);cursor:pointer">Set as Default</label>
     </div>
-    <button class="ai-btn" style="max-width:160px;margin-bottom:16px" onclick="addVehicle()">+ Add Vehicle</button>
+    <button class="ai-btn" id="vSubmitBtn" style="max-width:160px;margin-bottom:16px" onclick="addVehicle()">+ Add Vehicle</button>
+    <button class="veh-btn" id="vCancelEditBtn" style="display:none;border:1px solid var(--muted);color:var(--muted);margin-left:8px;margin-bottom:16px" onclick="cancelVehicleEdit()">Cancel</button>
     <div style="border-top:1px solid var(--border);margin-bottom:12px"></div>
     <div style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Saved Vehicles</div>
     <div id="vehicleList">
@@ -1167,7 +1168,7 @@ function saveCourtDatesLocal() { localStorage.setItem('tli_court_dates', JSON.st
 // ── Cases modal ──────────────────────────────────────────────────────────────
 function openCasesModal() {
   document.getElementById('casesModal').style.display = 'flex';
-  buildCasesModalList();
+  openTrackerViewer();
 }
 
 function closeCasesModal() {
@@ -1199,15 +1200,10 @@ async function rebuildTrackerFromModal() {
 }
 
 async function refreshCasesModal() {
-  const btn = document.querySelector('#casesModal button[onclick="refreshCasesModal()"]');
-  if (btn) { btn.textContent = '⏳ Refreshing…'; btn.disabled = true; }
   try {
     await fetchRemoteCases(true);
-    buildCasesModalList();
   } catch(e) {
     showToast('Refresh failed: ' + e.message, true);
-  } finally {
-    if (btn) { btn.textContent = '↺ Refresh'; btn.disabled = false; }
   }
 }
 
@@ -3306,6 +3302,7 @@ function showToast(msg, isError=false) {
 // ════════════════════════════════════════════════════════════════════
 
 let vehicles = JSON.parse(localStorage.getItem('tli_vehicles') || '[]');
+let _editVehicleIndex = -1;
 let mileageEntries = JSON.parse(localStorage.getItem('tli_mileage_entries') || '[]');
 
 // ── Local persistence ────────────────────────────────────────────────
@@ -3700,6 +3697,7 @@ function renderVehicleList() {
       <div class="veh-card-header">
         <span class="veh-card-name${v.is_default ? ' is-default' : ''}">${v.is_default ? '★ ' : ''}${v.label}</span>
         <div style="display:flex;gap:6px">
+          <button class="veh-btn" onclick="editVehicle(${i})" style="border:1px solid var(--accent);color:var(--accent)">Edit</button>
           ${!v.is_default && v.active ? `<button class="veh-btn" onclick="setDefaultVehicle(${i})" style="border:1px solid var(--accent2);color:var(--accent2)">Set Default</button>` : ''}
           <button class="veh-btn" onclick="toggleVehicleActive(${i})" style="border:1px solid var(--muted);color:var(--muted)">${v.active ? 'Deactivate' : 'Activate'}</button>
         </div>
@@ -3713,11 +3711,10 @@ function renderVehicleList() {
 function addVehicle() {
   const label = document.getElementById('vLabel').value.trim();
   if (!label) { showToast('Vehicle label is required', true); return; }
-  const isFirst   = vehicles.length === 0;
-  const setDefault = document.getElementById('vSetDefault').checked || isFirst;
+  const setDefault = document.getElementById('vSetDefault').checked || (vehicles.length === 0 && _editVehicleIndex < 0);
   if (setDefault) vehicles.forEach(v => v.is_default = false);
-  const vehicle = {
-    vehicle_id:            'V' + (vehicles.length + 1),
+
+  const fields = {
     label,
     year:                  parseInt(document.getElementById('vYear').value) || null,
     make:                  document.getElementById('vMake').value.trim()    || null,
@@ -3726,18 +3723,57 @@ function addVehicle() {
     plate:                 document.getElementById('vPlate').value.trim()   || null,
     year_starting_mileage: parseInt(document.getElementById('vStartMileage').value) || null,
     year_ending_mileage:   parseInt(document.getElementById('vEndMileage').value)   || null,
-    owner:                 document.getElementById('vOwner').value.trim()            || null,
+    owner:                 document.getElementById('vOwner').value.trim()   || null,
     is_default:            setDefault,
-    active:                true,
-    created_date:          new Date().toISOString().split('T')[0]
   };
-  vehicles.push(vehicle);
+
+  let vehicle;
+  if (_editVehicleIndex >= 0) {
+    vehicle = { ...vehicles[_editVehicleIndex], ...fields };
+    vehicles[_editVehicleIndex] = vehicle;
+    _editVehicleIndex = -1;
+    document.getElementById('vSubmitBtn').textContent = '+ Add Vehicle';
+    document.getElementById('vCancelEditBtn').style.display = 'none';
+    showToast('✓ Vehicle updated: ' + label);
+  } else {
+    vehicle = { vehicle_id: 'V' + (vehicles.length + 1), ...fields, active: true, created_date: new Date().toISOString().split('T')[0] };
+    vehicles.push(vehicle);
+    showToast('✓ Vehicle added: ' + label);
+  }
+
   saveVehiclesLocal();
   ['vLabel','vYear','vMake','vModel','vColor','vPlate','vStartMileage','vEndMileage','vOwner'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('vSetDefault').checked = false;
   renderVehicleList();
   if (cfg.webhookUrl) { fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'saveVehicle', ...vehicle }) }).catch(() => {}); }
-  showToast('✓ Vehicle added: ' + label);
+}
+
+function editVehicle(index) {
+  const v = vehicles[index];
+  if (!v) return;
+  _editVehicleIndex = index;
+  document.getElementById('vLabel').value        = v.label                 || '';
+  document.getElementById('vYear').value         = v.year                  || '';
+  document.getElementById('vMake').value         = v.make                  || '';
+  document.getElementById('vModel').value        = v.model                 || '';
+  document.getElementById('vColor').value        = v.color                 || '';
+  document.getElementById('vPlate').value        = v.plate                 || '';
+  document.getElementById('vStartMileage').value = v.year_starting_mileage || '';
+  document.getElementById('vEndMileage').value   = v.year_ending_mileage   || '';
+  document.getElementById('vOwner').value        = v.owner                 || '';
+  document.getElementById('vSetDefault').checked = !!v.is_default;
+  document.getElementById('vSubmitBtn').textContent = '✓ Save Changes';
+  document.getElementById('vCancelEditBtn').style.display = 'inline-block';
+  document.getElementById('vLabel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('vLabel').focus();
+}
+
+function cancelVehicleEdit() {
+  _editVehicleIndex = -1;
+  ['vLabel','vYear','vMake','vModel','vColor','vPlate','vStartMileage','vEndMileage','vOwner'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('vSetDefault').checked = false;
+  document.getElementById('vSubmitBtn').textContent = '+ Add Vehicle';
+  document.getElementById('vCancelEditBtn').style.display = 'none';
 }
 
 function setDefaultVehicle(index) {
