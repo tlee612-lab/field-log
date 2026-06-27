@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#234]</title>
+<title>OPS Track [#235]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -184,7 +184,7 @@
       <div style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Mileage</div>
       <div class="button-group">
         <button onclick="openMileageModal()">🚗 Mileage</button>
-        <button disabled style="opacity:0.35;cursor:default">—</button>
+        <button onclick="openVehicleModal()">🚙 Vehicles</button>
       </div>
     </div>
   </div>
@@ -442,7 +442,6 @@
         <div class="config-tabs">
           <button class="config-tab active" onclick="setCfgTab('sync', this)">Cloud Sync</button>
           <button class="config-tab" onclick="setCfgTab('ai', this)">AI Assist</button>
-          <button class="config-tab" onclick="setCfgTab('vehicles', this); renderVehicleList()">Vehicles</button>
         </div>
         <div id="cfg-sync" class="config-pane active">
           <div class="config-row">
@@ -522,58 +521,6 @@
             <button class="ai-btn secondary" style="max-width:160px" onclick="testAiConnection(this)">Test Connection</button>
           </div>
         </div>
-        <!-- ── Vehicles Tab ─────────────────────────────────────── -->
-        <div id="cfg-vehicles" class="config-pane">
-          <div style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Add Vehicle</div>
-          <div class="mlg-2col" style="margin-bottom:8px">
-            <div class="mlg-fg" style="margin-bottom:0">
-              <label>Label <span style="color:var(--warn)">*</span></label>
-              <input type="text" id="vLabel" placeholder="e.g. 2022 RAM 1500" autocapitalize="words">
-            </div>
-            <div class="mlg-fg" style="margin-bottom:0">
-              <label>Year</label>
-              <input type="number" id="vYear" placeholder="e.g. 2022" min="1900" max="2099">
-            </div>
-          </div>
-          <div class="mlg-2col" style="margin-bottom:8px">
-            <div class="mlg-fg" style="margin-bottom:0">
-              <label>Make</label>
-              <input type="text" id="vMake" placeholder="e.g. RAM" autocapitalize="words">
-            </div>
-            <div class="mlg-fg" style="margin-bottom:0">
-              <label>Model</label>
-              <input type="text" id="vModel" placeholder="e.g. 1500" autocapitalize="words">
-            </div>
-          </div>
-          <div class="mlg-2col" style="margin-bottom:8px">
-            <div class="mlg-fg" style="margin-bottom:0">
-              <label>Color</label>
-              <input type="text" id="vColor" placeholder="e.g. Gray" autocapitalize="words">
-            </div>
-            <div class="mlg-fg" style="margin-bottom:0">
-              <label>Plate</label>
-              <input type="text" id="vPlate" placeholder="e.g. ABC123" autocapitalize="characters">
-            </div>
-          </div>
-          <div class="mlg-fg">
-            <label>Year Starting Mileage <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(odometer Jan 1)</span></label>
-            <input type="number" id="vStartMileage" placeholder="e.g. 47200" min="0">
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <label class="toggle-switch">
-              <input type="checkbox" id="vSetDefault">
-              <span class="toggle-slider"></span>
-            </label>
-            <label for="vSetDefault" style="font-family:var(--ui);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text);cursor:pointer">Set as Default</label>
-          </div>
-          <button class="ai-btn" style="max-width:160px" onclick="addVehicle()">+ Add Vehicle</button>
-          <div style="border-top:1px solid var(--border);margin:14px 0 10px"></div>
-          <div style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Saved Vehicles</div>
-          <div id="vehicleList">
-            <div style="color:var(--muted);font-size:12px;font-family:var(--ui);letter-spacing:1px;text-transform:uppercase;padding:8px 0">No vehicles added yet</div>
-          </div>
-        </div>
-        <!-- ── End Vehicles Tab ────────────────────────────────── -->
 
         <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center">
           <button class="ai-btn" style="max-width:140px" onclick="saveConfig()">Save Changes</button>
@@ -861,6 +808,62 @@
       <button onclick="checkPaeExpirations()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
     </div>
     <div id="casesModalList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<!-- Vehicle Modal -->
+<div id="vehicleModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center" onclick="if(event.target===this)closeVehicleModal()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(92vw,400px);max-height:85vh;display:flex;flex-direction:column;position:relative;overflow-y:auto">
+    <button onclick="closeVehicleModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:16px">🚙 Vehicles</div>
+    <div style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Add Vehicle</div>
+    <div class="mlg-2col" style="margin-bottom:8px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Label <span style="color:var(--warn)">*</span></label>
+        <input type="text" id="vLabel" placeholder="e.g. 2022 RAM 1500" autocapitalize="words">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Year</label>
+        <input type="number" id="vYear" placeholder="e.g. 2022" min="1900" max="2099">
+      </div>
+    </div>
+    <div class="mlg-2col" style="margin-bottom:8px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Make</label>
+        <input type="text" id="vMake" placeholder="e.g. RAM" autocapitalize="words">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Model</label>
+        <input type="text" id="vModel" placeholder="e.g. 1500" autocapitalize="words">
+      </div>
+    </div>
+    <div class="mlg-2col" style="margin-bottom:8px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Color</label>
+        <input type="text" id="vColor" placeholder="e.g. Gray" autocapitalize="words">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Plate</label>
+        <input type="text" id="vPlate" placeholder="e.g. ABC123" autocapitalize="characters">
+      </div>
+    </div>
+    <div class="mlg-fg">
+      <label>Year Starting Mileage <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(odometer Jan 1)</span></label>
+      <input type="number" id="vStartMileage" placeholder="e.g. 47200" min="0">
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <label class="toggle-switch">
+        <input type="checkbox" id="vSetDefault">
+        <span class="toggle-slider"></span>
+      </label>
+      <label for="vSetDefault" style="font-family:var(--ui);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text);cursor:pointer">Set as Default</label>
+    </div>
+    <button class="ai-btn" style="max-width:160px;margin-bottom:16px" onclick="addVehicle()">+ Add Vehicle</button>
+    <div style="border-top:1px solid var(--border);margin-bottom:12px"></div>
+    <div style="font-family:var(--ui);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Saved Vehicles</div>
+    <div id="vehicleList">
+      <div style="color:var(--muted);font-size:12px;font-family:var(--ui);letter-spacing:1px;text-transform:uppercase;padding:8px 0">No vehicles added yet</div>
+    </div>
   </div>
 </div>
 
@@ -3662,6 +3665,14 @@ function exportMileageXlsx() {
 }
 
 // ── Vehicle management ───────────────────────────────────────────────
+
+function openVehicleModal() {
+  renderVehicleList();
+  document.getElementById('vehicleModal').style.display = 'flex';
+}
+function closeVehicleModal() {
+  document.getElementById('vehicleModal').style.display = 'none';
+}
 
 function renderVehicleList() {
   const container = document.getElementById('vehicleList');
