@@ -7,8 +7,9 @@ const AUTO_LOG_FOLDER_ID = '1Q3BWEfnUoqoPYWFQ0eDeSXGRAjPybQov';
 const MASTER_LOG_NAME = 'Master Activity Log';
 
 // ── Mileage Module — Sheet definitions ────────────────────────────────
-const MILEAGE_LOG_SHEET_NAME = 'MileageLog';
-const VEHICLES_SHEET_NAME    = 'Vehicles';
+const MILEAGE_LOG_SHEET_NAME  = 'MileageLog';
+const VEHICLES_SHEET_NAME     = 'Vehicles';
+const MILEAGE_SPREADSHEET_NAME = 'OPS Track Mileage Log';
 
 const MILEAGE_LOG_HEADERS = [
   'entry_id', 'date', 'case_number', 'investigator', 'vehicle_id', 'vehicle_label',
@@ -1335,18 +1336,29 @@ function getMasterSpreadsheet() {
   if (files.hasNext()) {
     return SpreadsheetApp.openById(files.next().getId());
   }
-  // Fall back to creating master sheet (getOrCreateMasterSheet handles this)
   getOrCreateMasterSheet();
   const files2 = autoLogFolder.getFilesByName(MASTER_LOG_NAME);
   if (files2.hasNext()) return SpreadsheetApp.openById(files2.next().getId());
   throw new Error('Could not locate or create Master Activity Log spreadsheet');
 }
 
+function getMileageSpreadsheet() {
+  const folder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+  const files = folder.getFilesByName(MILEAGE_SPREADSHEET_NAME);
+  if (files.hasNext()) return SpreadsheetApp.openById(files.next().getId());
+  const ss = SpreadsheetApp.create(MILEAGE_SPREADSHEET_NAME);
+  const f = DriveApp.getFileById(ss.getId());
+  folder.addFile(f);
+  DriveApp.getRootFolder().removeFile(f);
+  Logger.log('Mileage spreadsheet created: ' + MILEAGE_SPREADSHEET_NAME);
+  return ss;
+}
+
 /**
  * Returns (and auto-creates if absent) the MileageLog sheet tab.
  */
 function getOrCreateMileageLogSheet() {
-  const ss = getMasterSpreadsheet();
+  const ss = getMileageSpreadsheet();
   let sheet = ss.getSheetByName(MILEAGE_LOG_SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(MILEAGE_LOG_SHEET_NAME);
@@ -1366,7 +1378,7 @@ function getOrCreateMileageLogSheet() {
  * Returns (and auto-creates if absent) the Vehicles sheet tab.
  */
 function getOrCreateVehiclesSheet() {
-  const ss = getMasterSpreadsheet();
+  const ss = getMileageSpreadsheet();
   let sheet = ss.getSheetByName(VEHICLES_SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(VEHICLES_SHEET_NAME);
