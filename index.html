@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#235]</title>
+<title>OPS Track [#236]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -184,7 +184,7 @@
       <div style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Mileage</div>
       <div class="button-group">
         <button onclick="openMileageModal()">🚗 Mileage</button>
-        <button onclick="openVehicleModal()">🚙 Vehicles</button>
+        <button onclick="openMileageLogModal()">📋 Log</button>
       </div>
     </div>
   </div>
@@ -537,62 +537,6 @@
       </div>
     </details>
   </div>
-  <!-- ── Mileage Log Section ─────────────────────────────────────── -->
-  <div style="margin-top:16px">
-    <details id="mileageLogDetails">
-      <summary>📍 Mileage Log</summary>
-      <div class="config-section" style="margin-top:0;border-top:none;border-radius:0 0 8px 8px">
-        <!-- Filters -->
-        <div class="mlg-2col" style="margin-bottom:8px;align-items:flex-end">
-          <div class="mlg-fg" style="margin-bottom:0">
-            <label>Filter by Case #</label>
-            <input type="text" id="mlgFilterCase" placeholder="e.g. 25CR12345" oninput="renderMileageLog()" autocapitalize="characters" autocorrect="off" spellcheck="false">
-          </div>
-          <button class="ai-btn secondary" style="padding:11px 12px;font-size:11px" onclick="fetchMileageLogFromDrive()">↻ Refresh</button>
-        </div>
-        <div class="mlg-2col" style="margin-bottom:12px">
-          <div class="mlg-fg" style="margin-bottom:0">
-            <label>From Date</label>
-            <input type="date" id="mlgFilterFrom" oninput="renderMileageLog()" style="cursor:pointer">
-          </div>
-          <div class="mlg-fg" style="margin-bottom:0">
-            <label>To Date</label>
-            <input type="date" id="mlgFilterTo" oninput="renderMileageLog()" style="cursor:pointer">
-          </div>
-        </div>
-        <!-- Table -->
-        <div class="mlg-log-table-wrap">
-          <table class="mlg-log-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Case #</th>
-                <th>From</th>
-                <th>To</th>
-                <th style="text-align:right">Miles</th>
-                <th>Vehicle</th>
-                <th>Purpose</th>
-                <th>Notes</th>
-                <th title="Sync status">✓</th>
-              </tr>
-            </thead>
-            <tbody id="mlgTableBody">
-              <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <!-- Footer -->
-        <div class="mlg-log-footer">
-          <span style="font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Total: <span class="mlg-log-total" id="mlgTotalMiles">0 mi</span></span>
-          <div style="display:flex;gap:8px">
-            <button class="ai-btn secondary" style="font-size:11px;padding:7px 14px" onclick="exportMileageCsv()">↓ CSV</button>
-            <button class="ai-btn secondary" style="font-size:11px;padding:7px 14px" onclick="exportMileageXlsx()">↓ Excel</button>
-          </div>
-        </div>
-      </div>
-    </details>
-  </div>
-  <!-- ── End Mileage Log Section ──────────────────────────────────── -->
 
   <div class="section-label" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
     <span>Recent Entries (Local)</span>
@@ -606,12 +550,58 @@
 </main>
 <div class="toast" id="toast"></div>
 
+<!-- Mileage Log Modal -->
+<div id="mileageLogModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center" onclick="if(event.target===this)closeMileageLogModal()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(96vw,680px);max-height:88vh;display:flex;flex-direction:column;position:relative">
+    <button onclick="closeMileageLogModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    <div style="font-family:var(--ui);font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📍 Mileage Log</div>
+    <div class="mlg-2col" style="margin-bottom:8px;align-items:flex-end">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>Filter by Case #</label>
+        <input type="text" id="mlgFilterCase" placeholder="e.g. 25CR12345" oninput="renderMileageLog()" autocapitalize="characters" autocorrect="off" spellcheck="false">
+      </div>
+      <button class="ai-btn secondary" style="padding:11px 12px;font-size:11px" onclick="fetchMileageLogFromDrive()">↻ Refresh</button>
+    </div>
+    <div class="mlg-2col" style="margin-bottom:12px">
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>From Date</label>
+        <input type="date" id="mlgFilterFrom" oninput="renderMileageLog()" style="cursor:pointer">
+      </div>
+      <div class="mlg-fg" style="margin-bottom:0">
+        <label>To Date</label>
+        <input type="date" id="mlgFilterTo" oninput="renderMileageLog()" style="cursor:pointer">
+      </div>
+    </div>
+    <div class="mlg-log-table-wrap" style="flex:1;overflow-y:auto">
+      <table class="mlg-log-table">
+        <thead>
+          <tr>
+            <th>Date</th><th>Case #</th><th>From</th><th>To</th>
+            <th style="text-align:right">Miles</th><th>Vehicle</th><th>Purpose</th><th>Notes</th><th title="Sync status">✓</th>
+          </tr>
+        </thead>
+        <tbody id="mlgTableBody">
+          <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mlg-log-footer" style="margin-top:10px">
+      <span style="font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Total: <span class="mlg-log-total" id="mlgTotalMiles">0 mi</span></span>
+      <div style="display:flex;gap:8px">
+        <button class="ai-btn secondary" style="font-size:11px;padding:7px 14px" onclick="exportMileageCsv()">↓ CSV</button>
+        <button class="ai-btn secondary" style="font-size:11px;padding:7px 14px" onclick="exportMileageXlsx()">↓ Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════════
      MILEAGE ENTRY MODAL
      ══════════════════════════════════════════════════════════════ -->
 <div id="mileageModal" class="mlg-modal-overlay" onclick="if(event.target===this)closeMileageModal()">
   <div class="mlg-modal-inner">
     <button class="mlg-close-btn" onclick="closeMileageModal()">✕</button>
+    <button onclick="openVehicleModal()" style="position:absolute;top:12px;right:44px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:20px;cursor:pointer">🚙 Vehicles</button>
     <div class="mlg-title">📍 Mileage Entry <span style="font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0;text-transform:none">(non-case)</span></div>
 
     <!-- Row 1: Date / Case / Investigator -->
@@ -3672,6 +3662,13 @@ function openVehicleModal() {
 }
 function closeVehicleModal() {
   document.getElementById('vehicleModal').style.display = 'none';
+}
+function openMileageLogModal() {
+  renderMileageLog();
+  document.getElementById('mileageLogModal').style.display = 'flex';
+}
+function closeMileageLogModal() {
+  document.getElementById('mileageLogModal').style.display = 'none';
 }
 
 function renderVehicleList() {
