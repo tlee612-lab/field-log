@@ -658,7 +658,8 @@ function setupNewActivityLog(sheet) {
   // Row 1: totals bar labels + formulas
   const totalsLabels = ['Auth Hrs', '=\'PAE Summary\'!B1', 'Used Hrs',
     '=IFERROR(SUMIF(E4:E9999,"Investigator Service*",I4:I9999),0)',
-    'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)'];
+    'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)',
+    'Court Date', '=IFERROR(\'PAE Summary\'!B4,"")'];
   sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
 
   // Style totals row
@@ -688,7 +689,8 @@ function upgradeActivityLog(sheet) {
   // Row 1: totals bar
   const totalsLabels = ['Auth Hrs', '=\'PAE Summary\'!B1', 'Used Hrs',
     '=IFERROR(SUMIF(E4:E9999,"Investigator Service*",I4:I9999),0)',
-    'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)'];
+    'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)',
+    'Court Date', '=IFERROR(\'PAE Summary\'!B4,"")'];
   sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
 
   styleActivityTotalsRow(sheet);
@@ -1181,6 +1183,8 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
   sheet.getRange('B1').setFormula('=SUM(B6:B50)');
   sheet.getRange('A2').setValue('Case #');
   sheet.getRange('B2').setValue(caseNum);
+  sheet.getRange('C2').setValue('Court Date');
+  sheet.getRange('D2').setFormula('=B4');
   sheet.getRange('A3').setValue('Client');
   sheet.getRange('B3').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
   sheet.getRange('A4').setValue('Court Date');
@@ -1189,9 +1193,11 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
   // Style info block
   const infoLabels = sheet.getRange('A1:A4');
   infoLabels.setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
+  sheet.getRange('C2').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
 
   sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
   sheet.getRange('B2:B3').setFontColor('#000000').setFontWeight('bold').setFontSize(11);
+  sheet.getRange('D2').setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
 
   // Total auth row background
   sheet.getRange('A1:B1').setBackground('#0d1117');
