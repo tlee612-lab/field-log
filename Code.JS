@@ -81,6 +81,7 @@ function doGet(e) {
     if (action === 'upgradeSheet') return buildResponse(upgradeSheetAction(e.parameter.case || ''));
     if (action === 'getVehicles') return buildResponse(getVehiclesData());
     if (action === 'getMileageLog') return buildResponse(getMileageLogData(e.parameter.case || ''));
+    if (action === 'getDistance')   return buildResponse(getDrivingDistance(e.parameter.origin || '', e.parameter.dest || ''));
     if (action === 'getPaeExpirations') return buildResponse(getPaeExpirations());
     if (action === 'getMasterData') return buildResponse(getMasterData());
     if (action === 'rebuildMaster') return buildResponse(rebuildMasterTracker());
@@ -1515,6 +1516,40 @@ function getMileageLogData(caseFilter) {
     Logger.log('getMileageLogData error: ' + err.message);
     return { status: 'error', message: err.message };
   }
+}
+
+// ── getDistance ──────────────────────────────────────────────────────
+
+function getDrivingDistance(origin, dest) {
+  if (!origin || !dest) return { status: 'error', message: 'Origin and destination are required' };
+  try {
+    const directions = Maps.newDirectionFinder()
+      .setOrigin(origin)
+      .setDestination(dest)
+      .setMode(Maps.DirectionFinder.Mode.DRIVING)
+      .getDirections();
+
+    const legs = directions.routes[0].legs;
+    const totalMeters = legs.reduce((sum, leg) => sum + leg.distance.value, 0);
+    const miles = Math.round((totalMeters / 1609.344) * 10) / 10;
+
+    // Extract city names from the geocoded waypoints
+    const originCity  = extractCity(directions.geocoded_waypoints[0], legs[0].start_address);
+    const destCity    = extractCity(directions.geocoded_waypoints[directions.geocoded_waypoints.length - 1], legs[legs.length - 1].end_address);
+
+    return { status: 'ok', miles, origin_address: legs[0].start_address, destination_address: legs[legs.length - 1].end_address, origin_city: originCity, destination_city: destCity };
+  } catch(err) {
+    Logger.log('getDrivingDistance error: ' + err.message);
+    return { status: 'error', message: err.message };
+  }
+}
+
+function extractCity(waypoint, address) {
+  // Pull first part before the first comma as a reasonable city fallback
+  if (!address) return '';
+  const parts = address.split(',');
+  // Typical format: "Street, City, State ZIP, Country" — city is parts[1]
+  return parts.length > 1 ? parts[1].trim() : parts[0].trim();
 }
 
 // ════════════════════════════════════════════════════════════════════
