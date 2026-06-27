@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#231]</title>
+<title>OPS Track [#232]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -163,6 +163,13 @@
   <input type="file" id="paeFileInput" accept="application/pdf" style="display:none" onchange="handlePaeFile(this.files[0]);this.value=''">
 
   <div class="sidebar">
+    <div style="flex:1">
+      <div style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Mileage</div>
+      <div class="button-group">
+        <button onclick="openMileageModal()">🚗 Mileage</button>
+        <button disabled style="opacity:0.35;cursor:default">— </button>
+      </div>
+    </div>
     <div style="flex:1">
       <div style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Activity Entry</div>
       <div class="button-group">
