@@ -205,9 +205,6 @@
     </div>
   </div>
   <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:var(--accent)"></div>
-  <div id="paeCreateBtn" style="display:none;margin-bottom:8px">
-    <button type="button" onclick="createCaseFromPae()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
-  </div>
   <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-family:var(--ui)"></div>
   </div><!-- end caseEntrySection -->
 
@@ -792,7 +789,8 @@
       </div>
       <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
       <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
-      <button id="paeDoneBtn" onclick="closePaeModal()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">✓ Done</button>
+      <button id="paeDoneBtn" onclick="createCaseFromPae()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
+      <button id="paeSkipBtn" onclick="closePaeModal()" style="display:none;width:100%;margin-top:6px;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">✓ Done without creating</button>
       <button onclick="checkPaeExpirations()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
       <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
     </div>
@@ -1127,13 +1125,13 @@ function openPaeModal() {
   document.getElementById('paeModalList').style.display = 'none';
   document.getElementById('paeModalList').innerHTML = '';
   document.getElementById('paeDoneBtn').style.display = 'none';
+  document.getElementById('paeSkipBtn').style.display = 'none';
   document.getElementById('paeModalHint').textContent = 'Fills Case #, Client Name, and Authorized Hours';
   // Clear main form fields so prior scan data doesn't persist into next session
   document.getElementById('caseNum').value = '';
   document.getElementById('clientLast').value = '';
   document.getElementById('clientFirst').value = '';
   document.getElementById('paeInfo').style.display = 'none';
-  document.getElementById('paeCreateBtn').style.display = 'none';
   // Show camera button on mobile devices
   document.getElementById('paeCameraBtn').style.display = isMobileDevice() ? 'block' : 'none';
   document.getElementById('paeModal').style.display = 'flex';
@@ -1558,7 +1556,6 @@ async function handlePaeFile(file) {
     if (parsed.clientFirst) document.getElementById('clientFirst').value = parsed.clientFirst;
 
     const infoEl = document.getElementById('paeInfo');
-    const createEl = document.getElementById('paeCreateBtn');
 
     if (filled.length > 0) {
 
@@ -1591,7 +1588,6 @@ async function handlePaeFile(file) {
       const countLabel = _sessionPaes.length > 1 ? ` (${_sessionPaes.length} PAEs)` : '';
       infoEl.textContent = '📋 ' + filled.join(' · ') + hrsLabel + countLabel + attLabel + authLabel;
       infoEl.style.display = 'block';
-      createEl.style.display = 'block';
       if (parsed.caseNumber) showCaseHours(parsed.caseNumber);
 
       // Update the modal list — keep modal open for more drops
@@ -1608,7 +1604,9 @@ async function handlePaeFile(file) {
           </div>`
         ).join('');
         if (doneBtn) doneBtn.style.display = 'block';
-        if (hintEl) hintEl.textContent = 'Drop another PAE or tap Done';
+        const skipBtn = document.getElementById('paeSkipBtn');
+        if (skipBtn) skipBtn.style.display = 'block';
+        if (hintEl) hintEl.textContent = 'Drop another PAE or create case';
       }
       showToast('✓ PAE imported' + (_sessionPaes.length > 1 ? ` (${_sessionPaes.length} this session)` : ''));
     } else {
@@ -1639,7 +1637,7 @@ async function createCaseFromPae() {
     !p.caseNumber || p.caseNumber.toLowerCase() === caseNum.toLowerCase()
   );
 
-  const btn = document.querySelector('#paeCreateBtn button');
+  const btn = document.getElementById('paeDoneBtn');
   btn.disabled    = true;
   btn.textContent = '⏳ Creating…';
 
@@ -1675,7 +1673,7 @@ async function createCaseFromPae() {
               : '✓ Case sheet updated';
       if (result.paeCount > 0) msg += ` — ${result.paeCount} PAE${result.paeCount > 1 ? 's' : ''} added`;
       showToast(msg);
-      document.getElementById('paeCreateBtn').style.display = 'none';
+      closePaeModal();
       if (caseNum.length >= 4) showCaseHours(caseNum);
     } else {
       showToast('Error: ' + (result ? result.message : 'no response'), true);
@@ -1685,6 +1683,7 @@ async function createCaseFromPae() {
   } finally {
     btn.disabled    = false;
     btn.textContent = '📋 Create Case in Drive';
+    btn.onclick     = createCaseFromPae;
   }
 }
 
@@ -2000,7 +1999,6 @@ fetchRemoteCases();
 function clearCaseFields() {
   ['caseNum','clientLast','clientFirst'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('paeInfo').style.display = 'none';
-  document.getElementById('paeCreateBtn').style.display = 'none';
   document.getElementById('caseHoursBar').style.display = 'none';
   _lastParsedPae = null;
   document.getElementById('caseNum').focus();
