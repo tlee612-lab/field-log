@@ -1234,34 +1234,42 @@ function addPaesToSummarySheet(sheet, paes) {
   const PAE_DATA_END   = 50;
   const paeZone = sheet.getRange(PAE_DATA_START, 1, PAE_DATA_END - PAE_DATA_START + 1, 1).getValues();
 
-  const existingAuthNums = new Set();
+  // Map authNum -> sheet row number for existing entries
+  const existingRowByAuth = {};
   let lastPaeRow = PAE_DATA_START - 1; // one before first data slot
 
   paeZone.forEach((r, i) => {
     if (r[0] !== '' && r[0] !== null) {
-      existingAuthNums.add(String(r[0]).trim());
+      existingRowByAuth[String(r[0]).trim()] = PAE_DATA_START + i;
       lastPaeRow = PAE_DATA_START + i;
     }
   });
 
+  function writePaeRow(row, p, authNum) {
+    sheet.getRange(row, 1).setValue(authNum || '—');
+    sheet.getRange(row, 2).setValue(parseFloat(p.hours)        || '');
+    sheet.getRange(row, 3).setValue(parseFloat(p.approvedRate) || '');
+    sheet.getRange(row, 4).setValue(parseFloat(p.serviceAmount)|| '');
+    sheet.getRange(row, 5).setValue(parseFloat(p.travelCosts)  || '');
+    sheet.getRange(row, 6).setValue(parseFloat(p.totalCosts)   || '');
+    sheet.getRange(row, 7).setValue(p.effectiveDate  || '');
+    sheet.getRange(row, 8).setValue(p.expirationDate || '');
+    sheet.getRange(row, 9).setValue(p.county    || '');
+    sheet.getRange(row, 10).setValue(p.attorney || '');
+  }
+
   let added = 0;
   paes.forEach(p => {
     const authNum = String(p.authNumber || '').trim();
-    if (authNum && existingAuthNums.has(authNum)) return; // skip duplicate
+    if (authNum && existingRowByAuth.hasOwnProperty(authNum)) {
+      // Overwrite existing row so re-scanned PAEs update corrected dates
+      writePaeRow(existingRowByAuth[authNum], p, authNum);
+      return;
+    }
 
     const nextRow = lastPaeRow + 1 + added;
-    sheet.getRange(nextRow, 1).setValue(authNum || '—');
-    sheet.getRange(nextRow, 2).setValue(parseFloat(p.hours)        || '');
-    sheet.getRange(nextRow, 3).setValue(parseFloat(p.approvedRate) || '');
-    sheet.getRange(nextRow, 4).setValue(parseFloat(p.serviceAmount)|| '');
-    sheet.getRange(nextRow, 5).setValue(parseFloat(p.travelCosts)  || '');
-    sheet.getRange(nextRow, 6).setValue(parseFloat(p.totalCosts)   || '');
-    sheet.getRange(nextRow, 7).setValue(p.effectiveDate  || '');
-    sheet.getRange(nextRow, 8).setValue(p.expirationDate || '');
-    sheet.getRange(nextRow, 9).setValue(p.county    || '');
-    sheet.getRange(nextRow, 10).setValue(p.attorney || '');
-
-    existingAuthNums.add(authNum);
+    writePaeRow(nextRow, p, authNum);
+    if (authNum) existingRowByAuth[authNum] = nextRow;
     added++;
   });
 
