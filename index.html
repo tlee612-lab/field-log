@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#224]</title>
+<title>OPS Track [#225]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -204,8 +204,6 @@
       <button type="button" onclick="clearCaseFields()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">✕ Clear</button>
     </div>
   </div>
-  <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:var(--accent)"></div>
-  <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-family:var(--ui)"></div>
   </div><!-- end caseEntrySection -->
 
   <div id="retainerEntrySection" style="display:none">
@@ -788,6 +786,8 @@
         <span style="color:var(--accent);text-decoration:underline">or tap to select a file</span>
       </div>
       <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
+      <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:var(--accent)"></div>
+      <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;font-family:var(--ui)"></div>
       <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
       <button id="paeDoneBtn" onclick="createCaseFromPae()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
       <button id="paeSkipBtn" onclick="closePaeModal()" style="display:none;width:100%;margin-top:6px;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">✓ Done without creating</button>
