@@ -12,9 +12,10 @@ const VEHICLES_SHEET_NAME     = 'Vehicles';
 const MILEAGE_SPREADSHEET_NAME = 'OPS Track Mileage Log';
 
 const MILEAGE_LOG_HEADERS = [
-  'entry_id', 'date', 'case_number', 'investigator', 'vehicle_id', 'vehicle_label',
+  'entry_id', 'date', 'case_number', 'trip_note', 'investigator', 'vehicle_id', 'vehicle_label',
   'origin_address', 'destination_address', 'origin_city', 'destination_city',
-  'miles_computed', 'miles_actual', 'odometer_start', 'odometer_end', 'purpose', 'notes'
+  'miles_computed', 'miles_actual', 'odometer_start', 'odometer_end', 'purpose',
+  'tax_deductible', 'notes'
 ];
 
 const VEHICLE_HEADERS = [
@@ -1377,7 +1378,7 @@ function getOrCreateMileageLogSheet() {
     hr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
     sheet.setFrozenRows(1);
     // Column widths
-    const widths = [280,90,120,100,80,140,280,280,100,100,100,100,100,100,160,300];
+    const widths = [280,90,120,200,100,80,140,280,280,100,100,100,100,100,100,160,100,300];
     widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
     Logger.log('MileageLog sheet created');
   }

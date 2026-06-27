@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#241]</title>
+<title>OPS Track [#242]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -699,6 +699,15 @@
     <div class="mlg-fg" style="margin-top:6px">
       <label>Notes <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
       <textarea id="mlgNotes" placeholder="Additional details…" style="min-height:60px;resize:vertical"></textarea>
+    </div>
+
+    <!-- Tax deductible -->
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;margin-bottom:14px">
+      <label class="toggle-switch">
+        <input type="checkbox" id="mlgTaxDeductible" checked>
+        <span class="toggle-slider"></span>
+      </label>
+      <label for="mlgTaxDeductible" style="font-family:var(--ui);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text);cursor:pointer">Tax Deductible</label>
     </div>
 
     <!-- Action buttons -->
@@ -3353,6 +3362,7 @@ function openMileageModal() {
   // Collapse odometer
   document.getElementById('mlgOdomFields').style.display = 'none';
   document.getElementById('mlgOdomToggle').textContent = '▸ Show odometer';
+  document.getElementById('mlgTaxDeductible').checked = true;
 
   document.getElementById('mileageModal').classList.add('open');
 }
@@ -3542,6 +3552,7 @@ async function confirmMileageEntry() {
     odometer_start:       document.getElementById('mlgOdomStart').value ? parseInt(document.getElementById('mlgOdomStart').value) : null,
     odometer_end:         document.getElementById('mlgOdomEnd').value   ? parseInt(document.getElementById('mlgOdomEnd').value)   : null,
     purpose,
+    tax_deductible:       document.getElementById('mlgTaxDeductible').checked,
     notes:                document.getElementById('mlgNotes').value.trim(),
     synced:               false,
     logged:               new Date().toISOString()
