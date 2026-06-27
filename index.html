@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#226]</title>
+<title>OPS Track [#227]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1534,6 +1534,34 @@ async function checkPaeExpirations() {
   }
 }
 
+function removePaeFromSession(authNumber) {
+  _sessionPaes = _sessionPaes.filter(p => p.authNumber !== authNumber);
+  renderPaeModalList();
+  const doneBtn = document.getElementById('paeDoneBtn');
+  const skipBtn = document.getElementById('paeSkipBtn');
+  const listEl  = document.getElementById('paeModalList');
+  if (_sessionPaes.length === 0) {
+    if (doneBtn) doneBtn.style.display = 'none';
+    if (skipBtn) skipBtn.style.display = 'none';
+    if (listEl)  listEl.style.display  = 'none';
+    document.getElementById('paeModalHint').textContent = 'Fills Case #, Client Name, and Authorized Hours';
+  }
+}
+
+function renderPaeModalList() {
+  const listEl = document.getElementById('paeModalList');
+  if (!listEl) return;
+  listEl.style.display = 'block';
+  listEl.innerHTML = _sessionPaes.map((p, i) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:5px;background:${i%2===0?'var(--surface2)':'transparent'};font-size:11px;font-family:var(--ui)">
+      <span style="color:var(--accent)">PAE #${p.authNumber || '—'}</span>
+      <span style="color:var(--muted)">${p.hours ? p.hours + ' hrs' : ''}</span>
+      <span style="color:var(--text)">${p.effectiveDate || ''} – ${p.expirationDate || ''}</span>
+      <button onclick="removePaeFromSession('${p.authNumber}')" style="background:none;border:none;color:var(--warn);cursor:pointer;font-size:13px;padding:0 2px;line-height:1" title="Remove">✕</button>
+    </div>`
+  ).join('');
+}
+
 async function handlePaeFile(file) {
   if (!file || file.type !== 'application/pdf') {
     showToast('Please drop a PDF file', true); return;
@@ -1605,14 +1633,7 @@ async function handlePaeFile(file) {
       const doneBtn = document.getElementById('paeDoneBtn');
       const hintEl = document.getElementById('paeModalHint');
       if (listEl) {
-        listEl.style.display = 'block';
-        listEl.innerHTML = _sessionPaes.map((p, i) =>
-          `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:5px;background:${i%2===0?'var(--surface2)':'transparent'};font-size:11px;font-family:var(--ui)">
-            <span style="color:var(--accent)">PAE #${p.authNumber || '—'}</span>
-            <span style="color:var(--muted)">${p.hours ? p.hours + ' hrs' : ''}</span>
-            <span style="color:var(--text)">${p.effectiveDate || ''} – ${p.expirationDate || ''}</span>
-          </div>`
-        ).join('');
+        renderPaeModalList();
         if (doneBtn) doneBtn.style.display = 'block';
         const skipBtn = document.getElementById('paeSkipBtn');
         if (skipBtn) skipBtn.style.display = 'block';
