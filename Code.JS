@@ -552,6 +552,7 @@ function createCase(body) {
   const caseNum     = String(body.caseNum    || '').trim();
   const clientLast  = String(body.clientLast  || '').trim();
   const clientFirst = String(body.clientFirst || '').trim();
+  const courtDate   = String(body.courtDate   || '').trim();
   const paes        = Array.isArray(body.paes) ? body.paes : (body.paes ? [body.paes] : []);
 
   if (!caseNum || !clientLast) {
@@ -623,11 +624,14 @@ function createCase(body) {
     Logger.log('createCase: ' + paeCount + ' new PAE row(s) added');
   }
 
+  // Save court date to PAE sheet if provided
+  if (courtDate) paeSheet.getRange('B4').setValue(courtDate);
+
   // Update master tracker
   try {
     const allPaes = getAllPaesFromSheet(paeSheet);
-    const courtDate = String(paeSheet.getRange('B4').getValue() || '').trim();
-    updateMasterForCase(caseNum, clientLast, clientFirst, allPaes, courtDate);
+    const sheetCourtDate = String(paeSheet.getRange('B4').getValue() || '').trim();
+    updateMasterForCase(caseNum, clientLast, clientFirst, allPaes, sheetCourtDate);
   } catch(e) { Logger.log('Master tracker update error: ' + e.message); }
 
   return {

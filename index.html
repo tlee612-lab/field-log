@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#237]</title>
+<title>OPS Track [#238]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -736,6 +736,10 @@
         Drop PAE PDF here<br>
         <span style="color:var(--accent);text-decoration:underline">or tap to select a file</span>
       </div>
+      <div class="field-group" style="margin-bottom:10px">
+        <label>Court Date <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="date" id="paeCourtDate" style="cursor:pointer">
+      </div>
       <div id="paeModalList" style="display:none;margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
       <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:var(--accent)"></div>
       <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;font-family:var(--ui)"></div>
@@ -1138,6 +1142,7 @@ function openPaeModal() {
   document.getElementById('caseNum').value = '';
   document.getElementById('clientLast').value = '';
   document.getElementById('clientFirst').value = '';
+  document.getElementById('paeCourtDate').value = '';
   document.getElementById('paeInfo').style.display = 'none';
   document.getElementById('caseHoursBar').style.display = 'none';
   // Show camera button on mobile devices
@@ -1662,9 +1667,10 @@ async function handlePaeFile(file) {
 async function createCaseFromPae() {
   if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
 
-  const caseNum     = (document.getElementById('caseNum').value    || '').trim();
-  const clientLast  = (document.getElementById('clientLast').value || '').trim();
-  const clientFirst = (document.getElementById('clientFirst').value|| '').trim();
+  const caseNum     = (document.getElementById('caseNum').value      || '').trim();
+  const clientLast  = (document.getElementById('clientLast').value   || '').trim();
+  const clientFirst = (document.getElementById('clientFirst').value  || '').trim();
+  const courtDate   = (document.getElementById('paeCourtDate').value || '').trim();
 
   if (!caseNum || !clientLast) {
     showToast('Case # and client name required', true);
@@ -1686,6 +1692,7 @@ async function createCaseFromPae() {
       caseNum,
       clientLast,
       clientFirst,
+      courtDate,
       paes
     });
 
