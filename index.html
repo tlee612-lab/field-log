@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#271]</title>
+<title>OPS Track [#272]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1628,27 +1628,55 @@ async function checkPaeExpirations() {
     // Worst status per case for the case header accent
     const worstStatus = cn => byCase[cn].paes.reduce((w, p) => paeOrder[p.status] < paeOrder[w] ? p.status : w, 'no-date');
 
-    box.innerHTML = `
-      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div>
-      <div style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px">
-        ${sortedCases.map(cn => {
-          const { client, paes } = byCase[cn];
-          const ws = worstStatus(cn);
-          return `
-            <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-              <div style="padding:8px 10px;background:var(--surface2);border-left:3px solid ${colors[ws]};font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${cn} — ${client}</div>
-              ${paes.map(r => `
-                <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 10px;border-top:1px solid var(--border)">
-                  <div style="font-size:11px;color:var(--muted)">PAE #${r.authNum} &nbsp;·&nbsp; ${r.effDate ? r.effDate + ' – ' : ''}${r.expStr || '—'}</div>
-                  <div style="font-size:11px;color:${colors[r.status]};font-family:var(--ui);font-weight:700;text-align:right;white-space:nowrap">${labels[r.status](r.daysLeft)}</div>
-                </div>
-              `).join('')}
+    let expFilter = 'all';
+    const filterDefs = [
+      { key: 'all',     label: 'All' },
+      { key: 'expired', label: 'Expired',  color: '#e55' },
+      { key: 'soon',    label: 'Exp. Soon', color: 'var(--warn)' },
+      { key: 'active',  label: 'Active',   color: 'var(--accent)' },
+    ];
+
+    function renderExpList() {
+      const listEl = box.querySelector('#expList');
+      const filtered = sortedCases.map(cn => {
+        const { client, paes } = byCase[cn];
+        const visiblePaes = expFilter === 'all' ? paes : paes.filter(p => p.status === expFilter);
+        if (!visiblePaes.length) return '';
+        const ws = worstStatus(cn);
+        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="padding:8px 10px;background:var(--surface2);border-left:3px solid ${colors[ws]};font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${cn} — ${client}</div>
+          ${visiblePaes.map(r => `
+            <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 10px;border-top:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted)">PAE #${r.authNum} &nbsp;·&nbsp; ${r.effDate ? r.effDate + ' – ' : ''}${r.expStr || '—'}</div>
+              <div style="font-size:11px;color:${colors[r.status]};font-family:var(--ui);font-weight:700;text-align:right;white-space:nowrap">${labels[r.status](r.daysLeft)}</div>
             </div>
-          `;
-        }).join('')}
+          `).join('')}
+        </div>`;
+      }).join('');
+      listEl.innerHTML = filtered || `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No PAEs in this category</div>`;
+
+      // Update button styles
+      filterDefs.forEach(f => {
+        const btn = box.querySelector(`[data-expfilter="${f.key}"]`);
+        if (!btn) return;
+        const active = expFilter === f.key;
+        btn.style.border = active ? `2px solid ${f.color || 'var(--accent)'}` : '1px solid var(--border)';
+        btn.style.color = active ? (f.color || 'var(--accent)') : 'var(--muted)';
+        btn.style.background = active ? 'var(--surface2)' : 'transparent';
+      });
+    }
+
+    window._expFilterSet = f => { expFilter = f; renderExpList(); };
+
+    box.innerHTML = `
+      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">📅 PAE Expirations</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${filterDefs.map(f => `<button data-expfilter="${f.key}" onclick="window._expFilterSet('${f.key}')" style="padding:4px 10px;border-radius:6px;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:transparent">${f.label}</button>`).join('')}
       </div>
+      <div id="expList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px"></div>
       <button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
     `;
+    renderExpList();
   } catch (err) {
     box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:#e55;font-size:13px;text-align:center;padding:20px">Error: ${err.message}</div><button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>`;
   }
