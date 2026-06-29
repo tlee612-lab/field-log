@@ -1256,6 +1256,7 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
 
   sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
   sheet.getRange('B2:B3').setFontColor('#000000').setFontWeight('bold').setFontSize(11);
+  sheet.getRange('B4').setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
   sheet.getRange('D2').setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
   sheet.getRange('D3').setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
 
