@@ -1110,7 +1110,7 @@ function rebuildMasterTracker() {
         try {
           const ss = SpreadsheetApp.openById(file.getId());
           const paeSheet = ss.getSheetByName('PAE Summary');
-          if (!paeSheet) break;
+          if (!paeSheet) continue;
           const courtDate = readCourtDate(paeSheet);
           const activeStatus = String(paeSheet.getRange('D3').getValue() || 'Active').trim();
           const activeVal = activeStatus === 'No' ? 'No' : 'Yes';
@@ -1194,7 +1194,7 @@ function getPaeExpirations() {
         try {
           const ss = SpreadsheetApp.openById(file.getId());
           const paeSheet = ss.getSheetByName('PAE Summary');
-          if (!paeSheet) break;
+          if (!paeSheet) continue;
           const client = String(paeSheet.getRange('B3').getValue()).trim();
           // Read PAE data rows 6-50, columns 1 (Auth#) and 8 (Exp Date)
           const zone = paeSheet.getRange(6, 1, 45, 8).getValues();
