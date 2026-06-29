@@ -1019,28 +1019,41 @@ function setCourtDateAction(body) {
         break;
       }
     } catch(e) { Logger.log('setCourtDate PAE sheet error: ' + e.message); }
-
-    return { status: 'ok', updated };
-  } catch(err) {
-    return { status: 'error', message: err.message };
   }
 }
 
 function setCaseActiveAction(caseNum, activeValue) {
   if (!caseNum) return { status: 'error', message: 'No case number' };
   try {
+    // Update Master Tracker column N
     const sheet = getMasterTrackerSheet();
     const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { status: 'ok', updated: 0 };
-    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-    let updated = 0;
-    data.forEach((row, i) => {
-      if (String(row[0]).trim() === caseNum) {
-        sheet.getRange(i + 2, 14).setValue(activeValue);
-        updated++;
+    if (lastRow >= 2) {
+      const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      data.forEach((row, i) => {
+        if (String(row[0]).trim() === caseNum) sheet.getRange(i + 2, 14).setValue(activeValue);
+      });
+    }
+    // Update PAE Summary sheet D3
+    try {
+      const autoLogFolder = DriveApp.getFolderById(AUTO_LOG_FOLDER_ID);
+      const folders = autoLogFolder.getFolders();
+      while (folders.hasNext()) {
+        const folder = folders.next();
+        if (!folder.getName().startsWith(caseNum + ' ')) continue;
+        const files = folder.getFiles();
+        while (files.hasNext()) {
+          const file = files.next();
+          if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
+          const ss = SpreadsheetApp.openById(file.getId());
+          const paeSheet = ss.getSheetByName('PAE Summary');
+          if (paeSheet) paeSheet.getRange('D3').setValue(activeValue);
+          break;
+        }
+        break;
       }
-    });
-    return { status: 'ok', updated };
+    } catch(e) { Logger.log('setCaseActive PAE sheet error: ' + e.message); }
+    return { status: 'ok' };
   } catch(err) {
     Logger.log('setCaseActiveAction error: ' + err.message);
     return { status: 'error', message: err.message };
@@ -1074,6 +1087,8 @@ function rebuildMasterTracker() {
           const paeSheet = ss.getSheetByName('PAE Summary');
           if (!paeSheet) break;
           const courtDate = String(paeSheet.getRange('B4').getValue() || '').trim();
+          const activeStatus = String(paeSheet.getRange('D3').getValue() || 'Active').trim();
+          const activeVal = activeStatus === 'No' ? 'No' : 'Yes';
           const zone = paeSheet.getRange(6, 1, 45, 10).getValues();
           let addedForCase = false;
           zone.forEach(row => {
@@ -1086,13 +1101,13 @@ function rebuildMasterTracker() {
               caseNum, clientLast, clientFirst,
               String(row[9] || '').trim(), courtDate,
               authNum, row[1] || '', row[2] || '', row[3] || '', row[5] || '',
-              effDate, expDate, String(row[8] || '').trim()
+              effDate, expDate, String(row[8] || '').trim(), activeVal
             ]);
             totalRows++;
             addedForCase = true;
           });
           if (!addedForCase) {
-            sheet.appendRow([caseNum, clientLast, clientFirst, '', courtDate, '', '', '', '', '', '', '', '']);
+            sheet.appendRow([caseNum, clientLast, clientFirst, '', courtDate, '', '', '', '', '', '', '', '', activeVal]);
             totalRows++;
           }
         } catch(e) { Logger.log('rebuildMaster case error: ' + e.message); }
@@ -1215,6 +1230,8 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
   sheet.getRange('D2').setFormula('=B4');
   sheet.getRange('A3').setValue('Client');
   sheet.getRange('B3').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
+  sheet.getRange('C3').setValue('Status');
+  sheet.getRange('D3').setValue('Active');
   sheet.getRange('A4').setValue('Court Date');
   sheet.getRange('B4').setValue('');
 
@@ -1222,10 +1239,12 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
   const infoLabels = sheet.getRange('A1:A4');
   infoLabels.setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
   sheet.getRange('C2').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
+  sheet.getRange('C3').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
 
   sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
   sheet.getRange('B2:B3').setFontColor('#000000').setFontWeight('bold').setFontSize(11);
   sheet.getRange('D2').setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
+  sheet.getRange('D3').setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
 
   // Total auth row background
   sheet.getRange('A1:B1').setBackground('#0d1117');
