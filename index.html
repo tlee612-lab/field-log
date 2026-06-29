@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#252]</title>
+<title>OPS Track [#253]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1418,7 +1418,13 @@ async function openTrackerViewer() {
         const courtDate = info.courtDate || '';
         const isActive = info.active !== false;
         const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtDate ? 'var(--accent2)' : 'var(--border)'};background:transparent;color:${courtDate ? 'var(--accent2)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
-        const activePill = `<button onclick="toggleTrackerCaseActive('${caseNum}',${isActive})" style="padding:1px 8px;border-radius:10px;border:1px solid ${isActive ? 'var(--accent)' : 'var(--muted)'};background:transparent;color:${isActive ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">${isActive ? '● Active' : '○ Inactive'}</button>`;
+        const activePill = `<span onclick="toggleTrackerCaseActive('${caseNum}',${isActive})" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+          <span style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0">
+            <span style="position:absolute;inset:0;border-radius:18px;background:${isActive ? 'var(--accent)' : 'var(--surface2)'};border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}"></span>
+            <span style="position:absolute;top:2px;left:${isActive ? '16px' : '2px'};width:12px;height:12px;border-radius:50%;background:${isActive ? 'var(--bg)' : 'var(--muted)'}"></span>
+          </span>
+          <span style="font-family:var(--ui);font-size:10px;letter-spacing:0.5px;color:${isActive ? 'var(--accent)' : 'var(--muted)'}">${isActive ? 'Active' : 'Inactive'}</span>
+        </span>`;
         const paeRows = paes.map(r => {
           const st = expStatus(r.expDate);
           const stColor = colors[st] || 'var(--muted)';
