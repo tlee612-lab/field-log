@@ -1065,7 +1065,10 @@ function setCaseActiveAction(caseNum, activeValue) {
           if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
           const ss = SpreadsheetApp.openById(file.getId());
           const paeSheet = ss.getSheetByName('PAE Summary');
-          if (paeSheet) paeSheet.getRange('D3').setValue(activeValue);
+          if (paeSheet) {
+            paeSheet.getRange('C3').setValue('Status').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
+            paeSheet.getRange('D3').setValue(activeValue);
+          }
           break;
         }
         break;
