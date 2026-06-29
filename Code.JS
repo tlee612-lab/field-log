@@ -1147,7 +1147,7 @@ function getMasterData() {
         clientLast: String(r[1]).trim(),
         clientFirst:String(r[2]).trim(),
         attorney:   String(r[3]).trim(),
-        courtDate:  String(r[4]).trim(),
+        courtDate:  r[4] instanceof Date && !isNaN(r[4].getTime()) ? Utilities.formatDate(r[4], tz, 'MM/dd/yyyy') : String(r[4] || '').trim(),
         authNum:    String(r[5]).trim(),
         authHrs:    r[6] || '',
         rate:       r[7] || '',
