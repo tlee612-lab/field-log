@@ -1045,6 +1045,10 @@ function setCaseActiveAction(caseNum, activeValue) {
   try {
     // Update Master Tracker column N
     const sheet = getMasterTrackerSheet();
+    // Stamp header if missing (sheet predates Active column)
+    if (!sheet.getRange(1, 14).getValue()) {
+      sheet.getRange(1, 14).setValue('Active').setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+    }
     const lastRow = sheet.getLastRow();
     if (lastRow >= 2) {
       const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
