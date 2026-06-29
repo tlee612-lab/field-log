@@ -1022,7 +1022,11 @@ function setCourtDateAction(body) {
           if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
           const ss = SpreadsheetApp.openById(file.getId());
           const paeSheet = ss.getSheetByName('PAE Summary');
-          if (paeSheet) paeSheet.getRange('B4').setValue(courtDate);
+          if (paeSheet) {
+            const b4 = paeSheet.getRange('B4');
+            b4.setValue(courtDate);
+            b4.setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
+          }
           break;
         }
         break;
