@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#254]</title>
+<title>OPS Track [#255]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1361,7 +1361,7 @@ async function openTrackerViewer() {
       };
 
       // Build attorney → cases → PAEs hierarchy (filter inactive if needed)
-      const visibleRows = showInactive ? rows : rows.filter(r => r.active !== false);
+      const visibleRows = showInactive ? rows.filter(r => r.active === false) : rows.filter(r => r.active !== false);
       const attorneyMap = {};
       visibleRows.forEach(r => {
         const atty = r.attorney || '—';
