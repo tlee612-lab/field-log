@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#246]</title>
+<title>OPS Track [#247]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1362,9 +1362,12 @@ async function openTrackerViewer() {
         if (val === null) return;
         if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
         try {
-          await fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'setCourtDate', caseNum, courtDate: val.trim() }) });
+          const formatted = val.trim();
+          await fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'setCourtDate', case: caseNum, courtDate: formatted }) });
+          courtDates[caseNum] = formatted;
+          saveCourtDatesLocal();
           const row = rows.find(r => r.caseNum === caseNum);
-          if (row) row.courtDate = val.trim();
+          if (row) row.courtDate = formatted;
           renderTracker();
           showToast('✓ Court date updated');
         } catch(e) { showToast('Failed to save court date', true); }
