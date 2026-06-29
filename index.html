@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#265]</title>
+<title>OPS Track [#266]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1433,8 +1433,8 @@ async function openTrackerViewer() {
           return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px 5px 20px;border-top:1px solid var(--border);font-size:11px${isActive ? '' : ';opacity:0.5'}">
             <span style="color:var(--muted)">PAE #${r.authNum} · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}</span>
             <div style="text-align:right">
-              <div style="color:${stColor};font-family:var(--ui);font-weight:700;font-size:11px;white-space:nowrap">${r.expDate || '—'}</div>
-              <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'Expired' : st === 'soon' ? 'Exp. Soon' : st === 'active' ? 'Active' : ''}</div>
+              <div style="color:${stColor};font-family:var(--ui);font-weight:700;font-size:11px;white-space:nowrap">${r.expDate ? 'Exp ' + r.expDate : '—'}</div>
+              <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'PAE Expired' : st === 'soon' ? 'PAE Exp. Soon' : st === 'active' ? 'PAE Active' : ''}</div>
             </div>
           </div>`;
         }).join('');
