@@ -633,7 +633,7 @@ function createCase(body) {
   // Update master tracker
   try {
     const allPaes = getAllPaesFromSheet(paeSheet);
-    const sheetCourtDate = String(paeSheet.getRange('B4').getValue() || '').trim();
+    const sheetCourtDate = readCourtDate(paeSheet);
     updateMasterForCase(caseNum, clientLast, clientFirst, allPaes, sheetCourtDate);
   } catch(e) { Logger.log('Master tracker update error: ' + e.message); }
 
@@ -899,6 +899,15 @@ function setupRetainedSheet(sheet, folderName) {
   Logger.log('setupRetainedSheet: complete');
 }
 
+function readCourtDate(paeSheet) {
+  const val = paeSheet.getRange('B4').getValue();
+  if (!val) return '';
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'MM/dd/yyyy');
+  }
+  return String(val).trim();
+}
+
 // ── Master Tracker ───────────────────────────────────────────────────────────
 const MASTER_TRACKER_NAME = 'OPS Track Master';
 const MASTER_TRACKER_HEADERS = [
@@ -1090,7 +1099,7 @@ function rebuildMasterTracker() {
           const ss = SpreadsheetApp.openById(file.getId());
           const paeSheet = ss.getSheetByName('PAE Summary');
           if (!paeSheet) break;
-          const courtDate = String(paeSheet.getRange('B4').getValue() || '').trim();
+          const courtDate = readCourtDate(paeSheet);
           const activeStatus = String(paeSheet.getRange('D3').getValue() || 'Active').trim();
           const activeVal = activeStatus === 'No' ? 'No' : 'Yes';
           const zone = paeSheet.getRange(6, 1, 45, 10).getValues();
