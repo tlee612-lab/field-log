@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#276]</title>
+<title>OPS Track [#277]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1381,21 +1381,23 @@ async function openTrackerViewer() {
 
       const sortedAttorneys = Object.keys(attorneyMap).sort((a, b) => a.localeCompare(b));
 
+      const btnStyle = (active) => `padding:6px 10px;border-radius:6px;border:${active?'2px solid var(--accent)':'1px solid var(--border)'};background:${active?'var(--surface2)':'transparent'};color:${active?'var(--accent)':'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer`;
+      const sortBtns = ['attorney','case','expiration'].map(m => {
+        const lbl = {attorney:'By Attorney',case:'By Case #',expiration:'By Expiration'}[m];
+        return `<button onclick="trackerSort('${m}')" style="${btnStyle(m===sortMode)}">${lbl}</button>`;
+      }).join('');
       const selectStyle = 'padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;flex:1';
-      const sortSelect = `<select onchange="trackerSort(this.value)" style="${selectStyle}">
-        <option value="attorney" ${sortMode==='attorney'?'selected':''}>By Attorney</option>
-        <option value="case" ${sortMode==='case'?'selected':''}>By Case #</option>
-        <option value="expiration" ${sortMode==='expiration'?'selected':''}>By Expiration</option>
-      </select>`;
-      const statusSelect = `<select onchange="trackerSetStatus(this.value)" style="${selectStyle}">
-        <option value="all" ${filterStatus==='all'?'selected':''}>All</option>
-        <option value="active" ${filterStatus==='active'?'selected':''}>Active Only</option>
-        <option value="inactive" ${filterStatus==='inactive'?'selected':''}>Inactive Only</option>
-      </select>`;
       const attySelect = `<select onchange="trackerSetAtty(this.value)" style="${selectStyle}">
         <option value="all" ${filterAtty==='all'?'selected':''}>All Attorneys</option>
         ${uniqueAttorneys.map(a => `<option value="${a.replace(/"/g,'&quot;')}" ${filterAtty===a?'selected':''}>${a}</option>`).join('')}
       </select>`;
+      const activeSwitch = `<span onclick="trackerSetStatus(filterStatus==='active'?'all':'active')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;flex-shrink:0">
+        <span style="position:relative;display:inline-block;width:34px;height:18px">
+          <span style="position:absolute;inset:0;border-radius:18px;background:${filterStatus==='active'?'var(--accent)':'var(--surface2)'};border:1px solid ${filterStatus==='active'?'var(--accent)':'var(--border)'}"></span>
+          <span style="position:absolute;top:2px;left:${filterStatus==='active'?'16px':'2px'};width:12px;height:12px;border-radius:50%;background:${filterStatus==='active'?'var(--bg)':'var(--muted)'}"></span>
+        </span>
+        <span style="font-family:var(--ui);font-size:10px;color:${filterStatus==='active'?'var(--accent)':'var(--muted)'}">${filterStatus==='active'?'Active':'All'}</span>
+      </span>`;
 
       function earliestExp(paes) {
         const dates = paes.map(p => {
@@ -1469,7 +1471,7 @@ async function openTrackerViewer() {
 
       box.innerHTML = `
         <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Tracker</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">${sortSelect}${statusSelect}</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">${sortBtns}${activeSwitch}</div>
         <div style="margin-bottom:10px">${attySelect}</div>
         <div style="overflow-y:auto;flex:1">${visibleRows.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No cases to display.</div>'}</div>
         <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
@@ -1480,6 +1482,7 @@ async function openTrackerViewer() {
     window.trackerSetStatus = s => { filterStatus = s; renderTracker(); };
     window.trackerSetAtty = a => { filterAtty = a; renderTracker(); };
     window.trackerEditCase = () => { openCreateModal(); };
+    window.trackerToggleInactive = () => { filterStatus = filterStatus === 'inactive' ? 'active' : 'inactive'; renderTracker(); };
     renderTracker();
 
   } catch (err) {
