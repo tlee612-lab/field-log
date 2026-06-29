@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#248]</title>
+<title>OPS Track [#249]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1360,11 +1360,21 @@ async function openTrackerViewer() {
 
       const sortedAttorneys = Object.keys(attorneyMap).sort((a, b) => a.localeCompare(b));
 
-      const sortBtns = ['attorney', 'case'].map(m => {
-        const labels = { attorney: 'By Attorney', case: 'By Case #' };
+      const sortBtns = ['attorney', 'case', 'expiration'].map(m => {
+        const labels = { attorney: 'By Attorney', case: 'By Case #', expiration: 'By Expiration' };
         const active = m === sortMode;
         return `<button onclick="trackerSort('${m}')" style="padding:6px 10px;border-radius:6px;border:${active ? '2px solid var(--accent)' : '1px solid var(--border)'};background:${active ? 'var(--surface2)' : 'transparent'};color:${active ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${labels[m]}</button>`;
       }).join('');
+
+      function earliestExp(paes) {
+        const dates = paes.map(p => {
+          if (!p.expDate) return Infinity;
+          const parts = p.expDate.split(/[\/\-]/);
+          const d = new Date(parseInt(parts[2]) < 100 ? 2000+parseInt(parts[2]) : parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+          return isNaN(d) ? Infinity : d.getTime();
+        });
+        return Math.min(...dates);
+      }
 
       // Flatten to [{ atty, caseNum, info, paes }] and sort
       let caseList = [];
@@ -1374,6 +1384,7 @@ async function openTrackerViewer() {
         });
       });
       if (sortMode === 'case') caseList.sort((a, b) => a.caseNum.localeCompare(b.caseNum));
+      if (sortMode === 'expiration') caseList.sort((a, b) => earliestExp(a.paes) - earliestExp(b.paes));
 
       // Group for display
       const groupsHtml = (() => {
