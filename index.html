@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#266]</title>
+<title>OPS Track [#267]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1420,6 +1420,7 @@ async function openTrackerViewer() {
         const courtDate = info.courtDate || '';
         const isActive = info.active !== false;
         const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtDate ? 'var(--accent2)' : 'var(--border)'};background:transparent;color:${courtDate ? 'var(--accent2)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
+        const editPill = `<button onclick="overlay.remove();openCreateModal()" style="padding:1px 8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">✎ Edit</button>`;
         const activePill = `<span onclick="toggleTrackerCaseActive('${caseNum}',${isActive})" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
           <span style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0">
             <span style="position:absolute;inset:0;border-radius:18px;background:${isActive ? 'var(--accent)' : 'var(--surface2)'};border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}"></span>
@@ -1444,7 +1445,7 @@ async function openTrackerViewer() {
               <div style="font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${caseNum} — ${info.clientLast}${info.clientFirst ? ', ' + info.clientFirst : ''}</div>
               ${sortMode === 'case' ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${info.attorney || '—'}</div>` : ''}
             </div>
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${activePill}${courtPill}</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${activePill}${courtPill}${editPill}</div>
           </div>
           ${paeRows}
         </div>`;
