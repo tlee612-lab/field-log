@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#263]</title>
+<title>OPS Track [#264]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1352,6 +1352,7 @@ async function openTrackerViewer() {
       window.toggleTrackerCaseActive = async (caseNum, currentlyActive) => {
         const newActive = currentlyActive ? 'No' : 'Yes';
         if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+        showToast((newActive === 'Yes' ? '⏳ Marking active…' : '⏳ Marking inactive…'), false, true);
         try {
           await fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + newActive);
           rows.filter(r => r.caseNum === caseNum).forEach(r => r.active = newActive !== 'No');
@@ -3385,13 +3386,14 @@ async function upgradeAllSheets() {
   }
 }
 
-function showToast(msg, isError=false) {
+function showToast(msg, isError=false, persist=false) {
   const t = document.getElementById('toast');
+  if (t._toastTimer) { clearTimeout(t._toastTimer); t._toastTimer = null; }
   t.textContent = msg;
   t.className = 'toast' + (isError ? ' error' : '');
   void t.offsetWidth;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 10000);
+  if (!persist) t._toastTimer = setTimeout(() => t.classList.remove('show'), 10000);
 }
 
 // ════════════════════════════════════════════════════════════════════
