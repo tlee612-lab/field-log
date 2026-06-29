@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#275]</title>
+<title>OPS Track [#276]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1316,7 +1316,8 @@ async function openTrackerViewer() {
     }
 
     let sortMode = 'attorney';
-    let showInactive = false;
+    let filterStatus = 'active';
+    let filterAtty = 'all';
     const rows = data.rows || [];
 
     function renderTracker() {
@@ -1357,14 +1358,18 @@ async function openTrackerViewer() {
         try {
           await fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + newActive);
           rows.filter(r => r.caseNum === caseNum).forEach(r => r.active = newActive !== 'No');
-          if (showInactive && rows.filter(r => r.active === false).length === 0) showInactive = false;
+          if (filterStatus === 'inactive' && rows.filter(r => r.active === false).length === 0) filterStatus = 'all';
           renderTracker();
           showToast((newActive === 'Yes' ? '✓ Case marked active' : '✓ Case marked inactive'));
         } catch(e) { showToast('Failed to update case status', true); }
       };
 
-      // Build attorney → cases → PAEs hierarchy (filter inactive if needed)
-      const visibleRows = showInactive ? rows.filter(r => r.active === false) : rows.filter(r => r.active !== false);
+      // Build visible row set based on status + attorney filters
+      const uniqueAttorneys = [...new Set(rows.map(r => r.attorney || '—'))].sort((a,b) => a.localeCompare(b));
+      let baseRows = rows;
+      if (filterStatus === 'active') baseRows = rows.filter(r => r.active !== false);
+      else if (filterStatus === 'inactive') baseRows = rows.filter(r => r.active === false);
+      const visibleRows = filterAtty === 'all' ? baseRows : baseRows.filter(r => (r.attorney || '—') === filterAtty);
       const attorneyMap = {};
       visibleRows.forEach(r => {
         const atty = r.attorney || '—';
@@ -1376,11 +1381,21 @@ async function openTrackerViewer() {
 
       const sortedAttorneys = Object.keys(attorneyMap).sort((a, b) => a.localeCompare(b));
 
-      const sortBtns = ['attorney', 'case', 'expiration'].map(m => {
-        const labels = { attorney: 'By Attorney', case: 'By Case #', expiration: 'By Expiration' };
-        const active = m === sortMode;
-        return `<button onclick="trackerSort('${m}')" style="padding:6px 10px;border-radius:6px;border:${active ? '2px solid var(--accent)' : '1px solid var(--border)'};background:${active ? 'var(--surface2)' : 'transparent'};color:${active ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${labels[m]}</button>`;
-      }).join('');
+      const selectStyle = 'padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;flex:1';
+      const sortSelect = `<select onchange="trackerSort(this.value)" style="${selectStyle}">
+        <option value="attorney" ${sortMode==='attorney'?'selected':''}>By Attorney</option>
+        <option value="case" ${sortMode==='case'?'selected':''}>By Case #</option>
+        <option value="expiration" ${sortMode==='expiration'?'selected':''}>By Expiration</option>
+      </select>`;
+      const statusSelect = `<select onchange="trackerSetStatus(this.value)" style="${selectStyle}">
+        <option value="all" ${filterStatus==='all'?'selected':''}>All</option>
+        <option value="active" ${filterStatus==='active'?'selected':''}>Active Only</option>
+        <option value="inactive" ${filterStatus==='inactive'?'selected':''}>Inactive Only</option>
+      </select>`;
+      const attySelect = `<select onchange="trackerSetAtty(this.value)" style="${selectStyle}">
+        <option value="all" ${filterAtty==='all'?'selected':''}>All Attorneys</option>
+        ${uniqueAttorneys.map(a => `<option value="${a.replace(/"/g,'&quot;')}" ${filterAtty===a?'selected':''}>${a}</option>`).join('')}
+      </select>`;
 
       function earliestExp(paes) {
         const dates = paes.map(p => {
@@ -1452,19 +1467,18 @@ async function openTrackerViewer() {
         </div>`;
       }
 
-      const inactiveCount = rows.filter(r => r.active === false).length > 0;
-      const inactiveToggle = inactiveCount ? `<button onclick="trackerToggleInactive()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:${showInactive ? 'var(--surface2)' : 'transparent'};color:${showInactive ? 'var(--text)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${showInactive ? '◉ Hide Inactive' : '○ Show Inactive'}</button>` : '';
-
       box.innerHTML = `
-        <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">Case Tracker</div>
-        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${sortBtns}${inactiveToggle}</div>
+        <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Tracker</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">${sortSelect}${statusSelect}</div>
+        <div style="margin-bottom:10px">${attySelect}</div>
         <div style="overflow-y:auto;flex:1">${visibleRows.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No cases to display.</div>'}</div>
         <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
       `;
     }
 
     window.trackerSort = m => { sortMode = m; renderTracker(); };
-    window.trackerToggleInactive = () => { showInactive = !showInactive; renderTracker(); };
+    window.trackerSetStatus = s => { filterStatus = s; renderTracker(); };
+    window.trackerSetAtty = a => { filterAtty = a; renderTracker(); };
     window.trackerEditCase = () => { openCreateModal(); };
     renderTracker();
 
