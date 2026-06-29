@@ -1109,8 +1109,11 @@ function rebuildMasterTracker() {
         if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
         try {
           const ss = SpreadsheetApp.openById(file.getId());
-          const paeSheet = ss.getSheetByName('PAE Summary');
-          if (!paeSheet) continue;
+          let paeSheet = ss.getSheetByName('PAE Summary');
+          if (!paeSheet) {
+            paeSheet = ss.insertSheet('PAE Summary');
+            setupPaeSummarySheet(paeSheet, caseNum, clientLast, clientFirst);
+          }
           const courtDate = readCourtDate(paeSheet);
           const activeStatus = String(paeSheet.getRange('D3').getValue() || 'Active').trim();
           const activeVal = activeStatus === 'No' ? 'No' : 'Yes';
