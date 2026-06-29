@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#247]</title>
+<title>OPS Track [#248]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1333,30 +1333,6 @@ async function openTrackerViewer() {
         return 'active';
       }
 
-      // Group rows
-      let groups = {};
-      let groupKey = r => sortMode === 'attorney' ? (r.attorney || '—') : sortMode === 'court' ? (r.courtDate || 'No court date') : (r.caseNum || '—');
-
-      rows.forEach(r => {
-        const k = groupKey(r);
-        if (!groups[k]) groups[k] = [];
-        groups[k].push(r);
-      });
-
-      const sortedKeys = Object.keys(groups).sort((a, b) => {
-        if (sortMode === 'court') {
-          if (a === 'No court date') return 1;
-          if (b === 'No court date') return -1;
-        }
-        return a.localeCompare(b);
-      });
-
-      const sortBtns = ['attorney', 'court', 'expiration'].map(m => {
-        const labels = { attorney: 'By Attorney', court: 'By Court Date', expiration: 'By Expiration' };
-        const active = m === sortMode;
-        return `<button onclick="trackerSort('${m}')" style="padding:6px 10px;border-radius:6px;border:${active ? '2px solid var(--accent)' : '1px solid var(--border)'};background:${active ? 'var(--surface2)' : 'transparent'};color:${active ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${labels[m]}</button>`;
-      }).join('');
-
       window.setTrackerCourtDate = async (caseNum, current) => {
         const val = prompt('Court date for ' + caseNum + ' (MM/DD/YYYY):', current || '');
         if (val === null) return;
@@ -1366,35 +1342,79 @@ async function openTrackerViewer() {
           await fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'setCourtDate', case: caseNum, courtDate: formatted }) });
           courtDates[caseNum] = formatted;
           saveCourtDatesLocal();
-          const row = rows.find(r => r.caseNum === caseNum);
-          if (row) row.courtDate = formatted;
+          rows.filter(r => r.caseNum === caseNum).forEach(r => r.courtDate = formatted);
           renderTracker();
           showToast('✓ Court date updated');
         } catch(e) { showToast('Failed to save court date', true); }
       };
 
-      const groupsHtml = sortedKeys.map(k => {
-        const caseRows = groups[k];
-        const rowsHtml = caseRows.map(r => {
+      // Build attorney → cases → PAEs hierarchy
+      const attorneyMap = {};
+      rows.forEach(r => {
+        const atty = r.attorney || '—';
+        if (!attorneyMap[atty]) attorneyMap[atty] = {};
+        const cn = r.caseNum;
+        if (!attorneyMap[atty][cn]) attorneyMap[atty][cn] = { info: r, paes: [] };
+        attorneyMap[atty][cn].paes.push(r);
+      });
+
+      const sortedAttorneys = Object.keys(attorneyMap).sort((a, b) => a.localeCompare(b));
+
+      const sortBtns = ['attorney', 'case'].map(m => {
+        const labels = { attorney: 'By Attorney', case: 'By Case #' };
+        const active = m === sortMode;
+        return `<button onclick="trackerSort('${m}')" style="padding:6px 10px;border-radius:6px;border:${active ? '2px solid var(--accent)' : '1px solid var(--border)'};background:${active ? 'var(--surface2)' : 'transparent'};color:${active ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${labels[m]}</button>`;
+      }).join('');
+
+      // Flatten to [{ atty, caseNum, info, paes }] and sort
+      let caseList = [];
+      sortedAttorneys.forEach(atty => {
+        Object.keys(attorneyMap[atty]).sort().forEach(cn => {
+          caseList.push({ atty, caseNum: cn, ...attorneyMap[atty][cn] });
+        });
+      });
+      if (sortMode === 'case') caseList.sort((a, b) => a.caseNum.localeCompare(b.caseNum));
+
+      // Group for display
+      const groupsHtml = (() => {
+        if (sortMode === 'attorney') {
+          return sortedAttorneys.map(atty => {
+            const casesHtml = Object.keys(attorneyMap[atty]).sort().map(cn => buildCaseBlock(cn, attorneyMap[atty][cn], colors, expStatus)).join('');
+            return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px">
+              <div style="padding:8px 12px;background:var(--surface2);font-family:var(--ui);font-weight:800;font-size:12px;color:var(--text);letter-spacing:0.5px">${atty}</div>
+              ${casesHtml}
+            </div>`;
+          }).join('');
+        } else {
+          return caseList.map(c => `<div style="margin-bottom:8px">${buildCaseBlock(c.caseNum, c, colors, expStatus)}</div>`).join('');
+        }
+      })();
+
+      function buildCaseBlock(caseNum, { info, paes }, colors, expStatus) {
+        const courtDate = info.courtDate || '';
+        const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtDate ? 'var(--accent2)' : 'var(--border)'};background:transparent;color:${courtDate ? 'var(--accent2)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
+        const paeRows = paes.map(r => {
           const st = expStatus(r.expDate);
           const stColor = colors[st] || 'var(--muted)';
-          const courtPill = `<button onclick="setTrackerCourtDate('${r.caseNum}','${r.courtDate || ''}')" style="display:inline-block;padding:1px 7px;border-radius:10px;border:1px solid ${r.courtDate ? 'var(--accent2)' : 'var(--border)'};background:transparent;color:${r.courtDate ? 'var(--accent2)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap">⚖ ${r.courtDate || 'Add Date'}</button>`;
-          return `<div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:6px 10px;border-top:1px solid var(--border);font-size:11px;align-items:center">
-            <div style="display:flex;flex-direction:column;gap:3px">
-              <span style="color:var(--muted)">${sortMode !== 'attorney' ? (r.attorney || '—') + ' · ' : ''}PAE #${r.authNum} · ${r.authHrs || '—'} hrs</span>
-              <div style="display:flex;align-items:center;gap:6px">${courtPill}${sortMode === 'attorney' ? `<span style="color:var(--muted);font-size:10px">${r.caseNum} — ${r.clientLast}</span>` : ''}</div>
-            </div>
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px 5px 20px;border-top:1px solid var(--border);font-size:11px">
+            <span style="color:var(--muted)">PAE #${r.authNum} · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}</span>
             <div style="text-align:right">
-              <div style="color:${stColor};font-family:var(--ui);font-weight:700;white-space:nowrap">${r.expDate || '—'}</div>
-              <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'Expired' : st === 'soon' ? 'Soon' : st === 'active' ? 'Active' : ''}</div>
+              <div style="color:${stColor};font-family:var(--ui);font-weight:700;font-size:11px;white-space:nowrap">${r.expDate || '—'}</div>
+              <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'Expired' : st === 'soon' ? 'Exp. Soon' : st === 'active' ? 'Active' : ''}</div>
             </div>
           </div>`;
         }).join('');
-        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px">
-          <div style="padding:8px 10px;background:var(--surface2);font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${k}</div>
-          ${rowsHtml}
+        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="padding:8px 12px;background:var(--surface2);display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div>
+              <div style="font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${caseNum} — ${info.clientLast}${info.clientFirst ? ', ' + info.clientFirst : ''}</div>
+              ${sortMode === 'case' ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${info.attorney || '—'}</div>` : ''}
+            </div>
+            ${courtPill}
+          </div>
+          ${paeRows}
         </div>`;
-      }).join('');
+      }
 
       box.innerHTML = `
         <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">Case Tracker</div>
