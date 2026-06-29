@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#249]</title>
+<title>OPS Track [#250]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1315,6 +1315,7 @@ async function openTrackerViewer() {
     }
 
     let sortMode = 'attorney';
+    let showInactive = false;
     const rows = data.rows || [];
 
     function renderTracker() {
@@ -1348,9 +1349,21 @@ async function openTrackerViewer() {
         } catch(e) { showToast('Failed to save court date', true); }
       };
 
-      // Build attorney → cases → PAEs hierarchy
+      window.toggleTrackerCaseActive = async (caseNum, currentlyActive) => {
+        const newActive = currentlyActive ? 'No' : 'Yes';
+        if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+        try {
+          await fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + newActive);
+          rows.filter(r => r.caseNum === caseNum).forEach(r => r.active = newActive !== 'No');
+          renderTracker();
+          showToast((newActive === 'Yes' ? '✓ Case marked active' : '✓ Case marked inactive'));
+        } catch(e) { showToast('Failed to update case status', true); }
+      };
+
+      // Build attorney → cases → PAEs hierarchy (filter inactive if needed)
+      const visibleRows = showInactive ? rows : rows.filter(r => r.active !== false);
       const attorneyMap = {};
-      rows.forEach(r => {
+      visibleRows.forEach(r => {
         const atty = r.attorney || '—';
         if (!attorneyMap[atty]) attorneyMap[atty] = {};
         const cn = r.caseNum;
@@ -1403,11 +1416,13 @@ async function openTrackerViewer() {
 
       function buildCaseBlock(caseNum, { info, paes }, colors, expStatus) {
         const courtDate = info.courtDate || '';
+        const isActive = info.active !== false;
         const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtDate ? 'var(--accent2)' : 'var(--border)'};background:transparent;color:${courtDate ? 'var(--accent2)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
+        const activePill = `<button onclick="toggleTrackerCaseActive('${caseNum}',${isActive})" style="padding:1px 8px;border-radius:10px;border:1px solid ${isActive ? 'var(--accent)' : 'var(--muted)'};background:transparent;color:${isActive ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">${isActive ? '● Active' : '○ Inactive'}</button>`;
         const paeRows = paes.map(r => {
           const st = expStatus(r.expDate);
           const stColor = colors[st] || 'var(--muted)';
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px 5px 20px;border-top:1px solid var(--border);font-size:11px">
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px 5px 20px;border-top:1px solid var(--border);font-size:11px${isActive ? '' : ';opacity:0.5'}">
             <span style="color:var(--muted)">PAE #${r.authNum} · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}</span>
             <div style="text-align:right">
               <div style="color:${stColor};font-family:var(--ui);font-weight:700;font-size:11px;white-space:nowrap">${r.expDate || '—'}</div>
@@ -1415,27 +1430,31 @@ async function openTrackerViewer() {
             </div>
           </div>`;
         }).join('');
-        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-          <div style="padding:8px 12px;background:var(--surface2);display:flex;justify-content:space-between;align-items:center;gap:8px">
+        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden${isActive ? '' : ';opacity:0.65'}">
+          <div style="padding:8px 12px;background:var(--surface2);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
             <div>
               <div style="font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${caseNum} — ${info.clientLast}${info.clientFirst ? ', ' + info.clientFirst : ''}</div>
               ${sortMode === 'case' ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${info.attorney || '—'}</div>` : ''}
             </div>
-            ${courtPill}
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${activePill}${courtPill}</div>
           </div>
           ${paeRows}
         </div>`;
       }
 
+      const inactiveCount = rows.filter(r => r.active === false).length > 0;
+      const inactiveToggle = inactiveCount ? `<button onclick="trackerToggleInactive()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:${showInactive ? 'var(--surface2)' : 'transparent'};color:${showInactive ? 'var(--text)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${showInactive ? '◉ Hide Inactive' : '○ Show Inactive'}</button>` : '';
+
       box.innerHTML = `
         <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">Case Tracker</div>
-        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${sortBtns}</div>
-        <div style="overflow-y:auto;flex:1">${rows.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No data in master tracker yet.<br>Drop a PAE to populate it.</div>'}</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${sortBtns}${inactiveToggle}</div>
+        <div style="overflow-y:auto;flex:1">${visibleRows.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No cases to display.</div>'}</div>
         <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
       `;
     }
 
     window.trackerSort = m => { sortMode = m; renderTracker(); };
+    window.trackerToggleInactive = () => { showInactive = !showInactive; renderTracker(); };
     renderTracker();
 
   } catch (err) {

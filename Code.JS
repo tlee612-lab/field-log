@@ -82,6 +82,7 @@ function doGet(e) {
     if (action === 'getVehicles') return buildResponse(getVehiclesData());
     if (action === 'getMileageLog') return buildResponse(getMileageLogData(e.parameter.case || ''));
     if (action === 'getDistance')   return buildResponse(getDrivingDistance(e.parameter.origin || '', e.parameter.dest || ''));
+    if (action === 'setCaseActive') return buildResponse(setCaseActiveAction(e.parameter.case || '', e.parameter.active || 'Yes'));
     if (action === 'getPaeExpirations') return buildResponse(getPaeExpirations());
     if (action === 'getMasterData') return buildResponse(getMasterData());
     if (action === 'rebuildMaster') return buildResponse(rebuildMasterTracker());
@@ -903,7 +904,7 @@ const MASTER_TRACKER_NAME = 'OPS Track Master';
 const MASTER_TRACKER_HEADERS = [
   'Case #', 'Client Last', 'Client First', 'Attorney', 'Court Date',
   'PAE #', 'Auth Hrs', 'Rate/Hr', 'Svc Amt', 'Total Costs',
-  'Eff Date', 'Exp Date', 'County'
+  'Eff Date', 'Exp Date', 'County', 'Active'
 ];
 
 let _masterTrackerCreatedThisRequest = false;
@@ -931,7 +932,7 @@ function setupMasterTrackerSheet(sheet) {
   const hdr = sheet.getRange(1, 1, 1, MASTER_TRACKER_HEADERS.length);
   hdr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
   sheet.setFrozenRows(1);
-  [80, 90, 90, 130, 90, 80, 70, 70, 80, 90, 90, 90, 100].forEach((w, i) => sheet.setColumnWidth(i+1, w));
+  [80, 90, 90, 130, 90, 80, 70, 70, 80, 90, 90, 90, 100, 70].forEach((w, i) => sheet.setColumnWidth(i+1, w));
 }
 
 function updateMasterForCase(caseNum, clientLast, clientFirst, paes, courtDate) {
@@ -940,11 +941,14 @@ function updateMasterForCase(caseNum, clientLast, clientFirst, paes, courtDate) 
     const lastRow = Math.max(sheet.getLastRow(), 1);
     const tz = Session.getScriptTimeZone();
 
-    // Remove existing rows for this case
+    // Capture existing active status before deleting
+    let activeStatus = 'Yes';
     if (lastRow > 1) {
-      const caseCol = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-      for (let i = caseCol.length - 1; i >= 0; i--) {
-        if (String(caseCol[i][0]).trim() === caseNum) {
+      const existingData = sheet.getRange(2, 1, lastRow - 1, MASTER_TRACKER_HEADERS.length).getValues();
+      for (let i = existingData.length - 1; i >= 0; i--) {
+        if (String(existingData[i][0]).trim() === caseNum) {
+          const existingActive = String(existingData[i][13] || '').trim();
+          if (existingActive === 'No') activeStatus = 'No';
           sheet.deleteRow(i + 2);
         }
       }
@@ -963,13 +967,13 @@ function updateMasterForCase(caseNum, clientLast, clientFirst, paes, courtDate) 
         p.attorney || '', courtDate || '',
         p.authNumber || '', parseFloat(p.hours) || '',
         parseFloat(p.approvedRate) || '', parseFloat(p.serviceAmount) || '',
-        parseFloat(p.totalCosts) || '', effDate, expDate, p.county || ''
+        parseFloat(p.totalCosts) || '', effDate, expDate, p.county || '', activeStatus
       ]);
     });
 
     // If no PAEs, still write a placeholder row
     if (!paes || !paes.length) {
-      sheet.appendRow([caseNum, clientLast || '', clientFirst || '', '', courtDate || '', '', '', '', '', '', '', '', '']);
+      sheet.appendRow([caseNum, clientLast || '', clientFirst || '', '', courtDate || '', '', '', '', '', '', '', '', activeStatus]);
     }
   } catch(err) {
     Logger.log('updateMasterForCase error: ' + err.message);
@@ -1018,6 +1022,27 @@ function setCourtDateAction(body) {
 
     return { status: 'ok', updated };
   } catch(err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
+function setCaseActiveAction(caseNum, activeValue) {
+  if (!caseNum) return { status: 'error', message: 'No case number' };
+  try {
+    const sheet = getMasterTrackerSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { status: 'ok', updated: 0 };
+    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    let updated = 0;
+    data.forEach((row, i) => {
+      if (String(row[0]).trim() === caseNum) {
+        sheet.getRange(i + 2, 14).setValue(activeValue);
+        updated++;
+      }
+    });
+    return { status: 'ok', updated };
+  } catch(err) {
+    Logger.log('setCaseActiveAction error: ' + err.message);
     return { status: 'error', message: err.message };
   }
 }
@@ -1102,7 +1127,8 @@ function getMasterData() {
         totalCosts: r[9] || '',
         effDate:    r[10] instanceof Date && !isNaN(r[10].getTime()) ? Utilities.formatDate(r[10], tz, 'MM/dd/yyyy') : String(r[10] || '').trim(),
         expDate:    r[11] instanceof Date && !isNaN(r[11].getTime()) ? Utilities.formatDate(r[11], tz, 'MM/dd/yyyy') : String(r[11] || '').trim(),
-        county:     String(r[12] || '').trim()
+        county:     String(r[12] || '').trim(),
+        active:     String(r[13] || 'Yes').trim() !== 'No'
       }));
     return { status: 'ok', rows, created: _masterTrackerCreatedThisRequest };
   } catch(err) {
