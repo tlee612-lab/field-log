@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#245]</title>
+<title>OPS Track [#246]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1357,16 +1357,34 @@ async function openTrackerViewer() {
         return `<button onclick="trackerSort('${m}')" style="padding:6px 10px;border-radius:6px;border:${active ? '2px solid var(--accent)' : '1px solid var(--border)'};background:${active ? 'var(--surface2)' : 'transparent'};color:${active ? 'var(--accent)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">${labels[m]}</button>`;
       }).join('');
 
+      window.setTrackerCourtDate = async (caseNum, current) => {
+        const val = prompt('Court date for ' + caseNum + ' (MM/DD/YYYY):', current || '');
+        if (val === null) return;
+        if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+        try {
+          await fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'setCourtDate', caseNum, courtDate: val.trim() }) });
+          const row = rows.find(r => r.caseNum === caseNum);
+          if (row) row.courtDate = val.trim();
+          renderTracker();
+          showToast('✓ Court date updated');
+        } catch(e) { showToast('Failed to save court date', true); }
+      };
+
       const groupsHtml = sortedKeys.map(k => {
         const caseRows = groups[k];
         const rowsHtml = caseRows.map(r => {
           const st = expStatus(r.expDate);
           const stColor = colors[st] || 'var(--muted)';
-          return `<div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 10px;border-top:1px solid var(--border);font-size:11px">
-            <span style="color:var(--muted)">${sortMode !== 'attorney' ? (r.attorney || '—') + ' · ' : ''}${sortMode !== 'court' ? (r.courtDate || 'No court date') + ' · ' : ''}PAE #${r.authNum} · ${r.authHrs || '—'} hrs</span>
-            <span style="color:${stColor};font-family:var(--ui);font-weight:700;white-space:nowrap">${r.expDate || '—'}</span>
-            <span style="color:var(--muted)">${sortMode === 'attorney' ? r.caseNum + ' — ' + r.clientLast : ''}</span>
-            <span style="color:${stColor};font-size:10px;text-align:right">${st === 'expired' ? 'Expired' : st === 'soon' ? 'Soon' : st === 'active' ? 'Active' : ''}</span>
+          const courtPill = `<button onclick="setTrackerCourtDate('${r.caseNum}','${r.courtDate || ''}')" style="display:inline-block;padding:1px 7px;border-radius:10px;border:1px solid ${r.courtDate ? 'var(--accent2)' : 'var(--border)'};background:transparent;color:${r.courtDate ? 'var(--accent2)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap">⚖ ${r.courtDate || 'Add Date'}</button>`;
+          return `<div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:6px 10px;border-top:1px solid var(--border);font-size:11px;align-items:center">
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <span style="color:var(--muted)">${sortMode !== 'attorney' ? (r.attorney || '—') + ' · ' : ''}PAE #${r.authNum} · ${r.authHrs || '—'} hrs</span>
+              <div style="display:flex;align-items:center;gap:6px">${courtPill}${sortMode === 'attorney' ? `<span style="color:var(--muted);font-size:10px">${r.caseNum} — ${r.clientLast}</span>` : ''}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="color:${stColor};font-family:var(--ui);font-weight:700;white-space:nowrap">${r.expDate || '—'}</div>
+              <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'Expired' : st === 'soon' ? 'Soon' : st === 'active' ? 'Active' : ''}</div>
+            </div>
           </div>`;
         }).join('');
         return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px">
