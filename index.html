@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#262]</title>
+<title>OPS Track [#263]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1355,6 +1355,7 @@ async function openTrackerViewer() {
         try {
           await fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + newActive);
           rows.filter(r => r.caseNum === caseNum).forEach(r => r.active = newActive !== 'No');
+          if (showInactive && rows.filter(r => r.active === false).length === 0) showInactive = false;
           renderTracker();
           showToast((newActive === 'Yes' ? '✓ Case marked active' : '✓ Case marked inactive'));
         } catch(e) { showToast('Failed to update case status', true); }
