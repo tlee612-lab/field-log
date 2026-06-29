@@ -1023,6 +1023,7 @@ function setCourtDateAction(body) {
           const ss = SpreadsheetApp.openById(file.getId());
           const paeSheet = ss.getSheetByName('PAE Summary');
           if (paeSheet) {
+            paeSheet.getRange('A4').setValue('Court Date').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
             const b4 = paeSheet.getRange('B4');
             b4.setValue(courtDate);
             b4.setFontColor('#00c8a0').setFontWeight('bold').setFontSize(11);
