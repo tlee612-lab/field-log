@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#255]</title>
+<title>OPS Track [#256]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -763,7 +763,7 @@
       <div id="paeInfo" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:var(--accent)"></div>
       <div id="caseHoursBar" style="display:none;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;font-family:var(--ui)"></div>
       <div id="debugExtracted" style="margin-bottom:8px;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);display:none"></div>
-      <button id="paeDoneBtn" onclick="createCaseFromPae()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create Case in Drive</button>
+      <button id="paeDoneBtn" onclick="createCaseFromPae()" style="display:none;width:100%;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:var(--bg);font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">📋 Create / Update Case in Drive</button>
       <button id="paeSkipBtn" onclick="closePaeModal()" style="display:none;width:100%;margin-top:6px;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">✓ Done without creating</button>
       <div id="paeModalHint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Fills Case #, Client Name, and Authorized Hours</div>
     </div>
@@ -1830,7 +1830,7 @@ async function createCaseFromPae() {
     showToast('Create case failed: ' + err.message, true);
   } finally {
     btn.disabled    = false;
-    btn.textContent = '📋 Create Case in Drive';
+    btn.textContent = '📋 Create / Update Case in Drive';
     btn.onclick     = createCaseFromPae;
   }
 }
