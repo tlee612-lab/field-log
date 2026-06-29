@@ -1066,7 +1066,7 @@ function setCaseActiveAction(caseNum, activeValue) {
           const ss = SpreadsheetApp.openById(file.getId());
           const paeSheet = ss.getSheetByName('PAE Summary');
           if (paeSheet) {
-            paeSheet.getRange('C3').setValue('Status').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
+            paeSheet.getRange('C3').setValue('Active').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
             paeSheet.getRange('D3').setValue(activeValue);
           }
           break;
@@ -1251,7 +1251,7 @@ function setupPaeSummarySheet(sheet, caseNum, clientLast, clientFirst) {
   sheet.getRange('D2').setFormula('=B4');
   sheet.getRange('A3').setValue('Client');
   sheet.getRange('B3').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
-  sheet.getRange('C3').setValue('Status');
+  sheet.getRange('C3').setValue('Active');
   sheet.getRange('D3').setValue('Active');
   sheet.getRange('A4').setValue('Court Date');
   sheet.getRange('B4').setValue('');
