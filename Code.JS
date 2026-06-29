@@ -1019,6 +1019,10 @@ function setCourtDateAction(body) {
         break;
       }
     } catch(e) { Logger.log('setCourtDate PAE sheet error: ' + e.message); }
+    return { status: 'ok', updated };
+  } catch(err) {
+    Logger.log('setCourtDateAction error: ' + err.message);
+    return { status: 'error', message: err.message };
   }
 }
 
