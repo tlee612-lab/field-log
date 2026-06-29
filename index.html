@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#277]</title>
+<title>OPS Track [#278]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1207,7 +1207,12 @@ async function rebuildTrackerFromModal() {
     const res = await fetch(cfg.webhookUrl + '?action=rebuildMaster', { signal: AbortSignal.timeout(120000) });
     const data = await res.json();
     if (data.status === 'ok') {
-      showToast('✓ Master Tracker rebuilt — ' + data.rows + ' rows');
+      const skipped = data.skipped || [];
+      showToast('✓ Master Tracker rebuilt — ' + data.rows + ' rows' + (skipped.length ? ' · ' + skipped.length + ' skipped' : ''));
+      if (skipped.length) {
+        console.warn('Skipped folders during rebuild:\n' + skipped.join('\n'));
+        alert('Rebuild complete — ' + skipped.length + ' folder(s) skipped:\n\n' + skipped.join('\n'));
+      }
     } else {
       showToast('Rebuild error: ' + (data.message || 'Unknown'), true);
     }

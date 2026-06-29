@@ -1085,6 +1085,25 @@ function setCaseActiveAction(caseNum, activeValue) {
   }
 }
 
+function findSheetInFolder(folder) {
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const f = files.next();
+    if (f.getMimeType() === MimeType.GOOGLE_SHEETS) return f;
+  }
+  // Check one level of subfolders
+  const subs = folder.getFolders();
+  while (subs.hasNext()) {
+    const sub = subs.next();
+    const files2 = sub.getFiles();
+    while (files2.hasNext()) {
+      const f = files2.next();
+      if (f.getMimeType() === MimeType.GOOGLE_SHEETS) return f;
+    }
+  }
+  return null;
+}
+
 function rebuildMasterTracker() {
   try {
     const sheet = getMasterTrackerSheet();
@@ -1093,56 +1112,53 @@ function rebuildMasterTracker() {
     const tz = Session.getScriptTimeZone();
     const folders = autoLogFolder.getFolders();
     let totalRows = 0;
+    const skipped = [];
     while (folders.hasNext()) {
       const folder = folders.next();
       const folderName = folder.getName();
       const parts = folderName.split(' - ');
-      if (parts.length < 2) continue;
+      if (parts.length < 2) { skipped.push(folderName + ' (no separator)'); continue; }
       const caseNum = parts[0].trim();
       const clientPart = parts.slice(1).join(' - ').trim();
       const nameParts = clientPart.split(',');
       const clientLast = nameParts[0].trim();
       const clientFirst = nameParts.length > 1 ? nameParts[1].trim() : '';
-      const files = folder.getFiles();
-      while (files.hasNext()) {
-        const file = files.next();
-        if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
-        try {
-          const ss = SpreadsheetApp.openById(file.getId());
-          let paeSheet = ss.getSheetByName('PAE Summary');
-          if (!paeSheet) {
-            paeSheet = ss.insertSheet('PAE Summary');
-            setupPaeSummarySheet(paeSheet, caseNum, clientLast, clientFirst);
-          }
-          const courtDate = readCourtDate(paeSheet);
-          const activeStatus = String(paeSheet.getRange('D3').getValue() || 'Active').trim();
-          const activeVal = activeStatus === 'No' ? 'No' : 'Yes';
-          const zone = paeSheet.getRange(6, 1, 45, 10).getValues();
-          let addedForCase = false;
-          zone.forEach(row => {
-            const authNum = String(row[0]).trim();
-            if (!authNum) return;
-            const expRaw = row[7]; const effRaw = row[6];
-            const expDate = expRaw instanceof Date && !isNaN(expRaw.getTime()) ? Utilities.formatDate(expRaw, tz, 'MM/dd/yyyy') : String(expRaw || '').trim();
-            const effDate = effRaw instanceof Date && !isNaN(effRaw.getTime()) ? Utilities.formatDate(effRaw, tz, 'MM/dd/yyyy') : String(effRaw || '').trim();
-            sheet.appendRow([
-              caseNum, clientLast, clientFirst,
-              String(row[9] || '').trim(), courtDate,
-              authNum, row[1] || '', row[2] || '', row[3] || '', row[5] || '',
-              effDate, expDate, String(row[8] || '').trim(), activeVal
-            ]);
-            totalRows++;
-            addedForCase = true;
-          });
-          if (!addedForCase) {
-            sheet.appendRow([caseNum, clientLast, clientFirst, '', courtDate, '', '', '', '', '', '', '', '', activeVal]);
-            totalRows++;
-          }
-        } catch(e) { Logger.log('rebuildMaster case error: ' + e.message); }
-        break;
-      }
+      const file = findSheetInFolder(folder);
+      if (!file) { skipped.push(folderName + ' (no spreadsheet)'); continue; }
+      try {
+        const ss = SpreadsheetApp.openById(file.getId());
+        let paeSheet = ss.getSheetByName('PAE Summary');
+        if (!paeSheet) {
+          paeSheet = ss.insertSheet('PAE Summary');
+          setupPaeSummarySheet(paeSheet, caseNum, clientLast, clientFirst);
+        }
+        const courtDate = readCourtDate(paeSheet);
+        const activeStatus = String(paeSheet.getRange('D3').getValue() || 'Active').trim();
+        const activeVal = activeStatus === 'No' ? 'No' : 'Yes';
+        const zone = paeSheet.getRange(6, 1, 45, 10).getValues();
+        let addedForCase = false;
+        zone.forEach(row => {
+          const authNum = String(row[0]).trim();
+          if (!authNum) return;
+          const expRaw = row[7]; const effRaw = row[6];
+          const expDate = expRaw instanceof Date && !isNaN(expRaw.getTime()) ? Utilities.formatDate(expRaw, tz, 'MM/dd/yyyy') : String(expRaw || '').trim();
+          const effDate = effRaw instanceof Date && !isNaN(effRaw.getTime()) ? Utilities.formatDate(effRaw, tz, 'MM/dd/yyyy') : String(effRaw || '').trim();
+          sheet.appendRow([
+            caseNum, clientLast, clientFirst,
+            String(row[9] || '').trim(), courtDate,
+            authNum, row[1] || '', row[2] || '', row[3] || '', row[5] || '',
+            effDate, expDate, String(row[8] || '').trim(), activeVal
+          ]);
+          totalRows++;
+          addedForCase = true;
+        });
+        if (!addedForCase) {
+          sheet.appendRow([caseNum, clientLast, clientFirst, '', courtDate, '', '', '', '', '', '', '', '', activeVal]);
+          totalRows++;
+        }
+      } catch(e) { skipped.push(folderName + ' (error: ' + e.message + ')'); }
     }
-    return { status: 'ok', rows: totalRows, created: _masterTrackerCreatedThisRequest };
+    return { status: 'ok', rows: totalRows, skipped, created: _masterTrackerCreatedThisRequest };
   } catch(err) {
     return { status: 'error', message: err.message };
   }
