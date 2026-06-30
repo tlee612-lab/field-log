@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#313]</title>
+<title>OPS Track [#314]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1686,6 +1686,7 @@ async function openTrackerViewer() {
     window.trackerSetSearch = q => { filterSearch = q; renderTracker(); };
     window.trackerResetFilters = () => { filterStatus = 'active'; filterAtty = 'all'; filterCaseNum = 'all'; filterExp = 'all'; filterCourt = 'all'; filterSearch = ''; renderTracker(); };
     window.trackerEditCase = () => { openCreateModal(); };
+    window.trackerRenderIfOpen = () => { renderTracker(); };
     window.trackerImportPae = cn => { overlay.remove(); openCreateModal(); if (cn) { const el = document.getElementById('caseNum'); if (el) { el.value = cn; onCaseInput(cn); } } };
     window.trackerRebuild = async () => {
       const btn = document.getElementById('trackerRebuildBtn');
@@ -2115,6 +2116,12 @@ async function createCaseFromPae() {
       localStorage.setItem('tli_cases', JSON.stringify(knownCases));
       refreshDataLists();
       buildCasesModalList();
+
+      if (courtDate) {
+        courtDates[caseNum] = courtDate;
+        saveCourtDatesLocal();
+        if (window.trackerRenderIfOpen) window.trackerRenderIfOpen();
+      }
 
       closePaeModal();
       if (caseNum.length >= 4) showCaseHours(caseNum);
