@@ -1490,6 +1490,18 @@ function getOrCreateVehiclesSheet() {
     sheet.setFrozenRows(1);
     [100,200,60,100,120,80,100,140,80,60,100].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
     Logger.log('Vehicles sheet created');
+  } else {
+    // Self-heal: stamp any header columns missing from an older schema (e.g. created_date)
+    const lastCol = sheet.getLastColumn();
+    const existing = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(v => String(v).trim()) : [];
+    let changed = false;
+    VEHICLE_HEADERS.forEach((h, i) => {
+      if (existing[i] !== h) {
+        sheet.getRange(1, i + 1).setValue(h).setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+        changed = true;
+      }
+    });
+    if (changed) Logger.log('Vehicles sheet headers repaired');
   }
   return sheet;
 }
