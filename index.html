@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#312]</title>
+<title>OPS Track [#313]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1312,6 +1312,7 @@ async function openCaseListing() {
     if (data.status !== 'ok') throw new Error(data.message || 'Error');
     const seen = new Set();
     rows = (data.rows || []).filter(r => {
+      if (r.active === false) return false;
       if (seen.has(r.caseNum)) return false;
       seen.add(r.caseNum);
       return true;
@@ -1321,35 +1322,49 @@ async function openCaseListing() {
     return;
   }
 
-  const attorneys = ['all', ...[...new Set(rows.map(r => r.attorney || '—'))].sort()];
+  const allRows = rows; // keep full set for filter changes
+  let filterAtty = 'all';
+  let filterStatus = 'active';
+  const uniqueAttorneys = [...new Set(allRows.map(r => r.attorney || '—'))].sort();
+  const selectStyle = 'padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;flex:1';
 
-  if (!document.getElementById('caseListingFilterRow')) {
-    box.innerHTML = `
-      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Listing</div>
-      <div id="caseListingFilterRow" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;overflow-x:auto"></div>
-      <div style="overflow-y:auto;flex:1">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">
-            <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Attorney</th>
-            <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Last Name</th>
-            <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">First Name</th>
-            <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Court Date</th>
-          </tr></thead>
-          <tbody id="caseListingBody"></tbody>
-        </table>
-      </div>
-      <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
-    `;
-  }
+  box.innerHTML = `
+    <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Listing</div>
+    <div id="caseListingFilterRow" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"></div>
+    <div style="overflow-y:auto;flex:1">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">
+          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Attorney</th>
+          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Last Name</th>
+          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">First Name</th>
+          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Court Date</th>
+        </tr></thead>
+        <tbody id="caseListingBody"></tbody>
+      </table>
+    </div>
+    <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
+  `;
 
   function renderListing() {
-    const btnStyle = a => `padding:4px 10px;border-radius:14px;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;white-space:nowrap;border:1px solid ${filterAtty===a?'var(--accent)':'var(--border)'};background:${filterAtty===a?'var(--accent)':'transparent'};color:${filterAtty===a?'var(--bg)':'var(--muted)'}`;
     const filterRow = document.getElementById('caseListingFilterRow');
-    if (filterRow) filterRow.innerHTML = attorneys.map(a => `<button style="${btnStyle(a)}" onclick="caseListFilter('${a.replace(/'/g,"\\'")}')">${a === 'all' ? 'All' : a}</button>`).join('');
-    const visible = filterAtty === 'all' ? rows : rows.filter(r => (r.attorney || '—') === filterAtty);
-    const sorted = [...visible].sort((a, b) => (a.clientLast||'').localeCompare(b.clientLast||''));
+    if (filterRow) filterRow.innerHTML = `
+      <select style="${selectStyle}" onchange="caseListSetStatus(this.value)">
+        <option value="active" ${filterStatus==='active'?'selected':''}>Active Only</option>
+        <option value="all"    ${filterStatus==='all'?'selected':''}>All Statuses</option>
+      </select>
+      <select style="${selectStyle}" onchange="caseListSetAtty(this.value)">
+        <option value="all">All Attorneys</option>
+        ${uniqueAttorneys.map(a => `<option value="${a.replace(/"/g,'&quot;')}" ${filterAtty===a?'selected':''}>${a}</option>`).join('')}
+      </select>`;
+
+    let visible = filterStatus === 'active' ? allRows.filter(r => r.active !== false) : allRows;
+    if (filterAtty !== 'all') visible = visible.filter(r => (r.attorney || '—') === filterAtty);
+    const seen = new Set();
+    visible = visible.filter(r => { if (seen.has(r.caseNum)) return false; seen.add(r.caseNum); return true; });
+    visible.sort((a, b) => (a.clientLast||'').localeCompare(b.clientLast||''));
+
     const body = document.getElementById('caseListingBody');
-    if (body) body.innerHTML = sorted.map(r => `<tr style="border-bottom:1px solid var(--border)">
+    if (body) body.innerHTML = visible.map(r => `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:6px;color:var(--muted)">${r.attorney || '—'}</td>
       <td style="padding:6px;color:var(--text)">${r.clientLast || '—'}</td>
       <td style="padding:6px;color:var(--text)">${r.clientFirst || '—'}</td>
@@ -1357,7 +1372,8 @@ async function openCaseListing() {
     </tr>`).join('');
   }
 
-  window.caseListFilter = a => { filterAtty = a; renderListing(); };
+  window.caseListSetAtty   = a => { filterAtty = a; renderListing(); };
+  window.caseListSetStatus = s => { filterStatus = s; renderListing(); };
   renderListing();
 }
 
