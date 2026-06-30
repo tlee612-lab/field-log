@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#288]</title>
+<title>OPS Track [#289]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -3746,9 +3746,23 @@ async function confirmMileageEntry() {
     } catch(_) { /* silent fail — logged locally */ }
   }
 
-  closeMileageModal();
   renderMileageLog();
   showToast('✓ Mileage entry logged — ' + actual + ' mi');
+
+  // Keep modal open and reset fields so another mileage entry can be added right away.
+  ['mlgOrigin','mlgDest','mlgOriginCity','mlgDestCity','mlgNotes','mlgOdomStart','mlgOdomEnd'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  milesField.value = '';
+  milesField.dataset.computed = '';
+  milesField.className = '';
+  document.getElementById('mlgPurpose').value = '';
+  document.getElementById('mlgOriginWarning').textContent = '';
+  document.getElementById('mlgDestWarning').textContent = '';
+  const errEl = document.getElementById('mlgError');
+  errEl.textContent = ''; errEl.classList.remove('visible');
+  document.getElementById('mlgMilesIndicator').textContent = '';
+  document.getElementById('mlgOrigin').focus();
 }
 
 // ── Mileage Log rendering ────────────────────────────────────────────
@@ -3936,7 +3950,9 @@ async function editVehicle(index) {
   const vehicleId = target.vehicle_id;
 
   // Refresh from the sheet first so we never edit/save against a stale local cache.
+  showToast('⏳ Retrieving vehicle info…', false, true);
   await loadVehiclesFromDrive();
+  showToast('✓ Vehicle info loaded');
 
   const refreshedIndex = vehicles.findIndex(x => x.vehicle_id === vehicleId);
   const v = refreshedIndex >= 0 ? vehicles[refreshedIndex] : target;
