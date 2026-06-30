@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#292]</title>
+<title>OPS Track [#293]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1353,6 +1353,7 @@ async function openTrackerViewer() {
     let filterAtty = 'all';
     let filterCaseNum = 'all';
     let filterExp = 'all';
+    let filterCourt = 'all';
     const rows = data.rows || [];
 
     function renderTracker() {
@@ -1369,6 +1370,22 @@ async function openTrackerViewer() {
         if (days < 0) return 'expired';
         if (days <= 30) return 'soon';
         return 'active';
+      }
+
+      // Same urgency banding as PAE expirations, applied to court dates:
+      // past, within 2 weeks, within 30 days, or further out.
+      const courtColors = { past: '#e55', urgent: 'var(--warn)', upcoming: 'var(--accent2)', later: 'var(--accent)', '': 'var(--border)' };
+      function courtDateStatus(dateStr) {
+        if (!dateStr) return '';
+        const parts = dateStr.split(/[\/\-]/);
+        const d = new Date(parseInt(parts[2]) < 100 ? 2000+parseInt(parts[2]) : parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+        d.setHours(0,0,0,0);
+        if (isNaN(d)) return '';
+        const days = Math.round((d - today) / 86400000);
+        if (days < 0) return 'past';
+        if (days <= 14) return 'urgent';
+        if (days <= 30) return 'upcoming';
+        return 'later';
       }
 
       window.setTrackerCourtDate = async (caseNum, current) => {
@@ -1420,6 +1437,10 @@ async function openTrackerViewer() {
       // Build visible row set based on status + attorney + case # filters
       const uniqueAttorneys = [...new Set(rows.map(r => r.attorney || '—'))].sort((a,b) => a.localeCompare(b));
       const uniqueCaseNums = [...new Set(rows.map(r => r.caseNum))].sort((a,b) => a.localeCompare(b));
+      const caseClientName = cn => {
+        const r = rows.find(x => x.caseNum === cn);
+        return r ? (r.clientLast + (r.clientFirst ? ', ' + r.clientFirst : '')) : '';
+      };
       let baseRows = rows;
       if (filterStatus === 'active') baseRows = rows.filter(r => r.active !== false);
       else if (filterStatus === 'inactive') baseRows = rows.filter(r => r.active === false);
@@ -1434,11 +1455,13 @@ async function openTrackerViewer() {
         attorneyMap[atty][cn].paes.push(r);
       });
 
-      // Apply expiration filter at the case level, then drop any attorneys left with no cases
-      if (filterExp !== 'all') {
+      // Apply expiration + court date filters at the case level, then drop any attorneys left with no cases
+      if (filterExp !== 'all' || filterCourt !== 'all') {
         Object.keys(attorneyMap).forEach(atty => {
           Object.keys(attorneyMap[atty]).forEach(cn => {
-            if (caseExpStatus(attorneyMap[atty][cn].paes) !== filterExp) delete attorneyMap[atty][cn];
+            const entry = attorneyMap[atty][cn];
+            if (filterExp !== 'all' && caseExpStatus(entry.paes) !== filterExp) { delete attorneyMap[atty][cn]; return; }
+            if (filterCourt !== 'all' && courtDateStatus(entry.info.courtDate || '') !== filterCourt) { delete attorneyMap[atty][cn]; return; }
           });
           if (Object.keys(attorneyMap[atty]).length === 0) delete attorneyMap[atty];
         });
@@ -1453,7 +1476,7 @@ async function openTrackerViewer() {
       </select>`;
       const caseNumSelect = `<select onchange="trackerSetCaseNum(this.value)" style="${selectStyle}">
         <option value="all" ${filterCaseNum==='all'?'selected':''}>All Case #s</option>
-        ${uniqueCaseNums.map(cn => `<option value="${cn.replace(/"/g,'&quot;')}" ${filterCaseNum===cn?'selected':''}>${cn}</option>`).join('')}
+        ${uniqueCaseNums.map(cn => `<option value="${cn.replace(/"/g,'&quot;')}" ${filterCaseNum===cn?'selected':''}>${cn}${caseClientName(cn) ? ' — ' + caseClientName(cn) : ''}</option>`).join('')}
       </select>`;
       const expSelect = `<select onchange="trackerSetExp(this.value)" style="${selectStyle}">
         <option value="all" ${filterExp==='all'?'selected':''}>All Expirations</option>
@@ -1461,13 +1484,18 @@ async function openTrackerViewer() {
         <option value="soon" ${filterExp==='soon'?'selected':''}>Exp. Soon</option>
         <option value="active" ${filterExp==='active'?'selected':''}>Active</option>
       </select>`;
-      const activeSwitch = `<span onclick="trackerSetStatus(filterStatus==='active'?'all':'active')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;flex-shrink:0">
-        <span style="position:relative;display:inline-block;width:34px;height:18px">
-          <span style="position:absolute;inset:0;border-radius:18px;background:${filterStatus==='active'?'var(--accent)':'var(--surface2)'};border:1px solid ${filterStatus==='active'?'var(--accent)':'var(--border)'}"></span>
-          <span style="position:absolute;top:2px;left:${filterStatus==='active'?'16px':'2px'};width:12px;height:12px;border-radius:50%;background:${filterStatus==='active'?'var(--bg)':'var(--muted)'}"></span>
-        </span>
-        <span style="font-family:var(--ui);font-size:10px;color:${filterStatus==='active'?'var(--accent)':'var(--muted)'}">${filterStatus==='active'?'Active':'All'}</span>
-      </span>`;
+      const courtSelect = `<select onchange="trackerSetCourt(this.value)" style="${selectStyle}">
+        <option value="all"      ${filterCourt==='all'?'selected':''}>All Court Dates</option>
+        <option value="past"     ${filterCourt==='past'?'selected':''}>Past</option>
+        <option value="urgent"   ${filterCourt==='urgent'?'selected':''}>Within 2 Weeks</option>
+        <option value="upcoming" ${filterCourt==='upcoming'?'selected':''}>Within 30 Days</option>
+        <option value="later"    ${filterCourt==='later'?'selected':''}>30+ Days Out</option>
+      </select>`;
+      const statusSelect = `<select onchange="trackerSetStatus(this.value)" style="${selectStyle}">
+        <option value="active"   ${filterStatus==='active'?'selected':''}>Active Only</option>
+        <option value="inactive" ${filterStatus==='inactive'?'selected':''}>Inactive Only</option>
+        <option value="all"      ${filterStatus==='all'?'selected':''}>All Statuses</option>
+      </select>`;
 
       // Flatten to [{ atty, caseNum, info, paes }] for non-attorney groupings (unused now but kept for buildCaseBlock callers)
       let caseList = [];
@@ -1495,7 +1523,9 @@ async function openTrackerViewer() {
       function buildCaseBlock(caseNum, { info, paes }, colors, expStatus) {
         const courtDate = info.courtDate || '';
         const isActive = info.active !== false;
-        const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtDate ? 'var(--accent2)' : 'var(--border)'};background:transparent;color:${courtDate ? 'var(--accent2)' : 'var(--muted)'};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
+        const courtSt = courtDateStatus(courtDate);
+        const courtColor = courtDate ? (courtColors[courtSt] || 'var(--accent2)') : 'var(--muted)';
+        const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtColor};background:transparent;color:${courtColor};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
         const editPill = `<button onclick="trackerEditCase()" style="padding:1px 8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">✎ Edit</button>`;
         const activePill = `<span onclick="toggleTrackerCaseActive('${caseNum}',${isActive})" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
           <span style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0">
@@ -1529,8 +1559,7 @@ async function openTrackerViewer() {
 
       box.innerHTML = `
         <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Tracker</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">${activeSwitch}</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${attySelect}${caseNumSelect}${expSelect}</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${statusSelect}${attySelect}${caseNumSelect}${expSelect}${courtSelect}</div>
         <div style="overflow-y:auto;flex:1">${sortedAttorneys.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No cases to display.</div>'}</div>
         <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
       `;
@@ -1540,6 +1569,7 @@ async function openTrackerViewer() {
     window.trackerSetAtty = a => { filterAtty = a; renderTracker(); };
     window.trackerSetCaseNum = cn => { filterCaseNum = cn; renderTracker(); };
     window.trackerSetExp = ex => { filterExp = ex; renderTracker(); };
+    window.trackerSetCourt = c => { filterCourt = c; renderTracker(); };
     window.trackerEditCase = () => { openCreateModal(); };
     renderTracker();
 
