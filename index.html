@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#302]</title>
+<title>OPS Track [#303]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1549,17 +1549,23 @@ async function openTrackerViewer() {
           </span>
           <span style="font-family:var(--ui);font-size:10px;letter-spacing:0.5px;color:${isActive ? 'var(--accent)' : 'var(--muted)'}">${isActive ? 'Active' : 'Inactive'}</span>
         </span>`;
-        const paeRows = paes.map(r => {
-          const st = expStatus(r.expDate);
-          const stColor = colors[st] || 'var(--muted)';
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px 5px 20px;border-top:1px solid var(--border);font-size:11px${isActive ? '' : ';opacity:0.5'}">
-            <span style="color:var(--muted)">PAE #${r.authNum} · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}</span>
-            <div style="text-align:right">
-              <div style="color:${stColor};font-family:var(--ui);font-weight:700;font-size:11px;white-space:nowrap">${r.expDate ? 'Exp ' + r.expDate : '—'}</div>
-              <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'PAE Expired' : st === 'soon' ? 'PAE Exp. Soon' : st === 'active' ? 'PAE Active' : ''}</div>
-            </div>
-          </div>`;
-        }).join('');
+        const realPaes = paes.filter(r => r.authNum);
+        const paeRows = realPaes.length
+          ? realPaes.map(r => {
+              const st = expStatus(r.expDate);
+              const stColor = colors[st] || 'var(--muted)';
+              return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px 5px 20px;border-top:1px solid var(--border);font-size:11px${isActive ? '' : ';opacity:0.5'}">
+                <span style="color:var(--muted)">PAE #${r.authNum} · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}</span>
+                <div style="text-align:right">
+                  <div style="color:${stColor};font-family:var(--ui);font-weight:700;font-size:11px;white-space:nowrap">${r.expDate ? 'Exp ' + r.expDate : '—'}</div>
+                  <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'PAE Expired' : st === 'soon' ? 'PAE Exp. Soon' : st === 'active' ? 'PAE Active' : ''}</div>
+                </div>
+              </div>`;
+            }).join('')
+          : `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px 6px 20px;border-top:1px solid var(--border);font-size:11px;opacity:0.7">
+               <span style="color:var(--muted);font-style:italic">No PAE on file</span>
+               <button onclick="trackerImportPae('${caseNum}')" style="padding:2px 8px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:var(--ui);font-size:10px;cursor:pointer">+ Import PAE</button>
+             </div>`;
         return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden${isActive ? '' : ';opacity:0.65'}">
           <div style="padding:8px 12px;background:var(--surface2);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
             <div>
@@ -1597,6 +1603,7 @@ async function openTrackerViewer() {
     window.trackerSetSearch = q => { filterSearch = q; renderTracker(); };
     window.trackerResetFilters = () => { filterStatus = 'active'; filterAtty = 'all'; filterCaseNum = 'all'; filterExp = 'all'; filterCourt = 'all'; filterSearch = ''; renderTracker(); };
     window.trackerEditCase = () => { openCreateModal(); };
+    window.trackerImportPae = cn => { overlay.remove(); openCreateModal(); if (cn) { const el = document.getElementById('caseNum'); if (el) { el.value = cn; onCaseInput(cn); } } };
     window.trackerRebuild = async () => {
       const btn = document.getElementById('trackerRebuildBtn');
       if (btn) { btn.textContent = '⏳ Rebuilding…'; btn.disabled = true; }
