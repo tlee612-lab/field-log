@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#307]</title>
+<title>OPS Track [#308]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -848,9 +848,10 @@
       <div style="font-size:10px;color:var(--muted);font-family:var(--ui)">Scans all case folders in Drive and rebuilds the OPS Track Master sheet. May take 30–60 seconds.</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
-      <button onclick="refreshCasesModal()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">↺ Refresh</button>
       <button onclick="openTrackerViewer()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">⊞ View Tracker</button>
       <button onclick="checkPaeExpirations()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">📅 Check Expirations</button>
+      <button onclick="openCaseListing()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">☰ Case Listing</button>
+      <button onclick="refreshCasesModal()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">↺ Refresh</button>
     </div>
     <div id="casesModalList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px"></div>
   </div>
@@ -1219,8 +1220,6 @@ function saveCourtDatesLocal() { localStorage.setItem('tli_court_dates', JSON.st
 // ── Cases modal ──────────────────────────────────────────────────────────────
 function openCasesModal() {
   document.getElementById('casesModal').style.display = 'flex';
-  buildCasesModalList();
-  openTrackerViewer();
 }
 
 function closeCasesModal() {
@@ -1290,6 +1289,70 @@ function buildCasesModalList() {
         </div>
       </div>`;
   }).join('');
+}
+
+function openCaseListing() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(92vw,440px);max-height:85vh;display:flex;flex-direction:column';
+  document.body.appendChild(overlay);
+  overlay.appendChild(box);
+
+  let sortBy = 'attorney';
+
+  function renderListing() {
+    const sorted = [...knownCases].sort((a, b) => {
+      if (sortBy === 'attorney') {
+        const pa = paeStore[a.case], pb = paeStore[b.case];
+        const aa = (Array.isArray(pa) && pa.length ? pa[pa.length-1].attorney : '') || '';
+        const ab = (Array.isArray(pb) && pb.length ? pb[pb.length-1].attorney : '') || '';
+        return aa.localeCompare(ab) || (a.client||'').localeCompare(b.client||'');
+      }
+      if (sortBy === 'last') return (a.client||'').localeCompare(b.client||'');
+      if (sortBy === 'court') {
+        const ca = courtDates[a.case] || '9999', cb = courtDates[b.case] || '9999';
+        return ca.localeCompare(cb);
+      }
+      return 0;
+    });
+
+    const btnStyle = s => `padding:5px 10px;border-radius:6px;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid ${sortBy===s?'var(--accent)':'var(--border)'};background:${sortBy===s?'var(--accent)':'transparent'};color:${sortBy===s?'var(--bg)':'var(--muted)'}`;
+
+    box.innerHTML = `
+      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Listing</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button style="${btnStyle('attorney')}" onclick="this.closest('div').parentElement._sort('attorney')">Attorney</button>
+        <button style="${btnStyle('last')}" onclick="this.closest('div').parentElement._sort('last')">Last Name</button>
+        <button style="${btnStyle('court')}" onclick="this.closest('div').parentElement._sort('court')">Court Date</button>
+      </div>
+      <div style="overflow-y:auto;flex:1">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:4px 6px;font-weight:600">Last Name</th>
+            <th style="text-align:left;padding:4px 6px;font-weight:600">First Name</th>
+            <th style="text-align:left;padding:4px 6px;font-weight:600">Court Date</th>
+          </tr></thead>
+          <tbody>
+            ${sorted.map(c => {
+              const cd = courtDates[c.case] || '';
+              const cdDisplay = cd ? formatCourtDate(cd) : '—';
+              return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:6px 6px;color:var(--text)">${c.client || '—'}</td>
+                <td style="padding:6px 6px;color:var(--text)">${c.clientFirst || '—'}</td>
+                <td style="padding:6px 6px;color:${cd ? 'var(--accent)' : 'var(--muted)'}">${cdDisplay}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
+    `;
+    box._sort = s => { sortBy = s; renderListing(); };
+  }
+
+  renderListing();
 }
 
 function formatCourtDate(val) {
