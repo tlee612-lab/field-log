@@ -1579,15 +1579,21 @@ function saveVehicleRecord(body) {
       }
     }
 
+    const createdCol = VEHICLE_HEADERS.indexOf('created_date');
     const row = VEHICLE_HEADERS.map(h => {
       const val = body[h];
       return (val === null || val === undefined) ? '' : val;
     });
 
     if (foundRow > 0) {
+      // Never let an edit-save stomp a real existing created_date with an
+      // incoming blank/backfilled value — keep whatever's already on the sheet.
+      const existingCreated = sheet.getRange(foundRow, createdCol + 1).getValue();
+      if (existingCreated !== '' && existingCreated !== null) row[createdCol] = existingCreated;
       sheet.getRange(foundRow, 1, 1, row.length).setValues([row]);
       Logger.log('saveVehicleRecord: updated vehicle_id=' + vehicleId);
     } else {
+      if (!row[createdCol]) row[createdCol] = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
       sheet.appendRow(row);
       Logger.log('saveVehicleRecord: inserted vehicle_id=' + vehicleId);
     }
