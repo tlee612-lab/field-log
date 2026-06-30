@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#297]</title>
+<title>OPS Track [#298]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1963,6 +1963,25 @@ async function createCaseFromPae() {
               : '✓ Case sheet updated';
       if (result.paeCount > 0) msg += ` — ${result.paeCount} PAE${result.paeCount > 1 ? 's' : ''} added`;
       showToast(msg);
+
+      // Update knownCases locally from parsed PAE data — no refresh needed
+      const latestPae = (paeStore[caseNum] || []).slice(-1)[0] || {};
+      const existingIdx = knownCases.findIndex(c => c.case.toLowerCase() === caseNum.toLowerCase());
+      const updatedEntry = {
+        case: caseNum,
+        client: clientLast,
+        clientFirst: clientFirst,
+        attorney: latestPae.attorney || (existingIdx >= 0 ? knownCases[existingIdx].attorney : '') || ''
+      };
+      if (existingIdx >= 0) {
+        knownCases[existingIdx] = { ...knownCases[existingIdx], ...updatedEntry };
+      } else {
+        knownCases.push(updatedEntry);
+      }
+      localStorage.setItem('tli_cases', JSON.stringify(knownCases));
+      refreshDataLists();
+      buildCasesModalList();
+
       closePaeModal();
       if (caseNum.length >= 4) showCaseHours(caseNum);
     } else {
