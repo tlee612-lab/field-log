@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#279]</title>
+<title>OPS Track [#280]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -578,12 +578,12 @@
       <table class="mlg-log-table">
         <thead>
           <tr>
-            <th>Date</th><th>Case #</th><th>From</th><th>To</th>
+            <th>Date</th><th>From</th><th>To</th>
             <th style="text-align:right">Miles</th><th>Vehicle</th><th>Purpose</th><th>Notes</th><th title="Sync status">✓</th>
           </tr>
         </thead>
         <tbody id="mlgTableBody">
-          <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>
         </tbody>
       </table>
     </div>
@@ -606,19 +606,14 @@
     <button onclick="openVehicleModal()" style="position:absolute;top:12px;right:44px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:20px;cursor:pointer">🚙 Vehicles</button>
     <div class="mlg-title">📍 Mileage Entry <span style="font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0;text-transform:none">(non-case)</span></div>
 
-    <!-- Row 1: Date / Case / Investigator -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-      <div class="mlg-fg" style="margin-bottom:0">
-        <label>Date</label>
-        <input type="date" id="mlgDate" style="cursor:pointer">
-      </div>
-      <div class="mlg-fg" style="margin-bottom:0">
-        <label>Case #</label>
-        <input type="text" id="mlgCaseNum" placeholder="e.g. 25CR12345" autocapitalize="characters" autocorrect="off" spellcheck="false">
-      </div>
+    <!-- Row 1: Date / Note -->
+    <input type="hidden" id="mlgCaseNum" value="">
+    <div class="mlg-fg" style="margin-bottom:10px">
+      <label>Date</label>
+      <input type="date" id="mlgDate" style="cursor:pointer">
     </div>
     <div class="mlg-fg" style="margin-bottom:10px">
-      <label>Note <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(if non-case related)</span></label>
+      <label>Note</label>
       <input type="text" id="mlgNote" placeholder="e.g. Office supply run, Training, Personal errand" autocapitalize="sentences" autocorrect="off" spellcheck="false">
     </div>
     <div class="mlg-2col" style="margin-bottom:10px">
@@ -3474,7 +3469,6 @@ function getDefaultVehicle() {
 function openMileageModal() {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('mlgDate').value = today;
-  document.getElementById('mlgCaseNum').value = document.getElementById('caseNum')?.value?.trim() || '';
   document.getElementById('mlgInvestigator').value = document.getElementById('investigatorField')?.value?.trim() || 'Lee';
 
   // Populate vehicle dropdown
@@ -3685,7 +3679,6 @@ function renderMileageLog() {
   tbody.innerHTML = filtered.length ? filtered.map(e => `
     <tr>
       <td style="white-space:nowrap">${e.date || ''}</td>
-      <td style="font-family:var(--mono);color:var(--accent);white-space:nowrap">${e.case_number || ''}</td>
       <td>${e.origin_city || (e.origin_address || '').split(',')[0]}</td>
       <td>${e.destination_city || (e.destination_address || '').split(',')[0]}</td>
       <td style="font-family:var(--mono);color:var(--accent2);text-align:right;white-space:nowrap">${e.miles_actual ?? ''}</td>
@@ -3694,7 +3687,7 @@ function renderMileageLog() {
       <td style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.notes || ''}</td>
       <td style="text-align:center;font-size:12px;color:${e.synced ? 'var(--accent)' : 'var(--warn)'}" title="${e.synced ? 'Synced' : 'Not synced'}">${e.synced ? '✓' : '↑'}</td>
     </tr>`) .join('')
-    : `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>`;
+    : `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--ui);font-size:11px;letter-spacing:1px">NO ENTRIES</td></tr>`;
 
   document.getElementById('mlgTotalMiles').textContent = (Math.round(totalMiles * 10) / 10) + ' mi';
 }
