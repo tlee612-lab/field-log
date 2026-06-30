@@ -946,6 +946,17 @@ function setupMasterTrackerSheet(sheet) {
 }
 
 function updateMasterForCase(caseNum, clientLast, clientFirst, paes, courtDate) {
+  // Serialize concurrent updates for the same case — without this lock, two
+  // near-simultaneous requests can both read the sheet before either deletes
+  // the case's old rows, then both append, leaving duplicate PAE rows in the
+  // master tracker even though the source PAE Summary sheet stays correct.
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+  } catch(e) {
+    Logger.log('updateMasterForCase: could not acquire lock for ' + caseNum + ' — ' + e.message);
+    return;
+  }
   try {
     const sheet = getMasterTrackerSheet();
     const lastRow = Math.max(sheet.getLastRow(), 1);
@@ -987,6 +998,8 @@ function updateMasterForCase(caseNum, clientLast, clientFirst, paes, courtDate) 
     }
   } catch(err) {
     Logger.log('updateMasterForCase error: ' + err.message);
+  } finally {
+    lock.releaseLock();
   }
 }
 
