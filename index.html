@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#282]</title>
+<title>OPS Track [#283]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -615,10 +615,6 @@
         <input type="date" id="mlgDate" style="cursor:pointer">
       </div>
     </div>
-    <div class="mlg-fg" style="margin-bottom:10px">
-      <label>Note</label>
-      <input type="text" id="mlgNote" placeholder="e.g. Office supply run, Training, Personal errand" autocapitalize="sentences" autocorrect="off" spellcheck="false">
-    </div>
     <div class="mlg-2col" style="margin-bottom:10px">
       <div class="mlg-fg" style="margin-bottom:0">
         <label>Investigator</label>
@@ -705,7 +701,7 @@
 
     <!-- Notes -->
     <div class="mlg-fg" style="margin-top:6px">
-      <label>Notes <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <label>Notes <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(e.g. Office supply run, Training, Personal errand)</span></label>
       <textarea id="mlgNotes" placeholder="Additional details…" style="min-height:60px;resize:vertical"></textarea>
     </div>
 
@@ -3520,7 +3516,7 @@ function openMileageModal() {
   });
 
   // Reset fields
-  ['mlgOrigin','mlgDest','mlgOriginCity','mlgDestCity','mlgNote','mlgNotes','mlgOdomStart','mlgOdomEnd'].forEach(id => {
+  ['mlgOrigin','mlgDest','mlgOriginCity','mlgDestCity','mlgNotes','mlgOdomStart','mlgOdomEnd'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const milesField = document.getElementById('mlgMiles');
@@ -3709,7 +3705,7 @@ async function confirmMileageEntry() {
     entry_id:             crypto.randomUUID(),
     date:                 document.getElementById('mlgDate').value,
     case_number:          document.getElementById('mlgCaseNum').value.trim(),
-    trip_note:            document.getElementById('mlgNote').value.trim(),
+    trip_note:            document.getElementById('mlgNotes').value.trim(),
     investigator:         document.getElementById('mlgInvestigator').value.trim(),
     vehicle_id:           vehicleId || null,
     vehicle_label:        vehicle?.label || null,
