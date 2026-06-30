@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#296]</title>
+<title>OPS Track [#297]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -720,6 +720,7 @@
     <!-- Action buttons -->
     <div class="mlg-action-row">
       <button class="mlg-confirm-btn" onclick="confirmMileageEntry()">✓ Confirm &amp; Log</button>
+      <button class="mlg-confirm-btn" style="background:var(--surface2);color:var(--accent);border:1px solid var(--accent)" onclick="confirmAndReturnTrip()">↩ Log &amp; Return</button>
       <button class="mlg-cancel-btn" onclick="closeMileageModal()">Cancel</button>
     </div>
   </div>
@@ -3821,6 +3822,38 @@ async function confirmMileageEntry() {
   errEl.textContent = ''; errEl.classList.remove('visible');
   document.getElementById('mlgMilesIndicator').textContent = '';
   document.getElementById('mlgOrigin').focus();
+}
+
+async function confirmAndReturnTrip() {
+  // Capture current origin/dest before confirmMileageEntry clears them
+  const origin  = document.getElementById('mlgOrigin').value.trim();
+  const dest    = document.getElementById('mlgDest').value.trim();
+  const purpose = document.getElementById('mlgPurpose').value;
+  const notes   = document.getElementById('mlgNotes').value.trim();
+
+  // Validate before logging — reuse existing validation in confirmMileageEntry
+  const miles = document.getElementById('mlgMiles').value.trim();
+  if (!origin)  { showToast('Origin address is required', true); return; }
+  if (!dest)    { showToast('Destination address is required', true); return; }
+  if (!miles)   { showToast('Miles required — calculate or enter manually', true); return; }
+  if (!purpose) { showToast('Purpose is required', true); return; }
+
+  await confirmMileageEntry();
+
+  // Pre-fill return trip with swapped addresses
+  document.getElementById('mlgOrigin').value  = dest;
+  document.getElementById('mlgDest').value    = dest !== origin ? origin : '';
+  document.getElementById('mlgPurpose').value = purpose;
+  if (notes) document.getElementById('mlgNotes').value = notes;
+
+  // Swap cities if they were filled
+  const originCity = document.getElementById('mlgOriginCity').value;
+  const destCity   = document.getElementById('mlgDestCity').value;
+  document.getElementById('mlgOriginCity').value = destCity;
+  document.getElementById('mlgDestCity').value   = originCity;
+
+  // Auto-calculate miles for the return leg
+  await calculateMiles();
 }
 
 // ── Mileage Log rendering ────────────────────────────────────────────
