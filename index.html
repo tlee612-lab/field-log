@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#310]</title>
+<title>OPS Track [#311]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1303,14 +1303,12 @@ async function openCaseListing() {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  let rows, sortBy = 'attorney';
+  let rows, filterAtty = 'all';
 
   try {
     const res = await fetch(cfg.webhookUrl + '?action=getMasterData');
     const data = await res.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Error');
-
-    // Dedupe to one row per case (take first occurrence for attorney/courtDate)
     const seen = new Set();
     rows = (data.rows || []).filter(r => {
       if (seen.has(r.caseNum)) return false;
@@ -1322,26 +1320,12 @@ async function openCaseListing() {
     return;
   }
 
-  function renderListing() {
-    const sorted = [...rows].sort((a, b) => {
-      if (sortBy === 'attorney') return (a.attorney||'—').localeCompare(b.attorney||'—') || (a.clientLast||'').localeCompare(b.clientLast||'');
-      if (sortBy === 'last')     return (a.clientLast||'').localeCompare(b.clientLast||'');
-      if (sortBy === 'court') {
-        const ca = a.courtDate || '9999', cb = b.courtDate || '9999';
-        return ca.localeCompare(cb);
-      }
-      return 0;
-    });
+  const attorneys = ['all', ...[...new Set(rows.map(r => r.attorney || '—'))].sort()];
 
-    const btnStyle = s => `padding:5px 10px;border-radius:6px;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid ${sortBy===s?'var(--accent)':'var(--border)'};background:${sortBy===s?'var(--accent)':'transparent'};color:${sortBy===s?'var(--bg)':'var(--muted)'}`;
-
+  if (!document.getElementById('caseListingFilterRow')) {
     box.innerHTML = `
-      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Listing <span style="font-weight:400;color:var(--muted);font-size:11px">(${rows.length} cases)</span></div>
-      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-        <button style="${btnStyle('attorney')}" onclick="caseListSort('attorney')">Attorney</button>
-        <button style="${btnStyle('last')}" onclick="caseListSort('last')">Last Name</button>
-        <button style="${btnStyle('court')}" onclick="caseListSort('court')">Court Date</button>
-      </div>
+      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Listing</div>
+      <div id="caseListingFilterRow" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;overflow-x:auto"></div>
       <div style="overflow-y:auto;flex:1">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">
@@ -1350,21 +1334,29 @@ async function openCaseListing() {
             <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">First Name</th>
             <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Court Date</th>
           </tr></thead>
-          <tbody>
-            ${sorted.map(r => `<tr style="border-bottom:1px solid var(--border)">
-              <td style="padding:6px;color:var(--muted)">${r.attorney || '—'}</td>
-              <td style="padding:6px;color:var(--text)">${r.clientLast || '—'}</td>
-              <td style="padding:6px;color:var(--text)">${r.clientFirst || '—'}</td>
-              <td style="padding:6px;color:${r.courtDate ? 'var(--accent)' : 'var(--muted)'}">${r.courtDate || '—'}</td>
-            </tr>`).join('')}
-          </tbody>
+          <tbody id="caseListingBody"></tbody>
         </table>
       </div>
       <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
     `;
   }
 
-  window.caseListSort = s => { sortBy = s; renderListing(); };
+  function renderListing() {
+    const btnStyle = a => `padding:4px 10px;border-radius:14px;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;white-space:nowrap;border:1px solid ${filterAtty===a?'var(--accent)':'var(--border)'};background:${filterAtty===a?'var(--accent)':'transparent'};color:${filterAtty===a?'var(--bg)':'var(--muted)'}`;
+    const filterRow = document.getElementById('caseListingFilterRow');
+    if (filterRow) filterRow.innerHTML = attorneys.map(a => `<button style="${btnStyle(a)}" onclick="caseListFilter('${a.replace(/'/g,"\\'")}')">${a === 'all' ? 'All' : a}</button>`).join('');
+    const visible = filterAtty === 'all' ? rows : rows.filter(r => (r.attorney || '—') === filterAtty);
+    const sorted = [...visible].sort((a, b) => (a.clientLast||'').localeCompare(b.clientLast||''));
+    const body = document.getElementById('caseListingBody');
+    if (body) body.innerHTML = sorted.map(r => `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:6px;color:var(--muted)">${r.attorney || '—'}</td>
+      <td style="padding:6px;color:var(--text)">${r.clientLast || '—'}</td>
+      <td style="padding:6px;color:var(--text)">${r.clientFirst || '—'}</td>
+      <td style="padding:6px;color:${r.courtDate ? 'var(--accent)' : 'var(--muted)'}">${r.courtDate || '—'}</td>
+    </tr>`).join('');
+  }
+
+  window.caseListFilter = a => { filterAtty = a; renderListing(); };
   renderListing();
 }
 
