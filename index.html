@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#280]</title>
+<title>OPS Track [#281]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -314,7 +314,7 @@
         <label>Mileage</label>
         <div style="display:flex;gap:6px;align-items:center">
           <input type="number" id="actMileage" placeholder="e.g. 42" step="0.1" min="0" style="flex:1">
-          <button type="button" class="miles-trigger-btn" onclick="openMileageModal()" title="Open mileage calculator">⊕ Miles</button>
+          <button type="button" class="miles-trigger-btn" onclick="openQuickMilesModal()" title="Open mileage calculator">⊕ Miles</button>
         </div>
       </div>
       <div class="field-group">
@@ -719,6 +719,40 @@
     <div class="mlg-action-row">
       <button class="mlg-confirm-btn" onclick="confirmMileageEntry()">✓ Confirm &amp; Log</button>
       <button class="mlg-cancel-btn" onclick="closeMileageModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     QUICK MILES MODAL — for Add Activity mileage field
+     ══════════════════════════════════════════════════════════════ -->
+<div id="quickMilesModal" class="mlg-modal-overlay" onclick="if(event.target===this)closeQuickMilesModal()">
+  <div class="mlg-modal-inner" style="max-width:380px">
+    <button class="mlg-close-btn" onclick="closeQuickMilesModal()">✕</button>
+    <div class="mlg-title">⊕ Calculate Miles</div>
+
+    <div class="mlg-fg">
+      <label>Origin Address</label>
+      <input type="text" id="qmOrigin" placeholder="e.g. 123 Main St, Medford, OR" autocapitalize="words" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="mlg-fg">
+      <label>Destination Address</label>
+      <input type="text" id="qmDest" placeholder="e.g. 456 Oak Ave, Ashland, OR" autocapitalize="words" autocorrect="off" spellcheck="false">
+    </div>
+
+    <button class="mlg-calc-btn" id="qmCalcBtn" onclick="calculateQuickMiles()">⊕ Calculate Miles</button>
+
+    <div class="mlg-error" id="qmError"></div>
+
+    <div class="mlg-fg" style="margin-top:10px;margin-bottom:10px">
+      <label>Miles <span id="qmMilesIndicator" style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0"></span></label>
+      <input type="number" id="qmMiles" placeholder="Enter or calculate" step="0.1" min="0">
+    </div>
+
+    <div class="mlg-action-row">
+      <button class="mlg-confirm-btn" onclick="useQuickMiles()">✓ Use Miles</button>
+      <button class="mlg-cancel-btn" onclick="closeQuickMilesModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -3514,6 +3548,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape' && document.getElementById('mileageModal').classList.contains('open')) {
       closeMileageModal();
     }
+    if (e.key === 'Escape' && document.getElementById('quickMilesModal').classList.contains('open')) {
+      closeQuickMilesModal();
+    }
   });
 
   const milesField = document.getElementById('mlgMiles');
@@ -3585,6 +3622,64 @@ async function calculateMiles() {
   }
 }
 
+// ── Quick Miles (Add Activity mileage field) ───────────────────────────
+
+function openQuickMilesModal() {
+  document.getElementById('qmOrigin').value = '';
+  document.getElementById('qmDest').value = '';
+  document.getElementById('qmMiles').value = document.getElementById('actMileage')?.value || '';
+  document.getElementById('qmMilesIndicator').textContent = '';
+  const errEl = document.getElementById('qmError');
+  errEl.textContent = ''; errEl.classList.remove('visible');
+  document.getElementById('quickMilesModal').classList.add('open');
+}
+
+function closeQuickMilesModal() {
+  document.getElementById('quickMilesModal').classList.remove('open');
+}
+
+async function calculateQuickMiles() {
+  const origin = document.getElementById('qmOrigin').value.trim();
+  const dest   = document.getElementById('qmDest').value.trim();
+  if (!origin || !dest) { showToast('Enter both addresses first', true); return; }
+  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+
+  const btn = document.getElementById('qmCalcBtn');
+  btn.innerHTML = '<span class="spinner"></span>Calculating…';
+  btn.disabled = true;
+  const errEl = document.getElementById('qmError');
+  errEl.textContent = ''; errEl.classList.remove('visible');
+
+  try {
+    const url = cfg.webhookUrl + '?action=getDistance&origin=' + encodeURIComponent(origin) + '&dest=' + encodeURIComponent(dest);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Distance lookup failed');
+
+    document.getElementById('qmOrigin').value = data.origin_address || origin;
+    document.getElementById('qmDest').value   = data.destination_address || dest;
+    document.getElementById('qmMiles').value  = data.miles;
+    document.getElementById('qmMilesIndicator').textContent = '(computed)';
+
+    if (data.origin_city) { const f = document.getElementById('travelFrom'); if (f) f.value = data.origin_city; }
+    if (data.destination_city) { const t = document.getElementById('travelTo'); if (t) t.value = data.destination_city; }
+  } catch(err) {
+    errEl.textContent = '⚠ ' + err.message + ' — enter miles manually.';
+    errEl.classList.add('visible');
+  } finally {
+    btn.innerHTML = '⊕ Calculate Miles';
+    btn.disabled = false;
+  }
+}
+
+function useQuickMiles() {
+  const miles = document.getElementById('qmMiles').value.trim();
+  if (!miles) { showToast('Enter or calculate miles first', true); return; }
+  const actMileageField = document.getElementById('actMileage');
+  if (actMileageField) actMileageField.value = Math.round(parseFloat(miles) * 10) / 10;
+  closeQuickMilesModal();
+}
 
 // ── Confirm & Log ────────────────────────────────────────────────────
 
