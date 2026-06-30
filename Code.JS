@@ -1665,14 +1665,39 @@ function getMileageLogData(caseFilter) {
 
 // ── getDistance ──────────────────────────────────────────────────────
 
+// Apps Script's Maps.DirectionFinder is stricter than the Maps website and
+// occasionally can't resolve a business name. Used only as a fallback below —
+// the full typed address is always tried first since business names usually
+// do resolve fine.
+function stripBusinessNamePrefix(address) {
+  const parts = address.split(',');
+  if (parts.length > 1 && !/^\s*\d/.test(parts[0])) {
+    return parts.slice(1).join(',').trim();
+  }
+  return address;
+}
+
+function runDirectionFinder(origin, dest) {
+  return Maps.newDirectionFinder()
+    .setOrigin(origin)
+    .setDestination(dest)
+    .setMode(Maps.DirectionFinder.Mode.DRIVING)
+    .getDirections();
+}
+
 function getDrivingDistance(origin, dest) {
   if (!origin || !dest) return { status: 'error', message: 'Origin and destination are required' };
   try {
-    const directions = Maps.newDirectionFinder()
-      .setOrigin(origin)
-      .setDestination(dest)
-      .setMode(Maps.DirectionFinder.Mode.DRIVING)
-      .getDirections();
+    let directions;
+    try {
+      directions = runDirectionFinder(origin, dest);
+    } catch(firstErr) {
+      // Full address failed — retry with a leading business-name segment stripped.
+      const originRetry = stripBusinessNamePrefix(origin);
+      const destRetry    = stripBusinessNamePrefix(dest);
+      if (originRetry === origin && destRetry === dest) throw firstErr;
+      directions = runDirectionFinder(originRetry, destRetry);
+    }
 
     const legs = directions.routes[0].legs;
     const totalMeters = legs.reduce((sum, leg) => sum + leg.distance.value, 0);

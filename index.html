@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#290]</title>
+<title>OPS Track [#291]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -3601,8 +3601,8 @@ async function calculateMiles() {
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Distance lookup failed');
 
-    document.getElementById('mlgOrigin').value     = data.origin_address      || origin;
-    document.getElementById('mlgDest').value       = data.destination_address || dest;
+    // Keep the address exactly as typed — don't let the geocoded response
+    // overwrite it and strip business names/specifics the user entered.
     document.getElementById('mlgOriginCity').value = data.origin_city         || '';
     document.getElementById('mlgDestCity').value   = data.destination_city    || '';
 
