@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#283]</title>
+<title>OPS Track [#284]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -3885,7 +3885,7 @@ function renderVehicleList() {
         </div>
       </div>
       <div class="veh-card-detail">
-        ${[v.year, v.make, v.model, v.color].filter(Boolean).join(' · ')}${v.plate ? ' · ' + v.plate : ''}${v.year_starting_mileage ? ' · Starting: ' + Number(v.year_starting_mileage).toLocaleString() + ' mi' : ''}
+        ${[v.year, v.make, v.model, v.color].filter(Boolean).join(' · ')}${v.plate ? ' · ' + v.plate : ''}${v.year_starting_mileage ? ' · Starting: ' + Number(v.year_starting_mileage).toLocaleString() + ' mi' : ''}${v.owner ? ' · Owner: ' + v.owner : ''}
       </div>
     </div>`).join('');
 }
