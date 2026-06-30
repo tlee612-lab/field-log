@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#286]</title>
+<title>OPS Track [#287]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -3912,6 +3912,7 @@ function addVehicle() {
   let vehicle;
   if (_editVehicleIndex >= 0) {
     vehicle = { ...vehicles[_editVehicleIndex], ...fields };
+    if (!vehicle.created_date) vehicle.created_date = new Date().toISOString().split('T')[0];
     vehicles[_editVehicleIndex] = vehicle;
     _editVehicleIndex = -1;
     document.getElementById('vSubmitBtn').textContent = '+ Add Vehicle';
