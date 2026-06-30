@@ -86,6 +86,7 @@ function doGet(e) {
     if (action === 'getPaeExpirations') return buildResponse(getPaeExpirations());
     if (action === 'getMasterData') return buildResponse(getMasterData());
     if (action === 'rebuildMaster') return buildResponse(rebuildMasterTracker());
+    if (action === 'fixVehiclesAlignment') return buildResponse(migrateVehiclesSheetOwnerColumn());
     // Legacy GET path (kept for backward compatibility)
     if (e.parameter.data) {
       const reqId = e.parameter.reqId || '';
@@ -1474,6 +1475,42 @@ function getOrCreateMileageLogSheet() {
     Logger.log('MileageLog sheet created');
   }
   return sheet;
+}
+
+/**
+ * One-time repair: old vehicle rows saved before the 'owner' column existed
+ * still have is_default/active/created_date sitting one column to the left
+ * (in what's now the owner/is_default/active slots). Detect rows where the
+ * owner column holds a literal "true"/"false" and shift them right.
+ */
+function migrateVehiclesSheetOwnerColumn() {
+  try {
+    const sheet = getOrCreateVehiclesSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { status: 'ok', migrated: 0 };
+    const ownerCol = VEHICLE_HEADERS.indexOf('owner') + 1;       // 1-indexed
+    const isDefaultCol = VEHICLE_HEADERS.indexOf('is_default') + 1;
+    const activeCol = VEHICLE_HEADERS.indexOf('active') + 1;
+    const createdCol = VEHICLE_HEADERS.indexOf('created_date') + 1;
+    const range = sheet.getRange(2, 1, lastRow - 1, VEHICLE_HEADERS.length);
+    const data = range.getValues();
+    let migrated = 0;
+    data.forEach(row => {
+      const ownerVal = String(row[ownerCol - 1]).trim().toLowerCase();
+      if (ownerVal === 'true' || ownerVal === 'false') {
+        // Shift: old is_default/active/created_date were one column left of current scheme
+        row[createdCol - 1] = row[activeCol - 1];
+        row[activeCol - 1] = row[isDefaultCol - 1];
+        row[isDefaultCol - 1] = row[ownerCol - 1];
+        row[ownerCol - 1] = '';
+        migrated++;
+      }
+    });
+    if (migrated) range.setValues(data);
+    return { status: 'ok', migrated };
+  } catch(err) {
+    return { status: 'error', message: err.message };
+  }
 }
 
 /**
