@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#301]</title>
+<title>OPS Track [#302]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1575,7 +1575,10 @@ async function openTrackerViewer() {
       // Build controls and results separately so the search input is never destroyed on re-render
       if (!document.getElementById('trackerFilterRow')) {
         box.innerHTML = `
-          <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Tracker</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text)">Case Tracker</div>
+            <button id="trackerRebuildBtn" onclick="trackerRebuild()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">↻ Rebuild</button>
+          </div>
           <input id="trackerSearchInput" type="search" placeholder="Search case #, client, attorney, PAE…" oninput="trackerSetSearch(this.value)" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:12px;margin-bottom:8px">
           <div id="trackerFilterRow" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"></div>
           <div id="trackerResults" style="overflow-y:auto;flex:1"></div>
@@ -1594,6 +1597,28 @@ async function openTrackerViewer() {
     window.trackerSetSearch = q => { filterSearch = q; renderTracker(); };
     window.trackerResetFilters = () => { filterStatus = 'active'; filterAtty = 'all'; filterCaseNum = 'all'; filterExp = 'all'; filterCourt = 'all'; filterSearch = ''; renderTracker(); };
     window.trackerEditCase = () => { openCreateModal(); };
+    window.trackerRebuild = async () => {
+      const btn = document.getElementById('trackerRebuildBtn');
+      if (btn) { btn.textContent = '⏳ Rebuilding…'; btn.disabled = true; }
+      const resultsEl = document.getElementById('trackerResults');
+      if (resultsEl) resultsEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Scanning Drive folders — this may take 30–60 seconds…</div>';
+      try {
+        const rebuildRes = await fetch(cfg.webhookUrl + '?action=rebuildMaster', { signal: AbortSignal.timeout(120000) });
+        const rebuildData = await rebuildRes.json();
+        if (rebuildData.status !== 'ok') throw new Error(rebuildData.message || 'Rebuild failed');
+        const skipped = rebuildData.skipped || [];
+        showToast('✓ Rebuilt — ' + rebuildData.rows + ' rows' + (skipped.length ? ' · ' + skipped.length + ' skipped' : ''));
+        if (skipped.length) console.warn('Skipped:\n' + skipped.join('\n'));
+        const res2 = await fetch(cfg.webhookUrl + '?action=getMasterData');
+        const data2 = await res2.json();
+        if (data2.status === 'ok') { data.rows = data2.rows; renderTracker(); }
+      } catch(e) {
+        showToast('Rebuild failed: ' + e.message, true);
+        renderTracker();
+      } finally {
+        if (btn) { btn.textContent = '↻ Rebuild'; btn.disabled = false; }
+      }
+    };
     renderTracker();
 
   } catch (err) {
