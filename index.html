@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#291]</title>
+<title>OPS Track [#292]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1351,6 +1351,8 @@ async function openTrackerViewer() {
     let sortMode = 'attorney';
     let filterStatus = 'active';
     let filterAtty = 'all';
+    let filterCaseNum = 'all';
+    let filterExp = 'all';
     const rows = data.rows || [];
 
     function renderTracker() {
@@ -1397,41 +1399,6 @@ async function openTrackerViewer() {
         } catch(e) { showToast('Failed to update case status', true); }
       };
 
-      // Build visible row set based on status + attorney filters
-      const uniqueAttorneys = [...new Set(rows.map(r => r.attorney || '—'))].sort((a,b) => a.localeCompare(b));
-      let baseRows = rows;
-      if (filterStatus === 'active') baseRows = rows.filter(r => r.active !== false);
-      else if (filterStatus === 'inactive') baseRows = rows.filter(r => r.active === false);
-      const visibleRows = filterAtty === 'all' ? baseRows : baseRows.filter(r => (r.attorney || '—') === filterAtty);
-      const attorneyMap = {};
-      visibleRows.forEach(r => {
-        const atty = r.attorney || '—';
-        if (!attorneyMap[atty]) attorneyMap[atty] = {};
-        const cn = r.caseNum;
-        if (!attorneyMap[atty][cn]) attorneyMap[atty][cn] = { info: r, paes: [] };
-        attorneyMap[atty][cn].paes.push(r);
-      });
-
-      const sortedAttorneys = Object.keys(attorneyMap).sort((a, b) => a.localeCompare(b));
-
-      const btnStyle = (active) => `padding:6px 10px;border-radius:6px;border:${active?'2px solid var(--accent)':'1px solid var(--border)'};background:${active?'var(--surface2)':'transparent'};color:${active?'var(--accent)':'var(--muted)'};font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer`;
-      const sortBtns = ['attorney','case','expiration'].map(m => {
-        const lbl = {attorney:'By Attorney',case:'By Case #',expiration:'By Expiration'}[m];
-        return `<button onclick="trackerSort('${m}')" style="${btnStyle(m===sortMode)}">${lbl}</button>`;
-      }).join('');
-      const selectStyle = 'padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;flex:1';
-      const attySelect = `<select onchange="trackerSetAtty(this.value)" style="${selectStyle}">
-        <option value="all" ${filterAtty==='all'?'selected':''}>All Attorneys</option>
-        ${uniqueAttorneys.map(a => `<option value="${a.replace(/"/g,'&quot;')}" ${filterAtty===a?'selected':''}>${a}</option>`).join('')}
-      </select>`;
-      const activeSwitch = `<span onclick="trackerSetStatus(filterStatus==='active'?'all':'active')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;flex-shrink:0">
-        <span style="position:relative;display:inline-block;width:34px;height:18px">
-          <span style="position:absolute;inset:0;border-radius:18px;background:${filterStatus==='active'?'var(--accent)':'var(--surface2)'};border:1px solid ${filterStatus==='active'?'var(--accent)':'var(--border)'}"></span>
-          <span style="position:absolute;top:2px;left:${filterStatus==='active'?'16px':'2px'};width:12px;height:12px;border-radius:50%;background:${filterStatus==='active'?'var(--bg)':'var(--muted)'}"></span>
-        </span>
-        <span style="font-family:var(--ui);font-size:10px;color:${filterStatus==='active'?'var(--accent)':'var(--muted)'}">${filterStatus==='active'?'Active':'All'}</span>
-      </span>`;
-
       function earliestExp(paes) {
         const dates = paes.map(p => {
           if (!p.expDate) return Infinity;
@@ -1441,16 +1408,74 @@ async function openTrackerViewer() {
         });
         return Math.min(...dates);
       }
+      function caseExpStatus(paes) {
+        const ts = earliestExp(paes);
+        if (!isFinite(ts)) return '';
+        const days = Math.round((ts - today.getTime()) / 86400000);
+        if (days < 0) return 'expired';
+        if (days <= 30) return 'soon';
+        return 'active';
+      }
 
-      // Flatten to [{ atty, caseNum, info, paes }] and sort
+      // Build visible row set based on status + attorney + case # filters
+      const uniqueAttorneys = [...new Set(rows.map(r => r.attorney || '—'))].sort((a,b) => a.localeCompare(b));
+      const uniqueCaseNums = [...new Set(rows.map(r => r.caseNum))].sort((a,b) => a.localeCompare(b));
+      let baseRows = rows;
+      if (filterStatus === 'active') baseRows = rows.filter(r => r.active !== false);
+      else if (filterStatus === 'inactive') baseRows = rows.filter(r => r.active === false);
+      let visibleRows = filterAtty === 'all' ? baseRows : baseRows.filter(r => (r.attorney || '—') === filterAtty);
+      visibleRows = filterCaseNum === 'all' ? visibleRows : visibleRows.filter(r => r.caseNum === filterCaseNum);
+      const attorneyMap = {};
+      visibleRows.forEach(r => {
+        const atty = r.attorney || '—';
+        if (!attorneyMap[atty]) attorneyMap[atty] = {};
+        const cn = r.caseNum;
+        if (!attorneyMap[atty][cn]) attorneyMap[atty][cn] = { info: r, paes: [] };
+        attorneyMap[atty][cn].paes.push(r);
+      });
+
+      // Apply expiration filter at the case level, then drop any attorneys left with no cases
+      if (filterExp !== 'all') {
+        Object.keys(attorneyMap).forEach(atty => {
+          Object.keys(attorneyMap[atty]).forEach(cn => {
+            if (caseExpStatus(attorneyMap[atty][cn].paes) !== filterExp) delete attorneyMap[atty][cn];
+          });
+          if (Object.keys(attorneyMap[atty]).length === 0) delete attorneyMap[atty];
+        });
+      }
+
+      const sortedAttorneys = Object.keys(attorneyMap).sort((a, b) => a.localeCompare(b));
+
+      const selectStyle = 'padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;flex:1';
+      const attySelect = `<select onchange="trackerSetAtty(this.value)" style="${selectStyle}">
+        <option value="all" ${filterAtty==='all'?'selected':''}>All Attorneys</option>
+        ${uniqueAttorneys.map(a => `<option value="${a.replace(/"/g,'&quot;')}" ${filterAtty===a?'selected':''}>${a}</option>`).join('')}
+      </select>`;
+      const caseNumSelect = `<select onchange="trackerSetCaseNum(this.value)" style="${selectStyle}">
+        <option value="all" ${filterCaseNum==='all'?'selected':''}>All Case #s</option>
+        ${uniqueCaseNums.map(cn => `<option value="${cn.replace(/"/g,'&quot;')}" ${filterCaseNum===cn?'selected':''}>${cn}</option>`).join('')}
+      </select>`;
+      const expSelect = `<select onchange="trackerSetExp(this.value)" style="${selectStyle}">
+        <option value="all" ${filterExp==='all'?'selected':''}>All Expirations</option>
+        <option value="expired" ${filterExp==='expired'?'selected':''}>Expired</option>
+        <option value="soon" ${filterExp==='soon'?'selected':''}>Exp. Soon</option>
+        <option value="active" ${filterExp==='active'?'selected':''}>Active</option>
+      </select>`;
+      const activeSwitch = `<span onclick="trackerSetStatus(filterStatus==='active'?'all':'active')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;flex-shrink:0">
+        <span style="position:relative;display:inline-block;width:34px;height:18px">
+          <span style="position:absolute;inset:0;border-radius:18px;background:${filterStatus==='active'?'var(--accent)':'var(--surface2)'};border:1px solid ${filterStatus==='active'?'var(--accent)':'var(--border)'}"></span>
+          <span style="position:absolute;top:2px;left:${filterStatus==='active'?'16px':'2px'};width:12px;height:12px;border-radius:50%;background:${filterStatus==='active'?'var(--bg)':'var(--muted)'}"></span>
+        </span>
+        <span style="font-family:var(--ui);font-size:10px;color:${filterStatus==='active'?'var(--accent)':'var(--muted)'}">${filterStatus==='active'?'Active':'All'}</span>
+      </span>`;
+
+      // Flatten to [{ atty, caseNum, info, paes }] for non-attorney groupings (unused now but kept for buildCaseBlock callers)
       let caseList = [];
       sortedAttorneys.forEach(atty => {
         Object.keys(attorneyMap[atty]).sort().forEach(cn => {
           caseList.push({ atty, caseNum: cn, ...attorneyMap[atty][cn] });
         });
       });
-      if (sortMode === 'case') caseList.sort((a, b) => a.caseNum.localeCompare(b.caseNum));
-      if (sortMode === 'expiration') caseList.sort((a, b) => earliestExp(a.paes) - earliestExp(b.paes));
 
       // Group for display
       const groupsHtml = (() => {
@@ -1504,18 +1529,18 @@ async function openTrackerViewer() {
 
       box.innerHTML = `
         <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Tracker</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">${sortBtns}${activeSwitch}</div>
-        <div style="margin-bottom:10px">${attySelect}</div>
-        <div style="overflow-y:auto;flex:1">${visibleRows.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No cases to display.</div>'}</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">${activeSwitch}</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${attySelect}${caseNumSelect}${expSelect}</div>
+        <div style="overflow-y:auto;flex:1">${sortedAttorneys.length ? groupsHtml : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No cases to display.</div>'}</div>
         <button style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
       `;
     }
 
-    window.trackerSort = m => { sortMode = m; renderTracker(); };
     window.trackerSetStatus = s => { filterStatus = s; renderTracker(); };
     window.trackerSetAtty = a => { filterAtty = a; renderTracker(); };
+    window.trackerSetCaseNum = cn => { filterCaseNum = cn; renderTracker(); };
+    window.trackerSetExp = ex => { filterExp = ex; renderTracker(); };
     window.trackerEditCase = () => { openCreateModal(); };
-    window.trackerToggleInactive = () => { filterStatus = filterStatus === 'inactive' ? 'active' : 'inactive'; renderTracker(); };
     renderTracker();
 
   } catch (err) {
