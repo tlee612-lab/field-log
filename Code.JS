@@ -1127,6 +1127,10 @@ function rebuildMasterTracker() {
     const folders = autoLogFolder.getFolders();
     let totalRows = 0;
     const skipped = [];
+    // Guards against duplicate rows if a case has more than one matching
+    // folder, or the same authNum somehow appears twice in a scan.
+    const seenPaeKeys = new Set();
+    const seenPlaceholderCases = new Set();
     while (folders.hasNext()) {
       const folder = folders.next();
       const folderName = folder.getName();
@@ -1154,6 +1158,9 @@ function rebuildMasterTracker() {
         zone.forEach(row => {
           const authNum = String(row[0]).trim();
           if (!authNum) return;
+          const paeKey = caseNum + '||' + authNum;
+          if (seenPaeKeys.has(paeKey)) return;
+          seenPaeKeys.add(paeKey);
           const expRaw = row[7]; const effRaw = row[6];
           const expDate = expRaw instanceof Date && !isNaN(expRaw.getTime()) ? Utilities.formatDate(expRaw, tz, 'MM/dd/yyyy') : String(expRaw || '').trim();
           const effDate = effRaw instanceof Date && !isNaN(effRaw.getTime()) ? Utilities.formatDate(effRaw, tz, 'MM/dd/yyyy') : String(effRaw || '').trim();
@@ -1166,7 +1173,8 @@ function rebuildMasterTracker() {
           totalRows++;
           addedForCase = true;
         });
-        if (!addedForCase) {
+        if (!addedForCase && !seenPlaceholderCases.has(caseNum)) {
+          seenPlaceholderCases.add(caseNum);
           sheet.appendRow([caseNum, clientLast, clientFirst, '', courtDate, '', '', '', '', '', '', '', '', activeVal]);
           totalRows++;
         }
