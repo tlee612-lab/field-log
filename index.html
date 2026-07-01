@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#316]</title>
+<title>OPS Track [#317]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1322,23 +1322,22 @@ async function openCaseListing() {
     return;
   }
 
-  const allRows = rows; // keep full set for filter changes
+  const allRows = rows;
   let filterAtty = 'all';
   let filterStatus = 'active';
+  let sortCol = 'last';
+  let sortDir = 1;
   const uniqueAttorneys = [...new Set(allRows.map(r => r.attorney || '—'))].sort();
   const selectStyle = 'padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;flex:1';
+  const thStyle = col => `text-align:left;padding:5px 6px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;color:${sortCol===col?'var(--accent)':'var(--muted)'};white-space:nowrap`;
+  const arrow = col => sortCol === col ? (sortDir === 1 ? ' ↑' : ' ↓') : '';
 
   box.innerHTML = `
     <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Case Listing</div>
     <div id="caseListingFilterRow" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"></div>
     <div style="overflow-y:auto;flex:1">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">
-          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Attorney</th>
-          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Last Name</th>
-          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">First Name</th>
-          <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)">Court Date</th>
-        </tr></thead>
+        <thead id="caseListingHead"><tr></tr></thead>
         <tbody id="caseListingBody"></tbody>
       </table>
     </div>
@@ -1357,11 +1356,26 @@ async function openCaseListing() {
         ${uniqueAttorneys.map(a => `<option value="${a.replace(/"/g,'&quot;')}" ${filterAtty===a?'selected':''}>${a}</option>`).join('')}
       </select>`;
 
+    const head = document.getElementById('caseListingHead');
+    if (head) head.innerHTML = `<tr style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase">
+      <th style="${thStyle('attorney')}" onclick="caseListSortBy('attorney')">Attorney${arrow('attorney')}</th>
+      <th style="${thStyle('last')}"     onclick="caseListSortBy('last')">Last Name${arrow('last')}</th>
+      <th style="${thStyle('first')}"    onclick="caseListSortBy('first')">First Name${arrow('first')}</th>
+      <th style="${thStyle('court')}"    onclick="caseListSortBy('court')">Court Date${arrow('court')}</th>
+    </tr>`;
+
     let visible = filterStatus === 'active' ? allRows.filter(r => r.active !== false) : allRows;
     if (filterAtty !== 'all') visible = visible.filter(r => (r.attorney || '—') === filterAtty);
     const seen = new Set();
     visible = visible.filter(r => { if (seen.has(r.caseNum)) return false; seen.add(r.caseNum); return true; });
-    visible.sort((a, b) => (a.clientLast||'').localeCompare(b.clientLast||''));
+    visible.sort((a, b) => {
+      let va, vb;
+      if (sortCol === 'attorney') { va = a.attorney||'—'; vb = b.attorney||'—'; }
+      else if (sortCol === 'last') { va = a.clientLast||''; vb = b.clientLast||''; }
+      else if (sortCol === 'first') { va = a.clientFirst||''; vb = b.clientFirst||''; }
+      else { va = a.courtDate||'9999'; vb = b.courtDate||'9999'; }
+      return va.localeCompare(vb) * sortDir;
+    });
 
     const body = document.getElementById('caseListingBody');
     if (body) body.innerHTML = visible.map(r => `<tr style="border-bottom:1px solid var(--border)">
@@ -1374,6 +1388,7 @@ async function openCaseListing() {
 
   window.caseListSetAtty   = a => { filterAtty = a; renderListing(); };
   window.caseListSetStatus = s => { filterStatus = s; renderListing(); };
+  window.caseListSortBy    = col => { if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; } renderListing(); };
   renderListing();
 }
 
