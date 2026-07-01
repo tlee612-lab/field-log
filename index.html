@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#319]</title>
+<title>OPS Track [#320]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1924,6 +1924,10 @@ async function checkPaeExpirations() {
 
       listEl.innerHTML = html || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:30px">No PAEs match this filter</div>';
     }
+
+    const totalPaes = Object.values(byCase).reduce((n, c) => n + c.paes.length, 0);
+    document.getElementById('expFilterRow').insertAdjacentHTML('beforebegin',
+      `<div style="font-size:11px;color:var(--muted);font-family:var(--ui);flex-shrink:0">${cases.length} cases · ${totalPaes} PAEs</div>`);
 
     window._expSetFilter = f => { expFilter = f; renderExp(); };
     renderExp();
