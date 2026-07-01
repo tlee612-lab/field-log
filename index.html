@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#318]</title>
+<title>OPS Track [#319]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1820,15 +1820,22 @@ function closePaeModal() {
 async function checkPaeExpirations() {
   if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
 
-  const ml = document.getElementById('casesModalList');
-  if (ml) ml.innerHTML = '';
+  const existing = document.getElementById('expOverlay');
+  if (existing) existing.remove();
+
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center';
-  const box = document.createElement('div');
-  box.style.cssText = 'background:#141720;border:1px solid #0090ff;border-radius:12px;padding:20px;width:min(92vw,400px);max-height:80vh;height:80vh;display:flex;flex-direction:column;overflow:hidden';
-  box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Loading from Drive…</div>`;
-  overlay.appendChild(box);
+  overlay.id = 'expOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center';
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(92vw,420px);max-height:82vh;display:flex;flex-direction:column;gap:10px;box-sizing:border-box">
+      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);flex-shrink:0">📅 PAE Expirations</div>
+      <div id="expFilterRow" style="flex-shrink:0"></div>
+      <div id="expList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;min-height:0">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:30px">Loading from Drive…</div>
+      </div>
+      <button style="flex-shrink:0;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="document.getElementById('expOverlay').remove()">Close</button>
+    </div>`;
   document.body.appendChild(overlay);
 
   try {
@@ -1837,109 +1844,93 @@ async function checkPaeExpirations() {
     const data = await res.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const warnDays = 30;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const parseStatus = expDate => {
+      if (!expDate) return { status: 'none', days: null };
+      const s = String(expDate).trim();
+      if (!s || s === 'Invalid Date') return { status: 'none', days: null };
+      const parts = s.split(/[\/\-]/);
+      if (parts.length < 3) return { status: 'none', days: null };
+      const yr = parseInt(parts[2]); const mo = parseInt(parts[0]); const dy = parseInt(parts[1]);
+      const d = new Date(yr < 100 ? 2000 + yr : yr, mo - 1, dy);
+      d.setHours(0, 0, 0, 0);
+      if (isNaN(d)) return { status: 'none', days: null };
+      const days = Math.round((d - today) / 86400000);
+      return { status: days < 0 ? 'expired' : days <= 30 ? 'soon' : 'active', days };
+    };
 
-    const rows = (data.paes || []).map(p => {
-      const expStr = String(p.expDate || '').trim();
-      let status = 'no-date', daysLeft = null;
-      if (expStr && expStr !== 'Invalid Date') {
-        const parts = expStr.split(/[\/\-]/);
-        const expDate = new Date(
-          parseInt(parts[2]) < 100 ? 2000 + parseInt(parts[2]) : parseInt(parts[2]),
-          parseInt(parts[0]) - 1,
-          parseInt(parts[1])
-        );
-        expDate.setHours(0, 0, 0, 0);
-        if (!isNaN(expDate)) {
-          daysLeft = Math.round((expDate - today) / 86400000);
-          if (daysLeft < 0) status = 'expired';
-          else if (daysLeft <= warnDays) status = 'soon';
-          else status = 'active';
-        }
-      }
-      return { ...p, expStr, status, daysLeft };
+    const statusColor = { expired: '#e55', soon: 'var(--warn)', active: 'var(--accent)', none: 'var(--muted)' };
+    const statusLabel = (status, days) => {
+      if (status === 'expired') return `Expired ${Math.abs(days)}d ago`;
+      if (status === 'soon')    return `Exp. in ${days}d`;
+      if (status === 'active')  return `${days}d left`;
+      return 'No date';
+    };
+    const rank = { expired: 0, soon: 1, active: 2, none: 3 };
+
+    const byCase = {};
+    (data.paes || []).forEach(p => {
+      const { status, days } = parseStatus(p.expDate);
+      if (!byCase[p.caseNum]) byCase[p.caseNum] = { client: p.client || '', paes: [] };
+      byCase[p.caseNum].paes.push({ authNum: p.authNum || '?', effDate: p.effDate || '', expDate: p.expDate || '', status, days });
     });
 
-    if (!rows.length) {
-      box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No PAEs found in Drive</div><button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>`;
+    if (!Object.keys(byCase).length) {
+      document.getElementById('expList').innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:30px">No PAEs found in Drive</div>';
       return;
     }
 
-    const colors = { expired: '#e55', soon: 'var(--warn)', active: 'var(--accent)', 'no-date': 'var(--muted)' };
-    const labels = {
-      expired: d => `Expired ${Math.abs(d)}d ago`,
-      soon: d => `Expires in ${d}d`,
-      active: d => `Active — ${d}d left`,
-      'no-date': () => 'No exp. date'
-    };
-
-    // Group by case number, sorted alphabetically
-    const byCase = {};
-    rows.forEach(r => {
-      if (!byCase[r.caseNum]) byCase[r.caseNum] = { client: r.client, paes: [] };
-      byCase[r.caseNum].paes.push(r);
-    });
-    const sortedCases = Object.keys(byCase).sort();
-    // Within each case sort PAEs: expired first, then soonest
-    const paeOrder = { expired: 0, soon: 1, active: 2, 'no-date': 3 };
-    sortedCases.forEach(cn => byCase[cn].paes.sort((a, b) => paeOrder[a.status] - paeOrder[b.status] || (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999)));
-
-    // Worst status per case for the case header accent
-    const worstStatus = cn => byCase[cn].paes.reduce((w, p) => paeOrder[p.status] < paeOrder[w] ? p.status : w, 'no-date');
+    const cases = Object.keys(byCase).sort();
+    cases.forEach(cn => byCase[cn].paes.sort((a, b) => rank[a.status] - rank[b.status]));
+    const worst = cn => byCase[cn].paes.reduce((w, p) => rank[p.status] < rank[w] ? p.status : w, 'none');
 
     let expFilter = 'all';
-    const filterDefs = [
-      { key: 'all',     label: 'All' },
-      { key: 'expired', label: 'Expired',  color: '#e55' },
-      { key: 'soon',    label: 'Exp. Soon', color: 'var(--warn)' },
-      { key: 'active',  label: 'Active',   color: 'var(--accent)' },
-    ];
+    const selStyle = 'padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;width:100%';
 
-    function renderExpList() {
-      const listEl = box.querySelector('#expList');
-      const filtered = sortedCases.map(cn => {
+    function renderExp() {
+      const filterRow = document.getElementById('expFilterRow');
+      const listEl    = document.getElementById('expList');
+      if (!filterRow || !listEl) return;
+
+      filterRow.innerHTML = `<select style="${selStyle}" onchange="window._expSetFilter(this.value)">
+        <option value="all"     ${expFilter==='all'    ?'selected':''}>All PAEs</option>
+        <option value="expired" ${expFilter==='expired'?'selected':''}>Expired</option>
+        <option value="soon"    ${expFilter==='soon'   ?'selected':''}>Expiring Soon (≤30d)</option>
+        <option value="active"  ${expFilter==='active' ?'selected':''}>Active</option>
+      </select>`;
+
+      const html = cases.map(cn => {
         const { client, paes } = byCase[cn];
-        const visiblePaes = expFilter === 'all' ? paes : paes.filter(p => p.status === expFilter);
-        if (!visiblePaes.length) return '';
-        const ws = worstStatus(cn);
-        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-          <div style="padding:8px 10px;background:var(--surface2);border-left:3px solid ${colors[ws]};font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${cn} — ${client}</div>
-          ${visiblePaes.map(r => `
-            <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 10px;border-top:1px solid var(--border)">
-              <div style="font-size:11px;color:var(--muted)">PAE #${r.authNum} &nbsp;·&nbsp; ${r.effDate ? r.effDate + ' – ' : ''}${r.expStr || '—'}</div>
-              <div style="font-size:11px;color:${colors[r.status]};font-family:var(--ui);font-weight:700;text-align:right;white-space:nowrap">${labels[r.status](r.daysLeft)}</div>
+        const visible = expFilter === 'all' ? paes : paes.filter(p => p.status === expFilter);
+        if (!visible.length) return '';
+        const ws = worst(cn);
+        const paeRows = visible.map(p => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-top:1px solid var(--border);background:var(--surface)">
+            <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">
+              #${p.authNum}${p.effDate ? ' &nbsp;' + p.effDate : ''}${p.expDate ? ' – ' + p.expDate : ''}
             </div>
-          `).join('')}
+            <div style="font-size:11px;color:${statusColor[p.status]};font-family:var(--ui);font-weight:700;white-space:nowrap;margin-left:8px">
+              ${statusLabel(p.status, p.days)}
+            </div>
+          </div>`).join('');
+        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="padding:8px 10px;background:var(--surface2);border-left:3px solid ${statusColor[ws]}">
+            <span style="font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${cn}</span>
+            ${client ? `<span style="font-size:11px;color:var(--muted);margin-left:8px">${client}</span>` : ''}
+          </div>
+          ${paeRows}
         </div>`;
       }).join('');
-      listEl.innerHTML = filtered || `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No PAEs in this category</div>`;
 
-      // Update button styles
-      filterDefs.forEach(f => {
-        const btn = box.querySelector(`[data-expfilter="${f.key}"]`);
-        if (!btn) return;
-        const active = expFilter === f.key;
-        btn.style.border = active ? `2px solid ${f.color || 'var(--accent)'}` : '1px solid var(--border)';
-        btn.style.color = active ? (f.color || 'var(--accent)') : 'var(--muted)';
-        btn.style.background = active ? 'var(--surface2)' : 'transparent';
-      });
+      listEl.innerHTML = html || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:30px">No PAEs match this filter</div>';
     }
 
-    window._expFilterSet = f => { expFilter = f; renderExpList(); };
+    window._expSetFilter = f => { expFilter = f; renderExp(); };
+    renderExp();
 
-    box.innerHTML = `
-      <div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">📅 PAE Expirations</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-        ${filterDefs.map(f => `<button data-expfilter="${f.key}" onclick="window._expFilterSet('${f.key}')" style="padding:4px 10px;border-radius:6px;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:transparent">${f.label}</button>`).join('')}
-      </div>
-      <div id="expList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px"></div>
-      <button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>
-    `;
-    renderExpList();
   } catch (err) {
-    box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:#e55;font-size:13px;text-align:center;padding:20px">Error: ${err.message}</div><button style="margin-top:14px;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%" onclick="this.closest('div[style*=fixed]').remove()">Close</button>`;
+    const listEl = document.getElementById('expList');
+    if (listEl) listEl.innerHTML = `<div style="color:#e55;font-size:12px;text-align:center;padding:20px">Error: ${err.message}</div>`;
   }
 }
 
