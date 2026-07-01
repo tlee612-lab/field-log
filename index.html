@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#325]</title>
+<title>OPS Track [#326]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -694,11 +694,11 @@
     <div id="mlgOdomFields" style="display:none" class="mlg-2col" style="margin-bottom:10px">
       <div class="mlg-fg" style="margin-bottom:0">
         <label>Odometer Start</label>
-        <input type="number" id="mlgOdomStart" placeholder="e.g. 47200" min="0">
+        <input type="number" id="mlgOdomStart" placeholder="e.g. 47200" min="0" oninput="calcOdomMissing('start')">
       </div>
       <div class="mlg-fg" style="margin-bottom:0">
         <label>Odometer End</label>
-        <input type="number" id="mlgOdomEnd" placeholder="e.g. 47242" min="0">
+        <input type="number" id="mlgOdomEnd" placeholder="e.g. 47242" min="0" oninput="calcOdomMissing('end')">
       </div>
     </div>
 
@@ -3832,6 +3832,18 @@ document.addEventListener('DOMContentLoaded', () => {
   loadVehiclesFromDrive();
   renderMileageLog();
 });
+
+function calcOdomMissing(changed) {
+  const start = document.getElementById('mlgOdomStart');
+  const end   = document.getElementById('mlgOdomEnd');
+  const miles = parseFloat(document.getElementById('mlgMiles').value);
+  if (!miles || miles <= 0) return;
+  if (changed === 'start' && start.value && !end.value) {
+    end.value = Math.round(parseFloat(start.value) + miles);
+  } else if (changed === 'end' && end.value && !start.value) {
+    start.value = Math.round(parseFloat(end.value) - miles);
+  }
+}
 
 function toggleOdometerFields() {
   const fields = document.getElementById('mlgOdomFields');
