@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#317]</title>
+<title>OPS Track [#318]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1820,10 +1820,12 @@ function closePaeModal() {
 async function checkPaeExpirations() {
   if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
 
+  const ml = document.getElementById('casesModalList');
+  if (ml) ml.innerHTML = '';
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center';
   const box = document.createElement('div');
-  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(92vw,400px);max-height:80vh;height:80vh;display:flex;flex-direction:column;overflow:hidden';
+  box.style.cssText = 'background:#141720;border:1px solid #0090ff;border-radius:12px;padding:20px;width:min(92vw,400px);max-height:80vh;height:80vh;display:flex;flex-direction:column;overflow:hidden';
   box.innerHTML = `<div style="font-family:var(--ui);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">📅 PAE Expirations</div><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Loading from Drive…</div>`;
   overlay.appendChild(box);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
