@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#323]</title>
+<title>OPS Track [#324]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1889,32 +1889,25 @@ async function checkPaeExpirations() {
     const worst = cn => byCase[cn].paes.reduce((w, p) => rank[p.status] < rank[w] ? p.status : w, 'none');
 
     let expFilter = 'all';
-    let hideNone  = false;
     let sortDir   = 1;
-    const selStyle = 'padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;flex:1';
-    const btnStyle = active => `padding:6px 10px;border-radius:6px;font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid ${active?'var(--accent)':'var(--border)'};color:${active?'var(--accent)':'var(--muted)'};background:${active?'var(--surface2)':'transparent'};white-space:nowrap`;
+    const selStyle = 'padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--ui);font-size:10px;cursor:pointer;width:100%';
 
     function renderExp() {
       const filterRow = document.getElementById('expFilterRow');
       const listEl    = document.getElementById('expList');
       if (!filterRow || !listEl) return;
 
-      filterRow.innerHTML = `
-        <div style="display:flex;gap:6px;align-items:center">
-          <select style="${selStyle}" onchange="window._expSetFilter(this.value)">
-            <option value="all"     ${expFilter==='all'    ?'selected':''}>All PAEs</option>
-            <option value="expired" ${expFilter==='expired'?'selected':''}>Expired</option>
-            <option value="soon"    ${expFilter==='soon'   ?'selected':''}>Expiring Soon</option>
-            <option value="active"  ${expFilter==='active' ?'selected':''}>Active</option>
-          </select>
-          <button style="${btnStyle(hideNone)}" onclick="window._expToggleNone()">Hide No-Date</button>
-        </div>`;
+      filterRow.innerHTML = `<select style="${selStyle}" onchange="window._expSetFilter(this.value)">
+        <option value="all"     ${expFilter==='all'    ?'selected':''}>All PAEs</option>
+        <option value="expired" ${expFilter==='expired'?'selected':''}>Expired</option>
+        <option value="soon"    ${expFilter==='soon'   ?'selected':''}>Expiring Soon</option>
+        <option value="active"  ${expFilter==='active' ?'selected':''}>Active</option>
+      </select>`;
 
       const rows = [];
       cases.forEach(cn => {
         const { client, paes } = byCase[cn];
         let visible = expFilter === 'all' ? paes : paes.filter(p => p.status === expFilter);
-        if (hideNone) visible = visible.filter(p => p.status !== 'none');
         visible.forEach(p => rows.push({ cn, client, ...p }));
       });
       rows.sort((a, b) => (rank[a.status] - rank[b.status]) * sortDir);
@@ -1952,7 +1945,6 @@ async function checkPaeExpirations() {
       `<div style="font-size:11px;color:var(--muted);font-family:var(--ui);flex-shrink:0">${cases.length} cases · ${totalPaes} PAEs</div>`);
 
     window._expSetFilter   = f => { expFilter = f; renderExp(); };
-    window._expToggleNone  = ()  => { hideNone = !hideNone; renderExp(); };
     window._expToggleSort  = ()  => { sortDir *= -1; renderExp(); };
     renderExp();
 
