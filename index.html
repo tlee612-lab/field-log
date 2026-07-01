@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#320]</title>
+<title>OPS Track [#321]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1899,30 +1899,37 @@ async function checkPaeExpirations() {
         <option value="active"  ${expFilter==='active' ?'selected':''}>Active</option>
       </select>`;
 
-      const html = cases.map(cn => {
+      const rows = [];
+      cases.forEach(cn => {
         const { client, paes } = byCase[cn];
         const visible = expFilter === 'all' ? paes : paes.filter(p => p.status === expFilter);
-        if (!visible.length) return '';
-        const ws = worst(cn);
-        const paeRows = visible.map(p => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-top:1px solid var(--border);background:var(--surface)">
-            <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">
-              #${p.authNum}${p.effDate ? ' &nbsp;' + p.effDate : ''}${p.expDate ? ' – ' + p.expDate : ''}
-            </div>
-            <div style="font-size:11px;color:${statusColor[p.status]};font-family:var(--ui);font-weight:700;white-space:nowrap;margin-left:8px">
-              ${statusLabel(p.status, p.days)}
-            </div>
-          </div>`).join('');
-        return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-          <div style="padding:8px 10px;background:var(--surface2);border-left:3px solid ${statusColor[ws]}">
-            <span style="font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text)">${cn}</span>
-            ${client ? `<span style="font-size:11px;color:var(--muted);margin-left:8px">${client}</span>` : ''}
-          </div>
-          ${paeRows}
-        </div>`;
-      }).join('');
+        visible.forEach(p => rows.push({ cn, client, ...p }));
+      });
+      rows.sort((a, b) => rank[a.status] - rank[b.status]);
 
-      listEl.innerHTML = html || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:30px">No PAEs match this filter</div>';
+      if (!rows.length) {
+        listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:30px">No PAEs match this filter</div>';
+        return;
+      }
+
+      const trs = rows.map(r => `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;font-family:var(--ui);font-weight:700;font-size:12px;color:var(--text);white-space:nowrap">${r.cn}</td>
+        <td style="padding:8px 6px;font-size:11px;color:var(--muted)">${r.client || '—'}</td>
+        <td style="padding:8px 6px;font-size:11px;color:var(--muted);font-family:var(--mono)">#${r.authNum}</td>
+        <td style="padding:8px 6px;font-size:11px;color:var(--muted);white-space:nowrap">${r.expDate || '—'}</td>
+        <td style="padding:8px 6px;font-size:11px;color:${statusColor[r.status]};font-family:var(--ui);font-weight:700;white-space:nowrap;text-align:right">${statusLabel(r.status, r.days)}</td>
+      </tr>`).join('');
+
+      listEl.innerHTML = `<table style="width:100%;border-collapse:collapse">
+        <thead><tr style="font-family:var(--ui);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">
+          <th style="padding:4px 6px;border-bottom:1px solid var(--border);text-align:left">Case</th>
+          <th style="padding:4px 6px;border-bottom:1px solid var(--border);text-align:left">Client</th>
+          <th style="padding:4px 6px;border-bottom:1px solid var(--border);text-align:left">PAE#</th>
+          <th style="padding:4px 6px;border-bottom:1px solid var(--border);text-align:left">Exp Date</th>
+          <th style="padding:4px 6px;border-bottom:1px solid var(--border);text-align:right">Status</th>
+        </tr></thead>
+        <tbody>${trs}</tbody>
+      </table>`;
     }
 
     const totalPaes = Object.values(byCase).reduce((n, c) => n + c.paes.length, 0);
