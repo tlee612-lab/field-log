@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#322]</title>
+<title>OPS Track [#323]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1868,8 +1868,12 @@ async function checkPaeExpirations() {
     };
     const rank = { expired: 0, soon: 1, active: 2, none: 3 };
 
+    const activeCaseNums = new Set((knownCases || []).map(c => c.case));
+    const paes = activeCaseNums.size
+      ? (data.paes || []).filter(p => activeCaseNums.has(p.caseNum))
+      : (data.paes || []);
     const byCase = {};
-    (data.paes || []).forEach(p => {
+    paes.forEach(p => {
       const { status, days } = parseStatus(p.expDate);
       if (!byCase[p.caseNum]) byCase[p.caseNum] = { client: p.client || '', paes: [] };
       byCase[p.caseNum].paes.push({ authNum: p.authNum || '?', effDate: p.effDate || '', expDate: p.expDate || '', status, days });
