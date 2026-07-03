@@ -415,22 +415,16 @@ function getOrCreateSheet(caseFolder, isRetainer) {
   DriveApp.getRootFolder().removeFile(file);
   Logger.log('File removed from root');
 
-  // Create Activity Log tab
-  const sheet = ss.getActiveSheet();
-  sheet.setName('Activity Log');
-  sheet.appendRow(HEADERS);
-  const hr = sheet.getRange(1, 1, 1, HEADERS.length);
-  hr.setFontWeight('bold');
-  hr.setBackground('#1c2030');
-  hr.setFontColor('#00c8a0');
-  sheet.setFrozenRows(1);
-  [160,110,120,120,280,90,70,100,90,90,80,80,100,100,120,400,80].forEach((w,i) => sheet.setColumnWidth(i+1, w));
-
-  // Create Retained or PAE Summary tab
+  // Create Retained tab first (if retainer) so Activity Log formulas can reference it
   if (isRetainer) {
     const retainedSheet = ss.insertSheet('Retained');
     setupRetainedSheet(retainedSheet, caseFolder.getName());
   }
+
+  // Create Activity Log tab
+  const sheet = ss.getActiveSheet();
+  sheet.setName('Activity Log');
+  setupNewActivityLog(sheet, isRetainer);
 
   Logger.log('Sheet setup complete');
   return sheet;
@@ -656,15 +650,20 @@ function createCase(body) {
  *   Row 3  – Column headers (frozen)
  *   Row 4+ – Data
  */
-function setupNewActivityLog(sheet) {
+function setupNewActivityLog(sheet, isRetainer) {
   // Clear any default content
   sheet.clearContents();
 
   // Row 1: totals bar labels + formulas
-  const totalsLabels = ['Auth Hrs', '=\'PAE Summary\'!B1', 'Used Hrs',
+  // Retainer sheets reference 'Retained'!B1 for auth amount; cases reference 'PAE Summary'!B1 for auth hrs
+  const authRef    = isRetainer ? '=\'Retained\'!B1'   : '=\'PAE Summary\'!B1';
+  const courtRef   = isRetainer ? ''                    : '=IFERROR(\'PAE Summary\'!B4,"")';
+  const authLabel  = isRetainer ? 'Auth Amt'            : 'Auth Hrs';
+  const courtLabel = isRetainer ? ''                    : 'Court Date';
+  const totalsLabels = [authLabel, authRef, 'Used Hrs',
     '=IFERROR(SUMIF(E4:E9999,"Investigator Service*",I4:I9999),0)',
     'Remaining', '=IFERROR(B1-D1,"--")', 'Mileage', '=SUM(J4:J9999)',
-    'Court Date', '=IFERROR(\'PAE Summary\'!B4,"")'];
+    courtLabel, courtRef];
   sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
 
   // Style totals row
@@ -888,20 +887,16 @@ function createRetainerAction(body) {
   folder.addFile(f);
   DriveApp.getRootFolder().removeFile(f);
 
+  // Retained tab (create first so Activity Log formulas can reference it)
+  const retSheet = ss.insertSheet('Retained');
+  setupRetainedSheet(retSheet, folder.getName());
+  if (amount)   retSheet.getRange('B5').setValue(parseFloat(amount) || amount);
+  if (attorney) retSheet.getRange('B7').setValue(attorney);
+
   // Activity Log tab
   const actSheet = ss.getActiveSheet();
   actSheet.setName('Activity Log');
-  actSheet.appendRow(HEADERS);
-  const hr = actSheet.getRange(1, 1, 1, HEADERS.length);
-  hr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
-  actSheet.setFrozenRows(1);
-  [160,110,120,120,280,90,70,100,90,90,80,80,100,100,120,400,80].forEach((w,i) => actSheet.setColumnWidth(i+1, w));
-
-  // Retained tab
-  const retSheet = ss.insertSheet('Retained');
-  setupRetainedSheet(retSheet, folder.getName());
-  if (attorney) retSheet.getRange('B5').setValue(attorney);
-  if (amount)   retSheet.getRange('B3').setValue(parseFloat(amount) || amount);
+  setupNewActivityLog(actSheet, true);
 
   return { status: 'ok', created: true, folder: folder.getName(), sheetId: ss.getId() };
 }
@@ -919,26 +914,50 @@ function setupRetainedSheet(sheet, folderName) {
   const clientLast = nameParts[0].trim();
   const clientFirst = nameParts.length > 1 ? nameParts[1].trim() : '';
 
-  // Info block
-  sheet.getRange('A1').setValue('Retainer #');
-  sheet.getRange('B1').setValue(retainerNum);
-  sheet.getRange('A2').setValue('Client');
-  sheet.getRange('B2').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
-  sheet.getRange('A3').setValue('Amount');
-  sheet.getRange('B3').setValue('');
-  sheet.getRange('A4').setValue('Effective Date');
-  sheet.getRange('B4').setValue('');
-  sheet.getRange('A5').setValue('Attorney');
-  sheet.getRange('B5').setValue('');
-  sheet.getRange('A6').setValue('Notes');
+  // ── Row 1: totals bar (mirrors Activity Log header) ──────────────────────
+  // B1 = Auth Amt — referenced by Activity Log as ='Retained'!B1
+  // D1 = Used Hrs pulled from Activity Log
+  // F1 = Remaining = B1 - D1
+  // H1 = Mileage pulled from Activity Log
+  const totalsLabels = [
+    'Auth Amt', '',
+    'Used Hrs', '=IFERROR(\'Activity Log\'!D1,0)',
+    'Remaining', '=IFERROR(B1-D1,"--")',
+    'Mileage', '=IFERROR(\'Activity Log\'!H1,0)'
+  ];
+  sheet.getRange(1, 1, 1, totalsLabels.length).setValues([totalsLabels]);
+
+  // Style totals row
+  const totalsRange = sheet.getRange(1, 1, 1, 8);
+  totalsRange.setBackground('#0d1117').setFontColor('#00c8a0').setFontWeight('bold');
+  [1, 3, 5, 7].forEach(col => sheet.getRange(1, col).setFontColor('#5a8a7a').setFontSize(9));
+  [2, 4, 6, 8].forEach(col => sheet.getRange(1, col).setFontColor('#00c8a0').setFontSize(11));
+
+  // ── Row 2: blank spacer ───────────────────────────────────────────────────
+
+  // ── Rows 3+: info block ───────────────────────────────────────────────────
+  sheet.getRange('A3').setValue('Retainer #');
+  sheet.getRange('B3').setValue(retainerNum);
+  sheet.getRange('A4').setValue('Client');
+  sheet.getRange('B4').setValue(clientFirst ? clientLast + ', ' + clientFirst : clientLast);
+  sheet.getRange('A5').setValue('Amount ($)');
+  sheet.getRange('B5').setValue('');  // filled by createRetainerAction; also drives B1
+  sheet.getRange('A6').setValue('Effective Date');
   sheet.getRange('B6').setValue('');
+  sheet.getRange('A7').setValue('Attorney');
+  sheet.getRange('B7').setValue('');
+  sheet.getRange('A8').setValue('Notes');
+  sheet.getRange('B8').setValue('');
+
+  // B1 Auth Amt mirrors B5 Amount so Activity Log can reference it
+  sheet.getRange('B1').setFormula('=IFERROR(B5,0)');
 
   // Style info block
-  const infoLabels = sheet.getRange('A1:A6');
-  infoLabels.setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
-  sheet.getRange('B1').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
-  sheet.getRange('B2:B6').setFontColor('#000000').setFontSize(10);
-  sheet.getRange('A1:B1').setBackground('#0d1117');
+  sheet.getRange('A3:A8').setFontWeight('bold').setFontColor('#5a8a7a').setFontSize(9);
+  sheet.getRange('B3').setFontWeight('bold').setFontColor('#00c8a0').setFontSize(13);
+  sheet.getRange('B4:B8').setFontColor('#000000').setFontSize(10);
+
+  sheet.setFrozenRows(1);
 
   // Column widths
   sheet.setColumnWidth(1, 120);
