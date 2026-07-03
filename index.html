@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#330]</title>
+<title>OPS Track [#331]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1174,24 +1174,43 @@ function switchCreateTab(tab) {
   retBtn.style.background = isPae ? 'transparent' : 'var(--surface2)';
 }
 
-function submitCreateRetainer() {
-  const inv = document.getElementById('createRetainerInvestigator').value.trim();
-  const num = document.getElementById('createRetainerNum').value.trim();
-  const last = document.getElementById('createRetainerLast').value.trim();
-  const first = document.getElementById('createRetainerFirst').value.trim();
+async function submitCreateRetainer() {
+  const inv      = document.getElementById('createRetainerInvestigator').value.trim();
+  const num      = document.getElementById('createRetainerNum').value.trim();
+  const last     = document.getElementById('createRetainerLast').value.trim();
+  const first    = document.getElementById('createRetainerFirst').value.trim();
   const attorney = document.getElementById('createRetainerAttorney').value.trim();
-  const amount = document.getElementById('createRetainerAmount').value.trim();
+  const amount   = document.getElementById('createRetainerAmount').value.trim();
   if (!num || !last) { showToast('Retainer # and client last name required', true); return; }
-  // Populate main retainer fields and switch to retainer mode
-  if (inv) document.getElementById('retainerInvestigator').value = inv;
-  document.getElementById('retainerNum').value = num;
-  document.getElementById('retainerClientLast').value = last;
-  document.getElementById('retainerClientFirst').value = first || '';
-  if (attorney) document.getElementById('retainerAttorney').value = attorney;
-  if (amount) document.getElementById('retainerAmount').value = amount;
-  closePaeModal();
-  setEntryMode('retainer');
-  showToast('Retainer ready — fill in activity details and log');
+
+  const cfg = loadConfig();
+  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+
+  const btn = document.querySelector('#createTabRetainer button[onclick="submitCreateRetainer()"]');
+  if (btn) { btn.textContent = '⏳ Creating…'; btn.disabled = true; }
+
+  try {
+    await fetch(cfg.webhookUrl, {
+      method: 'POST', mode: 'no-cors',
+      body: JSON.stringify({ action: 'createRetainer', retainerNum: num, clientLast: last, clientFirst: first, attorney, amount })
+    });
+
+    // Pre-fill main retainer entry fields
+    if (inv) document.getElementById('retainerInvestigator').value = inv;
+    document.getElementById('retainerNum').value = num;
+    document.getElementById('retainerClientLast').value = last;
+    document.getElementById('retainerClientFirst').value = first || '';
+    if (attorney) document.getElementById('retainerAttorney').value = attorney;
+    if (amount)   document.getElementById('retainerAmount').value = amount;
+
+    closePaeModal();
+    setEntryMode('retainer');
+    showToast('✓ Retainer created — fill in activity details and log');
+  } catch(err) {
+    showToast('Error creating retainer: ' + err.message, true);
+  } finally {
+    if (btn) { btn.textContent = '➕ Create Retainer'; btn.disabled = false; }
+  }
 }
 
 function openPaeModal() {

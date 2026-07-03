@@ -115,11 +115,12 @@ function doPost(e) {
 
     // Route action-based requests first
     const action = body.action || '';
-    if (action === 'createCase')  return buildResponse(createCase(body));
-    if (action === 'logMileage')  return buildResponse(logMileageEntry(body));
-    if (action === 'saveVehicle') return buildResponse(saveVehicleRecord(body));
-    if (action === 'setCourtDate') return buildResponse(setCourtDateAction(body));
-    if (action === 'rebuildMaster') return buildResponse(rebuildMasterTracker());
+    if (action === 'createCase')     return buildResponse(createCase(body));
+    if (action === 'createRetainer') return buildResponse(createRetainerAction(body));
+    if (action === 'logMileage')     return buildResponse(logMileageEntry(body));
+    if (action === 'saveVehicle')    return buildResponse(saveVehicleRecord(body));
+    if (action === 'setCourtDate')   return buildResponse(setCourtDateAction(body));
+    if (action === 'rebuildMaster')  return buildResponse(rebuildMasterTracker());
 
     const reqId = body.reqId || '';
     const incoming = body.data !== undefined ? body.data : body;
@@ -857,6 +858,52 @@ function getNextRetainerNumber() {
   }
 
   return prefix + String(maxSeq + 1).padStart(4, '0');
+}
+
+function createRetainerAction(body) {
+  const retainerNum = String(body.retainerNum || '').trim();
+  const clientLast  = String(body.clientLast  || '').trim();
+  const clientFirst = String(body.clientFirst || '').trim();
+  const attorney    = String(body.attorney    || '').trim();
+  const amount      = String(body.amount      || '').trim();
+
+  if (!retainerNum || !clientLast) {
+    return { status: 'error', message: 'Retainer # and client last name are required' };
+  }
+
+  const folder = getOrCreateCaseFolder(retainerNum, clientLast, clientFirst);
+
+  // Check if sheet already exists
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+      return { status: 'ok', created: false, folder: folder.getName(), sheetId: file.getId() };
+    }
+  }
+
+  // Create spreadsheet with Activity Log + Retained tabs
+  const ss = SpreadsheetApp.create(folder.getName());
+  const f = DriveApp.getFileById(ss.getId());
+  folder.addFile(f);
+  DriveApp.getRootFolder().removeFile(f);
+
+  // Activity Log tab
+  const actSheet = ss.getActiveSheet();
+  actSheet.setName('Activity Log');
+  actSheet.appendRow(HEADERS);
+  const hr = actSheet.getRange(1, 1, 1, HEADERS.length);
+  hr.setFontWeight('bold').setBackground('#1c2030').setFontColor('#00c8a0');
+  actSheet.setFrozenRows(1);
+  [160,110,120,120,280,90,70,100,90,90,80,80,100,100,120,400,80].forEach((w,i) => actSheet.setColumnWidth(i+1, w));
+
+  // Retained tab
+  const retSheet = ss.insertSheet('Retained');
+  setupRetainedSheet(retSheet, folder.getName());
+  if (attorney) retSheet.getRange('B5').setValue(attorney);
+  if (amount)   retSheet.getRange('B3').setValue(parseFloat(amount) || amount);
+
+  return { status: 'ok', created: true, folder: folder.getName(), sheetId: ss.getId() };
 }
 
 // ── Retained Sheet Setup (for retainers) ─────────────────────────────────
