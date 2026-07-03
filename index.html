@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#331]</title>
+<title>OPS Track [#332]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1175,6 +1175,8 @@ function switchCreateTab(tab) {
 }
 
 async function submitCreateRetainer() {
+  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
+
   const inv      = document.getElementById('createRetainerInvestigator').value.trim();
   const num      = document.getElementById('createRetainerNum').value.trim();
   const last     = document.getElementById('createRetainerLast').value.trim();
@@ -1183,31 +1185,51 @@ async function submitCreateRetainer() {
   const amount   = document.getElementById('createRetainerAmount').value.trim();
   if (!num || !last) { showToast('Retainer # and client last name required', true); return; }
 
-  const cfg = loadConfig();
-  if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
-
   const btn = document.querySelector('#createTabRetainer button[onclick="submitCreateRetainer()"]');
   if (btn) { btn.textContent = '⏳ Creating…'; btn.disabled = true; }
 
   try {
-    await fetch(cfg.webhookUrl, {
-      method: 'POST', mode: 'no-cors',
-      body: JSON.stringify({ action: 'createRetainer', retainerNum: num, clientLast: last, clientFirst: first, attorney, amount })
-    });
+    const payload = JSON.stringify({ action: 'createRetainer', retainerNum: num, clientLast: last, clientFirst: first, attorney, amount });
 
-    // Pre-fill main retainer entry fields
-    if (inv) document.getElementById('retainerInvestigator').value = inv;
-    document.getElementById('retainerNum').value = num;
-    document.getElementById('retainerClientLast').value = last;
-    document.getElementById('retainerClientFirst').value = first || '';
-    if (attorney) document.getElementById('retainerAttorney').value = attorney;
-    if (amount)   document.getElementById('retainerAmount').value = amount;
+    let result = null;
+    try {
+      const res = await fetch(cfg.webhookUrl, { method: 'POST', mode: 'cors', body: payload });
+      result = await res.json();
+    } catch(corsErr) {
+      console.warn('createRetainer cors failed, falling back to no-cors:', corsErr.message);
+      await fetch(cfg.webhookUrl, { method: 'POST', mode: 'no-cors', body: payload });
+      result = { status: 'ok', created: true };
+    }
 
-    closePaeModal();
-    setEntryMode('retainer');
-    showToast('✓ Retainer created — fill in activity details and log');
+    if (result && result.status === 'ok') {
+      // Update knownCases locally
+      const existingIdx = knownCases.findIndex(c => c.case.toLowerCase() === num.toLowerCase());
+      const entry = { case: num, client: last, clientFirst: first, attorney: attorney || '' };
+      if (existingIdx >= 0) {
+        knownCases[existingIdx] = { ...knownCases[existingIdx], ...entry };
+      } else {
+        knownCases.push(entry);
+      }
+      localStorage.setItem('tli_cases', JSON.stringify(knownCases));
+      refreshDataLists();
+      buildCasesModalList();
+
+      // Pre-fill main retainer entry fields
+      if (inv) document.getElementById('retainerInvestigator').value = inv;
+      document.getElementById('retainerNum').value = num;
+      document.getElementById('retainerClientLast').value = last;
+      document.getElementById('retainerClientFirst').value = first || '';
+      if (attorney) document.getElementById('retainerAttorney').value = attorney;
+      if (amount)   document.getElementById('retainerAmount').value = amount;
+
+      closePaeModal();
+      setEntryMode('retainer');
+      showToast(result.created ? '✓ Retainer created in Drive' : '✓ Retainer already exists — ready to log');
+    } else {
+      showToast('Error: ' + (result ? result.message : 'no response'), true);
+    }
   } catch(err) {
-    showToast('Error creating retainer: ' + err.message, true);
+    showToast('Create retainer failed: ' + err.message, true);
   } finally {
     if (btn) { btn.textContent = '➕ Create Retainer'; btn.disabled = false; }
   }
