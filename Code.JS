@@ -530,8 +530,29 @@ function upgradeSheetAction(caseNum) {
 
     if (!sheet) return { status: 'error', message: 'Activity Log sheet not found' };
 
-    // Upgrade the sheet
+    const ss = sheet.getParent();
+    const isRetainer = /^\d{2}RT/i.test(caseNum);
+
+    // Upgrade Activity Log columns
     ensureNewColumns(sheet);
+
+    // Fix Activity Log row 1 totals bar references for retainers
+    if (isRetainer) {
+      const a1 = String(sheet.getRange(1, 1).getValue()).trim();
+      if (a1 === 'Auth Hrs' || a1 === 'Auth Amt') {
+        sheet.getRange(1, 1).setValue('Auth Amt');
+        sheet.getRange(1, 2).setFormula('=IFERROR(\'Retained\'!B1,0)');
+        sheet.getRange(1, 9).setValue('');
+        sheet.getRange(1, 10).setValue('');
+      }
+
+      // Upgrade Retained tab if it exists, or create it
+      let retSheet = ss.getSheetByName('Retained');
+      if (!retSheet) {
+        retSheet = ss.insertSheet('Retained');
+      }
+      setupRetainedSheet(retSheet, caseFolder.getName());
+    }
 
     return { status: 'ok', message: 'Sheet upgraded successfully', case: caseNum };
   } catch(err) {
