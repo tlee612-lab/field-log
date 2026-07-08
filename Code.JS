@@ -1296,7 +1296,8 @@ function getMasterData() {
         effDate:    r[10] instanceof Date && !isNaN(r[10].getTime()) ? Utilities.formatDate(r[10], tz, 'MM/dd/yyyy') : String(r[10] || '').trim(),
         expDate:    r[11] instanceof Date && !isNaN(r[11].getTime()) ? Utilities.formatDate(r[11], tz, 'MM/dd/yyyy') : String(r[11] || '').trim(),
         county:     String(r[12] || '').trim(),
-        active:     String(r[13] || 'Yes').trim() !== 'No'
+        active:     String(r[13] || 'Yes').trim() !== 'No',
+        status:     String(r[13] || 'Yes').trim()
       }));
     return { status: 'ok', rows, created: _masterTrackerCreatedThisRequest };
   } catch(err) {

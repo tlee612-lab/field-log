@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#338]</title>
+<title>OPS Track [#339]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1550,16 +1550,17 @@ async function openTrackerViewer() {
         } catch(e) { showToast('Failed to save court date', true); }
       };
 
-      window.toggleTrackerCaseActive = async (caseNum, currentlyActive) => {
-        const newActive = currentlyActive ? 'No' : 'Yes';
+      window.toggleTrackerCaseActive = async (caseNum, currentStatus) => {
+        // Cycle: Yes → Bill → No → Yes
+        const nextStatus = currentStatus === 'Yes' ? 'Bill' : currentStatus === 'Bill' ? 'No' : 'Yes';
+        const labels = { Yes: 'active', Bill: 'ready to bill', No: 'inactive' };
         if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
-        showToast((newActive === 'Yes' ? '⏳ Marking active…' : '⏳ Marking inactive…'), false, true);
+        showToast('⏳ Marking ' + labels[nextStatus] + '…', false, true);
         try {
-          await fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + newActive);
-          rows.filter(r => r.caseNum === caseNum).forEach(r => r.active = newActive !== 'No');
-          if (filterStatus === 'inactive' && rows.filter(r => r.active === false).length === 0) filterStatus = 'all';
+          await fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + nextStatus);
+          rows.filter(r => r.caseNum === caseNum).forEach(r => { r.active = nextStatus !== 'No'; r.status = nextStatus; });
           renderTracker();
-          showToast((newActive === 'Yes' ? '✓ Case marked active' : '✓ Case marked inactive'));
+          showToast('✓ Case marked ' + labels[nextStatus]);
         } catch(e) { showToast('Failed to update case status', true); }
       };
 
@@ -1589,8 +1590,9 @@ async function openTrackerViewer() {
         return r ? (r.clientLast + (r.clientFirst ? ', ' + r.clientFirst : '')) : '';
       };
       let baseRows = rows;
-      if (filterStatus === 'active') baseRows = rows.filter(r => r.active !== false);
-      else if (filterStatus === 'inactive') baseRows = rows.filter(r => r.active === false);
+      if (filterStatus === 'active')   baseRows = rows.filter(r => (r.status || 'Yes') === 'Yes');
+      else if (filterStatus === 'bill') baseRows = rows.filter(r => (r.status || 'Yes') === 'Bill');
+      else if (filterStatus === 'inactive') baseRows = rows.filter(r => (r.status || 'Yes') === 'No');
       if (filterSearch) {
         const q = filterSearch.toLowerCase();
         baseRows = baseRows.filter(r =>
@@ -1650,6 +1652,7 @@ async function openTrackerViewer() {
       </select>`;
       const statusSelect = `<select onchange="trackerSetStatus(this.value)" style="${selectStyle}">
         <option value="active"   ${filterStatus==='active'?'selected':''}>Active Only</option>
+        <option value="bill"     ${filterStatus==='bill'?'selected':''}>Ready to Bill</option>
         <option value="inactive" ${filterStatus==='inactive'?'selected':''}>Inactive Only</option>
         <option value="all"      ${filterStatus==='all'?'selected':''}>All Statuses</option>
       </select>`;
@@ -1679,18 +1682,24 @@ async function openTrackerViewer() {
 
       function buildCaseBlock(caseNum, { info, paes }, colors, expStatus) {
         const courtDate = courtDates[caseNum] || info.courtDate || '';
-        const isActive = info.active !== false;
+        const caseStatus = info.status || (info.active !== false ? 'Yes' : 'No');
+        const isActive = caseStatus === 'Yes';
+        const isBill = caseStatus === 'Bill';
         const courtSt = courtDateStatus(courtDate);
         const courtColor = courtDate ? (courtColors[courtSt] || 'var(--accent2)') : 'var(--muted)';
         const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtColor};background:transparent;color:${courtColor};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
         const editPill = `<button onclick="trackerEditCase()" style="padding:1px 8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">✎ Edit</button>`;
-        const activePill = `<span onclick="toggleTrackerCaseActive('${caseNum}',${isActive})" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
-          <span style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0">
-            <span style="position:absolute;inset:0;border-radius:18px;background:${isActive ? 'var(--accent)' : 'var(--surface2)'};border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}"></span>
-            <span style="position:absolute;top:2px;left:${isActive ? '16px' : '2px'};width:12px;height:12px;border-radius:50%;background:${isActive ? 'var(--bg)' : 'var(--muted)'}"></span>
-          </span>
-          <span style="font-family:var(--ui);font-size:10px;letter-spacing:0.5px;color:${isActive ? 'var(--accent)' : 'var(--muted)'}">${isActive ? 'Active' : 'Inactive'}</span>
-        </span>`;
+        const activePill = isBill
+          ? `<span onclick="toggleTrackerCaseActive('${caseNum}','Bill')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;padding:1px 8px;border-radius:10px;border:1px solid var(--warn);background:transparent">
+              <span style="font-family:var(--ui);font-size:10px;letter-spacing:0.5px;color:var(--warn)">$ Ready to Bill</span>
+             </span>`
+          : `<span onclick="toggleTrackerCaseActive('${caseNum}','${caseStatus}')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+              <span style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0">
+                <span style="position:absolute;inset:0;border-radius:18px;background:${isActive ? 'var(--accent)' : 'var(--surface2)'};border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}"></span>
+                <span style="position:absolute;top:2px;left:${isActive ? '16px' : '2px'};width:12px;height:12px;border-radius:50%;background:${isActive ? 'var(--bg)' : 'var(--muted)'}"></span>
+              </span>
+              <span style="font-family:var(--ui);font-size:10px;letter-spacing:0.5px;color:${isActive ? 'var(--accent)' : 'var(--muted)'}">${isActive ? 'Active' : 'Inactive'}</span>
+             </span>`;
         const realPaes = paes.filter(r => r.authNum);
         const paeRows = realPaes.length
           ? realPaes.map(r => {
