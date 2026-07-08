@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#339]</title>
+<title>OPS Track [#340]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1553,15 +1553,15 @@ async function openTrackerViewer() {
       window.toggleTrackerCaseActive = async (caseNum, currentStatus) => {
         // Cycle: Yes → Bill → No → Yes
         const nextStatus = currentStatus === 'Yes' ? 'Bill' : currentStatus === 'Bill' ? 'No' : 'Yes';
-        const labels = { Yes: 'active', Bill: 'ready to bill', No: 'inactive' };
-        if (!cfg.webhookUrl) { showToast('No webhook URL configured', true); return; }
-        showToast('⏳ Marking ' + labels[nextStatus] + '…', false, true);
-        try {
-          await fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + nextStatus);
-          rows.filter(r => r.caseNum === caseNum).forEach(r => { r.active = nextStatus !== 'No'; r.status = nextStatus; });
-          renderTracker();
-          showToast('✓ Case marked ' + labels[nextStatus]);
-        } catch(e) { showToast('Failed to update case status', true); }
+        const labels = { Yes: 'Active', Bill: 'Ready to Bill', No: 'Inactive' };
+        // Update locally and re-render immediately
+        rows.filter(r => r.caseNum === caseNum).forEach(r => { r.active = nextStatus !== 'No'; r.status = nextStatus; });
+        renderTracker();
+        showToast('✓ ' + caseNum + ' → ' + labels[nextStatus]);
+        // Persist to Drive in background
+        if (cfg.webhookUrl) {
+          fetch(cfg.webhookUrl + '?action=setCaseActive&case=' + encodeURIComponent(caseNum) + '&active=' + nextStatus).catch(() => {});
+        }
       };
 
       function earliestExp(paes) {
