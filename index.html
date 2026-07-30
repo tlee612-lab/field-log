@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#343]</title>
+<title>OPS Track [#344]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1621,6 +1621,22 @@ async function openTrackerViewer() {
         const cn = r.caseNum;
         if (!attorneyMap[atty][cn]) attorneyMap[atty][cn] = { info: r, paes: [] };
         attorneyMap[atty][cn].paes.push(r);
+      });
+      // For cases that appear under multiple attorneys, keep only the attorney
+      // whose PAEs have the latest effective date (the controlling engagement)
+      const parseDate = s => { if (!s) return 0; const p = s.split(/[\/\-]/); const y = parseInt(p[2]); return new Date(y < 100 ? 2000+y : y, parseInt(p[0])-1, parseInt(p[1])).getTime() || 0; };
+      const latestEffByCase = {};
+      Object.keys(attorneyMap).forEach(atty => {
+        Object.keys(attorneyMap[atty]).forEach(cn => {
+          const latest = Math.max(...attorneyMap[atty][cn].paes.map(p => parseDate(p.effDate)));
+          if (!latestEffByCase[cn] || latest > latestEffByCase[cn].ts) latestEffByCase[cn] = { atty, ts: latest };
+        });
+      });
+      Object.keys(attorneyMap).forEach(atty => {
+        Object.keys(attorneyMap[atty]).forEach(cn => {
+          if (latestEffByCase[cn] && latestEffByCase[cn].atty !== atty) delete attorneyMap[atty][cn];
+        });
+        if (Object.keys(attorneyMap[atty]).length === 0) delete attorneyMap[atty];
       });
 
       // Apply expiration + court date filters at the case level, then drop any attorneys left with no cases
