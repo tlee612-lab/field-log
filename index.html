@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#341]</title>
+<title>OPS Track [#342]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1707,8 +1707,11 @@ async function openTrackerViewer() {
           if (existing) { existing.count++; existing.authNums.push(r.authNum); }
           else paeGroups.push({ key, r, count: 1, authNums: [r.authNum] });
         });
-        const paeRows = paeGroups.length
-          ? paeGroups.map(({ r, count, authNums }) => {
+        // If any non-expired PAE exists, suppress expired groups (they're superseded)
+        const hasCurrentPae = paeGroups.some(g => expStatus(g.r.expDate) !== 'expired');
+        const visibleGroups = hasCurrentPae ? paeGroups.filter(g => expStatus(g.r.expDate) !== 'expired') : paeGroups;
+        const paeRows = visibleGroups.length
+          ? visibleGroups.map(({ r, count, authNums }) => {
               const st = expStatus(r.expDate);
               const stColor = colors[st] || 'var(--muted)';
               const paeLabel = count > 1
