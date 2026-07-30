@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#340]</title>
+<title>OPS Track [#341]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1550,9 +1550,11 @@ async function openTrackerViewer() {
         } catch(e) { showToast('Failed to save court date', true); }
       };
 
-      window.toggleTrackerCaseActive = async (caseNum, currentStatus) => {
-        // Cycle: Yes → Bill → No → Yes
-        const nextStatus = currentStatus === 'Yes' ? 'Bill' : currentStatus === 'Bill' ? 'No' : 'Yes';
+      window.toggleTrackerCaseActive = async (caseNum, currentStatus, dir = 'next') => {
+        const order = ['Yes', 'Bill', 'No'];
+        const idx = order.indexOf(currentStatus);
+        const nextIdx = dir === 'next' ? (idx + 1) % 3 : (idx + 2) % 3;
+        const nextStatus = order[nextIdx];
         const labels = { Yes: 'Active', Bill: 'Ready to Bill', No: 'Inactive' };
         // Update locally and re-render immediately
         rows.filter(r => r.caseNum === caseNum).forEach(r => { r.active = nextStatus !== 'No'; r.status = nextStatus; });
@@ -1689,24 +1691,31 @@ async function openTrackerViewer() {
         const courtColor = courtDate ? (courtColors[courtSt] || 'var(--accent2)') : 'var(--muted)';
         const courtPill = `<button onclick="setTrackerCourtDate('${caseNum}','${courtDate}')" style="padding:1px 8px;border-radius:10px;border:1px solid ${courtColor};background:transparent;color:${courtColor};font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">⚖ ${courtDate || 'Add Date'}</button>`;
         const editPill = `<button onclick="trackerEditCase()" style="padding:1px 8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--ui);font-size:10px;cursor:pointer;white-space:nowrap">✎ Edit</button>`;
-        const activePill = isBill
-          ? `<span onclick="toggleTrackerCaseActive('${caseNum}','Bill')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;padding:1px 8px;border-radius:10px;border:1px solid var(--warn);background:transparent">
-              <span style="font-family:var(--ui);font-size:10px;letter-spacing:0.5px;color:var(--warn)">$ Ready to Bill</span>
-             </span>`
-          : `<span onclick="toggleTrackerCaseActive('${caseNum}','${caseStatus}')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
-              <span style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0">
-                <span style="position:absolute;inset:0;border-radius:18px;background:${isActive ? 'var(--accent)' : 'var(--surface2)'};border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}"></span>
-                <span style="position:absolute;top:2px;left:${isActive ? '16px' : '2px'};width:12px;height:12px;border-radius:50%;background:${isActive ? 'var(--bg)' : 'var(--muted)'}"></span>
-              </span>
-              <span style="font-family:var(--ui);font-size:10px;letter-spacing:0.5px;color:${isActive ? 'var(--accent)' : 'var(--muted)'}">${isActive ? 'Active' : 'Inactive'}</span>
-             </span>`;
+        const statusColor = isActive ? 'var(--accent)' : isBill ? 'var(--warn)' : 'var(--muted)';
+        const statusLabel = isActive ? 'Active' : isBill ? '$ Bill' : 'Inactive';
+        const activePill = `<span style="display:inline-flex;align-items:center;border-radius:10px;border:1px solid ${statusColor};overflow:hidden;font-family:var(--ui);font-size:10px;user-select:none">
+          <span onclick="toggleTrackerCaseActive('${caseNum}','${caseStatus}','prev')" style="padding:1px 6px;cursor:pointer;color:${statusColor};border-right:1px solid ${statusColor}">‹</span>
+          <span style="padding:1px 7px;color:${statusColor};letter-spacing:0.5px">${statusLabel}</span>
+          <span onclick="toggleTrackerCaseActive('${caseNum}','${caseStatus}','next')" style="padding:1px 6px;cursor:pointer;color:${statusColor};border-left:1px solid ${statusColor}">›</span>
+        </span>`;
         const realPaes = paes.filter(r => r.authNum);
-        const paeRows = realPaes.length
-          ? realPaes.map(r => {
+        // Collapse PAEs with identical effDate+expDate into one row
+        const paeGroups = [];
+        realPaes.forEach(r => {
+          const key = (r.effDate || '') + '|' + (r.expDate || '');
+          const existing = paeGroups.find(g => g.key === key);
+          if (existing) { existing.count++; existing.authNums.push(r.authNum); }
+          else paeGroups.push({ key, r, count: 1, authNums: [r.authNum] });
+        });
+        const paeRows = paeGroups.length
+          ? paeGroups.map(({ r, count, authNums }) => {
               const st = expStatus(r.expDate);
               const stColor = colors[st] || 'var(--muted)';
+              const paeLabel = count > 1
+                ? `${count} PAEs · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}`
+                : `PAE #${r.authNum} · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}`;
               return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px 5px 20px;border-top:1px solid var(--border);font-size:11px${isActive ? '' : ';opacity:0.5'}">
-                <span style="color:var(--muted)">PAE #${r.authNum} · ${r.authHrs || '—'} hrs · Eff ${r.effDate || '—'}</span>
+                <span style="color:var(--muted)">${paeLabel}</span>
                 <div style="text-align:right">
                   <div style="color:${stColor};font-family:var(--ui);font-weight:700;font-size:11px;white-space:nowrap">${r.expDate ? 'Exp ' + r.expDate : '—'}</div>
                   <div style="color:${stColor};font-size:10px">${st === 'expired' ? 'PAE Expired' : st === 'soon' ? 'PAE Exp. Soon' : st === 'active' ? 'PAE Active' : ''}</div>
