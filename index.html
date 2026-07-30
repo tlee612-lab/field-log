@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#342]</title>
+<title>OPS Track [#343]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1576,8 +1576,15 @@ async function openTrackerViewer() {
         return Math.min(...dates);
       }
       function caseExpStatus(paes) {
-        const ts = earliestExp(paes);
-        if (!isFinite(ts)) return '';
+        // Use the latest expiration — if any PAE is still current, the case is not expired
+        const dates = paes.map(p => {
+          if (!p.expDate) return -Infinity;
+          const parts = p.expDate.split(/[\/\-]/);
+          const d = new Date(parseInt(parts[2]) < 100 ? 2000+parseInt(parts[2]) : parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+          return isNaN(d) ? -Infinity : d.getTime();
+        });
+        const ts = Math.max(...dates);
+        if (!isFinite(ts) || ts === -Infinity) return '';
         const days = Math.round((ts - today.getTime()) / 86400000);
         if (days < 0) return 'expired';
         if (days <= 30) return 'soon';
