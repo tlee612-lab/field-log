@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>OPS Track [#345]</title>
+<title>OPS Track [#346]</title>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -4055,8 +4055,6 @@ async function confirmMileageEntry() {
   const miles   = document.getElementById('mlgMiles').value.trim();
   const purpose = document.getElementById('mlgPurpose').value.trim();
 
-  if (!origin)  { showToast('Origin address is required', true); return; }
-  if (!dest)    { showToast('Destination address is required', true); return; }
   if (!miles)   { showToast('Miles required — calculate or enter manually', true); return; }
   if (!purpose) { showToast('Purpose is required', true); return; }
 
